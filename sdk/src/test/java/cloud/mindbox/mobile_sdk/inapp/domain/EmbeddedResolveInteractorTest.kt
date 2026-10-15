@@ -1163,6 +1163,23 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
+    fun `selectInAppForPlace resolving again for the new session answers with the version of the config it read again`() = runTest {
+        val config = listOf(embeddedInApp())
+        givenConfig(*config.toTypedArray())
+        val newSessionsConfig = configVersion.next()
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns
+            InAppsSection(config, configVersion) andThen InAppsSection(config, newSessionsConfig)
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns SessionState()
+        }
+
+        val outcome = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals(newSessionsConfig, outcome.configVersion)
+    }
+
+    @Test
     fun `selectInAppForPlace resolves again only once however often the session is reset`() = runTest {
         givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
         coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {

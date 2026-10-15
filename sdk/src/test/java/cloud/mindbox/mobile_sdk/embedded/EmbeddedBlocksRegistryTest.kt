@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -1482,6 +1483,378 @@ class EmbeddedBlocksRegistryTest {
 
         assertTrue(handle.received.isEmpty())
         verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
+    }
+
+    private fun announceNewerConfig() {
+        scope.launch { configVersions.emit(newerConfig) }
+        idleMain()
+    }
+
+    @Test
+    fun `a block waiting for the first config is selected once when the config is announced before its pass answers`() {
+        val waitingPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { waitingPass.await() }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        announceNewerConfig()
+        waitingPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    @Test
+    fun `a block answered from the first config before it is announced is not asked again by the announcement`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        announceNewerConfig()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    private fun queueAnOperationBehindAPassWaitingForTheConfig(
+        handle: RecordingHandle,
+        isOperationBeforeTheAnnouncement: Boolean,
+        askThePlace: EmbeddedBlocksRegistryImpl.() -> Unit,
+    ) {
+        val waitingPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers { waitingPass.await() }
+        coEvery { interactor.selectInAppForPlace(place, queuedOperation) } returns winner(configVersion = newerConfig)
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.askThePlace()
+
+        if (isOperationBeforeTheAnnouncement) emitQueuedOperation()
+        announceNewerConfig()
+        if (!isOperationBeforeTheAnnouncement) emitQueuedOperation()
+        waitingPass.complete(EmbeddedResolveOutcome.Empty(newerConfig))
+        idleMain()
+    }
+
+    @Test
+    fun `an operation that reaches a block waiting for the first config before the config is announced is answered by its own operation pass`() {
+        val handle = RecordingHandle()
+        queueAnOperationBehindAPassWaitingForTheConfig(handle, isOperationBeforeTheAnnouncement = true) {
+            onBlockAppeared(place)
+            idleMain()
+        }
+
+        assertEquals(listOf(false, true), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `an operation that reaches a block waiting for the first config after the config is announced is answered by its own operation pass`() {
+        val handle = RecordingHandle()
+        queueAnOperationBehindAPassWaitingForTheConfig(handle, isOperationBeforeTheAnnouncement = false) {
+            onBlockAppeared(place)
+            idleMain()
+        }
+
+        assertEquals(listOf(false, true), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `an operation that reaches a place whose new session's pass waits for the config before the config is announced is answered by its own operation pass`() {
+        val handle = RecordingHandle()
+        queueAnOperationBehindAPassWaitingForTheConfig(handle, isOperationBeforeTheAnnouncement = true) { renewTheSession() }
+
+        assertEquals(listOf(1L to false, 1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
+    fun `an operation that reaches a place whose new session's pass waits for the config after the config is announced is answered by its own operation pass`() {
+        val handle = RecordingHandle()
+        queueAnOperationBehindAPassWaitingForTheConfig(handle, isOperationBeforeTheAnnouncement = false) { renewTheSession() }
+
+        assertEquals(listOf(1L to false, 1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+    }
+
+    @Test
+    fun `a block on screen is selected once in a new session when the new config is announced before its pass answers`() {
+        val newSessionsPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) winner() else newSessionsPass.await()
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        renewTheSession()
+        announceNewerConfig()
+        newSessionsPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        assertEquals(2, selections)
+        assertEquals(listOf(0L, 1L), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `a block on screen is selected once in a new session when its pass answers before the new config is announced`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        renewTheSession()
+        announceNewerConfig()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(0L, 1L), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `an operation carried into a new session is the session's one selection when the new config is announced before its pass answers`() {
+        val newSessionsPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(configVersion = newerConfig)
+        coEvery { interactor.selectInAppForPlace(place, queuedOperation) } coAnswers { newSessionsPass.await() }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        renewTheSession(whileItEnds = ::emitQueuedOperation)
+        announceNewerConfig()
+        newSessionsPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `an operation carried into a new session is the session's one selection when its pass answers before the new config is announced`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        renewTheSession(whileItEnds = ::emitQueuedOperation)
+        announceNewerConfig()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `a new session does not ask again a place whose block started in it before the new session was announced`() {
+        val startedPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers { startedPass.await() }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        controller.onBlockAppeared(place)
+        idleMain()
+        sessionEpochs.value = 1L
+        idleMain()
+        startedPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `a new session does not ask again a place whose block start was answered in it before the new session was announced`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        currentSessionEpoch = 1L
+        controller.onBlockAppeared(place)
+        idleMain()
+        sessionEpochs.value = 1L
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `a new session's ask held until a screen of the app resumes is not made once the block's return has asked its place in that session`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle(isActive = false, isPausedForBackground = true)
+        isAppPresent = false
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = 1L
+        sessionEpochs.value = 1L
+        idleMain()
+
+        handle.isActive = true
+        handle.isPausedForBackground = false
+        controller.onBlockAppeared(place)
+        idleMain()
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
+    fun `a place whose pass already read the config announced while it flies is not asked again for it`() {
+        val secondPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) winner() else secondPass.await()
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+        announceNewerConfig()
+        secondPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+
+        assertEquals(2, selections)
+    }
+
+    private fun resubscribeTheChannelsWhileTheirPassWaits(handle: RecordingHandle): CompletableDeferred<EmbeddedResolveOutcome> {
+        val resubscriptionPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) resubscriptionPass.await() else winner(variant = contentOfNewerConfig, configVersion = newerConfig)
+        }
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+
+        scope.cancel()
+        scope = TestScope(UnconfinedTestDispatcher())
+        controller.startListening()
+        idleMain()
+        announceNewerConfig()
+        return resubscriptionPass
+    }
+
+    private val contentOfNewerConfig = content.copy(inAppId = "of-the-newer-config")
+
+    @Test
+    fun `a soft re-init asks a place once when the pass of its resubscription already read the config the re-init publishes again`() {
+        val handle = RecordingHandle()
+        val resubscriptionPass = resubscribeTheChannelsWhileTheirPassWaits(handle)
+
+        resubscriptionPass.complete(winner(variant = contentOfNewerConfig, configVersion = newerConfig))
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(contentOfNewerConfig), handle.received)
+    }
+
+    @Test
+    fun `a soft re-init asks a place again when the config it publishes again is newer than the one the pass of its resubscription read`() {
+        val handle = RecordingHandle()
+        val resubscriptionPass = resubscribeTheChannelsWhileTheirPassWaits(handle)
+
+        resubscriptionPass.complete(winner(configVersion = olderConfig))
+        idleMain()
+
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(content, contentOfNewerConfig), handle.received)
+    }
+
+    @Test
+    fun `a pass that read no config is asked again once when a config is announced while it flies`() {
+        val failingPass = CompletableDeferred<Unit>()
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) {
+                failingPass.await()
+                throw IllegalStateException("the selection read no config")
+            }
+            winner(configVersion = newerConfig)
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        announceNewerConfig()
+        failingPass.complete(Unit)
+        idleMain()
+
+        assertEquals(2, selections)
+        assertEquals(listOf<InAppType.Embedded?>(null, content), handle.received)
+    }
+
+    @Test
+    fun `a pass that read no config is not asked again when no config was announced while it flew`() {
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 1) throw IllegalStateException("the selection read no config")
+            winner(configVersion = newerConfig)
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+        announceNewerConfig()
+
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        assertEquals(2, selections)
+        assertEquals(listOf<InAppType.Embedded?>(content, null), handle.received)
+    }
+
+    @Test
+    fun `a config announced off the main thread asks its places on the main thread`() {
+        val askedOnMain = mutableListOf<Boolean>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            askedOnMain.add(Looper.myLooper() == Looper.getMainLooper())
+            winner(configVersion = newerConfig)
+        }
+        val controller = controller()
+        controller.register(place, RecordingHandle())
+        idleMain()
+        val worker = Executors.newSingleThreadExecutor()
+        try {
+            worker.submit { runBlocking { configVersions.emit(newerConfig) } }.get(5L, TimeUnit.SECONDS)
+
+            assertTrue(askedOnMain.isEmpty())
+            idleMain()
+            assertEquals(listOf(true), askedOnMain)
+        } finally {
+            worker.shutdownNow()
+        }
     }
 
     private val winnerWithoutPage = content.copy(layers = emptyList())

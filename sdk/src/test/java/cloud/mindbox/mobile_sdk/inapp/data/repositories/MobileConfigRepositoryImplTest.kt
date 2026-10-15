@@ -15,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -439,6 +440,48 @@ internal class MobileConfigRepositoryImplTest {
         MindboxPreferences.inAppConfigFlow.emit("first")
 
         assertEquals(2, publications.size)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `after a reset a block waiting for the config reads the version its failed download announces`() = withStoredConfig { stored ->
+        stored.value = "cached"
+        val gateway = mockk<GatewayManager> { coEvery { fetchMobileConfig(any()) } throws volleyError(statusCode = 503) }
+        val repository = createRepository(gatewayManager = gateway)
+        val announced = mutableListOf<ConfigVersion>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.listenConfigVersions().collect { version -> announced.add(version) }
+        }
+        repository.startListening()
+        MindboxPreferences.inAppConfigFlow.emit("cached")
+        repository.resetCurrentConfig()
+        val waitingBlock = async { repository.getInAppsSectionIfAvailable() }
+        runCurrent()
+
+        runCatching { repository.fetchMobileConfig() }
+        MindboxPreferences.inAppConfigFlow.emit("cached")
+        runCurrent()
+
+        assertEquals(announced.last(), waitingBlock.await().configVersion)
+        assertEquals(listOf(ConfigVersion.FIRST, ConfigVersion.FIRST.next()), announced)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `a collector that falls behind the config publications gets the newest version`() = withTestMindboxScope {
+        val repository = createRepository()
+        val announced = mutableListOf<ConfigVersion>()
+        backgroundScope.launch(StandardTestDispatcher(testScheduler)) {
+            repository.listenConfigVersions().collect { version -> announced.add(version) }
+        }
+        runCurrent()
+        repository.startListening()
+
+        MindboxPreferences.inAppConfigFlow.emit("""{"publication":1}""")
+        MindboxPreferences.inAppConfigFlow.emit("""{"publication":2}""")
+        runCurrent()
+
+        assertEquals(listOf(ConfigVersion.FIRST.next()), announced)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
