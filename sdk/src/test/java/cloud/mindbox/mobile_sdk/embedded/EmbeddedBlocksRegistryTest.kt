@@ -2903,6 +2903,30 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `an appearance held for a new session after two operations rides that session's ask with the first, and the second still follows it as an operation`() {
+        val newSessionsPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        val asked = triggersAsked(answeringTheFirstWith = newSessionsPass)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdTwoOperationsForAReturnCheckThatEndsTheSession(handle)
+        controller.onBlockAppeared(place)
+        idleMain()
+
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        newSessionsPass.complete(winner())
+        idleMain()
+
+        assertEquals(listOf<InAppEventType>(firstHeldOperation, secondHeldOperation), asked)
+        assertEquals(
+            listOf(SessionEpoch(1L) to false, SessionEpoch(1L) to true),
+            handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation },
+        )
+    }
+
+    @Test
     fun `an operation carried into a new session is dropped when its blocks left the screen with nothing on them before the session began`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner()
