@@ -2711,6 +2711,120 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
     }
 
+    private val firstHeldOperation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("first-held-operation"))
+    private val secondHeldOperation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("second-held-operation"))
+    private val thirdHeldOperation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("third-held-operation"))
+
+    private fun triggersAsked(answeringTheFirstWith: CompletableDeferred<EmbeddedResolveOutcome>): List<InAppEventType> {
+        val asked = mutableListOf<InAppEventType>()
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            asked.add(secondArg())
+            if (asked.size == 1) answeringTheFirstWith.await() else winner()
+        }
+        return asked
+    }
+
+    private fun emitOperation(operation: InAppEventType) {
+        scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
+        idleMain()
+    }
+
+    private fun EmbeddedBlocksRegistryImpl.holdTwoOperationsForAReturnCheckThatEndsTheSession(handle: RecordingHandle) {
+        holdOperationForTheReturnCheck(handle, firstHeldOperation)
+        emitOperation(secondHeldOperation)
+        isSessionEnding = true
+        finishTheReturnCheck()
+    }
+
+    @Test
+    fun `two operations held for the session check of the app's return that keeps the session are both asked, in the order they arrived`() {
+        val firstPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        val asked = triggersAsked(answeringTheFirstWith = firstPass)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdOperationForTheReturnCheck(handle, firstHeldOperation)
+        emitOperation(secondHeldOperation)
+
+        controller.finishTheReturnCheck()
+        firstPass.complete(winner())
+        idleMain()
+
+        assertEquals(listOf<InAppEventType>(firstHeldOperation, secondHeldOperation), asked)
+        assertEquals(listOf(true, true), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `of three operations held for the session check of the app's return, the first and the last are asked`() {
+        val firstPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        val asked = triggersAsked(answeringTheFirstWith = firstPass)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdOperationForTheReturnCheck(handle, firstHeldOperation)
+        emitOperation(secondHeldOperation)
+        emitOperation(thirdHeldOperation)
+
+        controller.finishTheReturnCheck()
+        firstPass.complete(winner())
+        idleMain()
+
+        assertEquals(listOf<InAppEventType>(firstHeldOperation, thirdHeldOperation), asked)
+        assertEquals(listOf(true, true), handle.answers.map { answer -> answer.isByOperation })
+    }
+
+    @Test
+    fun `of two operations held for the session check of the app's return that ends the session, the first rides the new session's ask and the second follows it as an operation`() {
+        val newSessionsPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        val asked = triggersAsked(answeringTheFirstWith = newSessionsPass)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdTwoOperationsForAReturnCheckThatEndsTheSession(handle)
+
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+        newSessionsPass.complete(winner())
+        idleMain()
+
+        assertEquals(listOf<InAppEventType>(firstHeldOperation, secondHeldOperation), asked)
+        assertEquals(
+            listOf(SessionEpoch(1L) to false, SessionEpoch(1L) to true),
+            handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation },
+        )
+    }
+
+    @Test
+    fun `of two operations carried into a new session's ask held until a screen of the app resumes, the first rides that ask and the second follows it as an operation`() {
+        val newSessionsPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        val asked = triggersAsked(answeringTheFirstWith = newSessionsPass)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.holdTwoOperationsForAReturnCheckThatEndsTheSession(handle)
+        handle.isActive = false
+        handle.isPausedForBackground = true
+        isAppPresent = false
+        isSessionEnding = false
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        assertTrue(asked.isEmpty())
+
+        handle.isActive = true
+        handle.isPausedForBackground = false
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
+        idleMain()
+        newSessionsPass.complete(winner())
+        idleMain()
+
+        assertEquals(listOf<InAppEventType>(firstHeldOperation, secondHeldOperation), asked)
+        assertEquals(
+            listOf(SessionEpoch(1L) to false, SessionEpoch(1L) to true),
+            handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation },
+        )
+    }
+
     @Test
     fun `an operation carried into a new session is dropped when its blocks left the screen with nothing on them before the session began`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
