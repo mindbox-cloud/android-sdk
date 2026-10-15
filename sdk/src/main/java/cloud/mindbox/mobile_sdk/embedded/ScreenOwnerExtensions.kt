@@ -11,8 +11,8 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 internal fun View.findScreenOwner(
     destroyedOwner: LifecycleOwner? = null,
     explicitOwner: LifecycleOwner? = null,
+    fragment: Fragment? = findHostFragment(),
 ): LifecycleOwner? {
-    val fragment = findHostFragment()
     val candidate = when {
         explicitOwner != null && fragment != null && explicitOwner === fragment.viewLifecycleOwnerOrNull() -> fragment
         explicitOwner != null -> explicitOwner
@@ -25,10 +25,10 @@ internal fun LifecycleOwner.isScreenOwnerFor(destroyedOwner: LifecycleOwner?): B
     destroyedOwner !is Activity && this !is Activity && this !== destroyedOwner &&
         lifecycle.currentState != Lifecycle.State.DESTROYED
 
-internal fun View.isInHiddenFragment(): Boolean =
-    generateSequence(findHostFragment()) { fragment -> fragment.parentFragment }.any { fragment -> fragment.isHidden }
+internal fun Fragment?.isHiddenWithParents(): Boolean =
+    generateSequence(this) { fragment -> fragment.parentFragment }.any { fragment -> fragment.isHidden }
 
-private fun View.findHostFragment(): Fragment? =
+internal fun View.findHostFragment(): Fragment? =
     runCatching { FragmentManager.findFragment<Fragment>(this) }.getOrNull()
 
 private fun Fragment.viewLifecycleOwnerOrNull(): LifecycleOwner? =

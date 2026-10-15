@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -196,6 +197,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var screenOwner: LifecycleOwner? = null
 
     private var screenOwnerAtAttach: LifecycleOwner? = null
+
+    private var hostFragment: Fragment? = null
 
     private val hostDestroyObserver = object : DefaultLifecycleObserver {
         override fun onDestroy(owner: LifecycleOwner) {
@@ -382,16 +385,20 @@ public class MindboxEmbeddedBlockView internal constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         isInWindow = true
-        screenOwnerAtAttach = loggingRunCatching(defaultValue = null) { findScreenOwner(explicitOwner = screenOwner) }
+        hostFragment = findHostFragment()
+        screenOwnerAtAttach = loggingRunCatching(defaultValue = null) {
+            findScreenOwner(explicitOwner = screenOwner, fragment = hostFragment)
+        }
         reclaimRetainedContent()
         shownContent?.let(::placeContentInFrame)
         observeHostDestruction()
         isWindowVisible = windowVisibility == VISIBLE
-        isScreenHidden = loggingRunCatching(defaultValue = false) { isInHiddenFragment() }
+        isScreenHidden = hostFragment.isHiddenWithParents()
         updateContentActivity()
     }
 
     override fun onDetachedFromWindow() {
+        hostFragment = null
         isWindowVisible = false
         isInWindow = false
         updateContentActivity()
@@ -407,7 +414,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        val isHidden = loggingRunCatching(defaultValue = false) { isInHiddenFragment() }
+        val isHidden = hostFragment.isHiddenWithParents()
         if (isHidden == isScreenHidden) return
         isScreenHidden = isHidden
         updateContentActivity()
