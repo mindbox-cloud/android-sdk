@@ -77,6 +77,8 @@ internal class EmbeddedBlockContentController(
         get() = leftBehind && holdsLiveContent && !isStarted && !isReleased
 
     private var provider: EmbeddedContentProvider? = null
+    private val updatablePage: EmbeddedUpdatableContentProvider?
+        get() = provider as? EmbeddedUpdatableContentProvider
     private var failureTrackerCache: InAppFailureTracker? = null
     private var isStarted = false
     private var isReleased = false
@@ -94,7 +96,7 @@ internal class EmbeddedBlockContentController(
         get() = heldCollapse ?: EmbeddedBlockState.Empty.takeIf { isShownPageEmptied && !hasParkedShowableContent }
 
     private val isShownPageEmptied: Boolean
-        get() = (provider as? EmbeddedUpdatableContentProvider)?.rendersNothing == true && lastReportedState?.nothingToShow != true
+        get() = updatablePage?.rendersNothing == true && lastReportedState?.nothingToShow != true
 
     private var registration: Closeable? = null
     private var configJob: Job? = null
@@ -132,7 +134,7 @@ internal class EmbeddedBlockContentController(
     private var dataPush: DataPush? = null
 
     private val liveDataPush: DataPush?
-        get() = dataPush?.takeUnless { (provider as? EmbeddedUpdatableContentProvider)?.isDataPushAbandoned == true }
+        get() = dataPush?.takeUnless { updatablePage?.isDataPushAbandoned == true }
 
     private val pageSessionEpoch: Long?
         get() = liveDataPush?.sessionEpoch ?: appliedSessionEpoch
@@ -469,12 +471,12 @@ internal class EmbeddedBlockContentController(
         )
         heldCollapse = state
         dueSessionRefresh = null
-        (provider as? EmbeddedUpdatableContentProvider)?.withholdShow(true)
+        updatablePage?.withholdShow(true)
     }
 
     private fun releaseHeldCollapse() {
         heldCollapse = null
-        (provider as? EmbeddedUpdatableContentProvider)?.withholdShow(false)
+        updatablePage?.withholdShow(false)
     }
 
     private fun supersedeHeldOutcome() {
@@ -488,7 +490,7 @@ internal class EmbeddedBlockContentController(
 
     private fun keepEmptiedPageForParkedContent() {
         mindboxLogI("[EmbeddedBlock] The page of block '$placeSystemName' renders nothing while content is parked for the block, keeping the page; its show waits for that content")
-        (provider as? EmbeddedUpdatableContentProvider)?.withholdShow(true)
+        updatablePage?.withholdShow(true)
     }
 
     private fun collapseHeldAnswer() {
@@ -621,7 +623,7 @@ internal class EmbeddedBlockContentController(
     private fun sendDueSessionRefresh() {
         if (!isDueSessionRefreshSendable) return
         val answer = dueSessionRefresh ?: return
-        val current = provider as? EmbeddedUpdatableContentProvider ?: return
+        val current = updatablePage ?: return
         dueSessionRefresh = null
         if (isOfEndedSession(answer.sessionEpoch)) {
             mindboxLogI("[EmbeddedBlock] The session that picked the page of '$placeSystemName' again has ended before the page rendered, dropping its refresh")
