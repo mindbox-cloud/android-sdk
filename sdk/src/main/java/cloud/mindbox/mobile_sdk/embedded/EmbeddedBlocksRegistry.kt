@@ -312,7 +312,7 @@ internal class EmbeddedBlocksRegistryImpl(
                 val handles = liveHandles(place)
                 val renewedSession = renewal.pass.renewal?.sessionEpoch
                 when {
-                    renewal.pending == null && renewedSession != null && isAnsweredInNewSession(place, renewedSession) -> Unit
+                    renewal.pending?.trigger == null && renewedSession != null && isAnsweredInNewSession(place, renewedSession) -> Unit
                     handles.any { handle -> handle.isActive || handle.isRenewedWhileAway } -> {
                         mindboxLogI("[EmbeddedBlock] The app is back on screen, asking place '$place' for its new session")
                         resolvePlace(place, renewal.pass.askedAt(monotonicNow()))
@@ -489,7 +489,7 @@ internal class EmbeddedBlocksRegistryImpl(
             )
             when {
                 handles.isEmpty() -> Unit
-                pending == null && isAnsweredInNewSession(place, renewal.sessionEpoch) -> Unit
+                pending?.trigger == null && isAnsweredInNewSession(place, renewal.sessionEpoch) -> Unit
                 handles.any { handle -> handle.isActive } || (isPresent && handles.any { handle -> handle.isRenewedWhileAway }) -> {
                     mindboxLogI("[EmbeddedBlock] A new session began, asking place '$place' again")
                     resolvePlace(place, renewalPass)
