@@ -32,6 +32,7 @@ import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.Called
@@ -247,7 +248,7 @@ class EmbeddedResolveInteractorTest {
     fun `selectInAppForPlace hands out no delay once the winner waited it out this session`() = runTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
-        interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", 0L)
+        interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", SessionEpoch(0L))
         val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals("embedded-id", result?.variant?.inAppId)
@@ -258,8 +259,8 @@ class EmbeddedResolveInteractorTest {
     fun `a waited-out delay is per place and per in-app`() = runTest {
         givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
 
-        interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id", 0L)
-        interactor.markEmbeddedDelayWaitedOut(place, "other-in-app", 0L)
+        interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id", SessionEpoch(0L))
+        interactor.markEmbeddedDelayWaitedOut(place, "other-in-app", SessionEpoch(0L))
         val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
 
         assertEquals(7_200_000L, result?.delayTime?.interval)
@@ -894,7 +895,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `recordBlockShow sends the Inapp Show, counts the show and moves the cooldown`() {
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"), 0L)
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"), SessionEpoch(0L))
 
         verify { inAppRepository.sendInAppShown("embedded-id", "00:00:01.5000000", mapOf("a" to "b")) }
         // The place's hold turns into the show: counters and cooldown move in the manager's one commit.
@@ -905,16 +906,16 @@ class EmbeddedResolveInteractorTest {
     fun `recordBlockShow stays silent while the place slot holds the same content`() {
         // A rotation or a recreated page draws the same content again — no second pair, no
         // second count. A changed in-app writes the slot over and speaks again.
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
 
         verify(exactly = 1) { inAppRepository.sendInAppShown(any(), any(), any()) }
         verify(exactly = 1) { showBudgetManager.commit(any(), any(), any(), any()) }
         // The silent repeat touches no hold: a hold under this place could only be a newer winner's.
         verify(exactly = 0) { showBudgetManager.release(any()) }
 
-        interactor.recordBlockShow(place, "embedded-2", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
-        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+        interactor.recordBlockShow(place, "embedded-2", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
 
         // 1 -> 2 -> 1 is three shows: the slot compares with the last shown, not a session set.
         verify(exactly = 3) { inAppRepository.sendInAppShown(any(), any(), any()) }
@@ -922,7 +923,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `recordBlockShow sends the Inapp Show for an unlimited block that writes no counters`() {
-        interactor.recordBlockShow(place, "embedded-id", Frequency(Frequency.Delay.Unlimited), Milliseconds(0L), null, 0L)
+        interactor.recordBlockShow(place, "embedded-id", Frequency(Frequency.Delay.Unlimited), Milliseconds(0L), null, SessionEpoch(0L))
 
         verify { inAppRepository.sendInAppShown(any(), any(), any()) }
         // Unlimited writes no counters — the manager decides that from the frequency it is handed.
@@ -934,7 +935,7 @@ class EmbeddedResolveInteractorTest {
         // The config may have moved on since the resolve — the user still saw this content.
         coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
 
-        interactor.recordBlockShow(place, "gone-from-config", InAppStub.getInApp().frequency, Milliseconds(0L), null, 0L)
+        interactor.recordBlockShow(place, "gone-from-config", InAppStub.getInApp().frequency, Milliseconds(0L), null, SessionEpoch(0L))
 
         verify(exactly = 1) { inAppRepository.sendInAppShown("gone-from-config", any(), any()) }
     }
@@ -1015,7 +1016,7 @@ class EmbeddedResolveInteractorTest {
     fun `reservePlaceShow skips the budget for content the place already shows`() {
         sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
-        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
 
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
     }
@@ -1027,7 +1028,7 @@ class EmbeddedResolveInteractorTest {
         // budgets for the session (iOS: InappShowAccountant releases on the silent redraw).
         sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
 
-        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
 
         verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
@@ -1039,10 +1040,10 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
 
-        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, content, 0L))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, content, SessionEpoch(0L)))
 
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
-        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, content, 0L))
+        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, content, SessionEpoch(0L)))
     }
 
     @Test
@@ -1053,13 +1054,13 @@ class EmbeddedResolveInteractorTest {
         every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
         every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
 
-        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
+        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
 
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
 
         every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns listOf(onceASession)
         every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", any(), false) } returns ShowReservationOutcome.GRANTED
-        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
     }
 
     @Test
@@ -1069,7 +1070,7 @@ class EmbeddedResolveInteractorTest {
         every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
         every { showBudgetManager.holds(ShowBudgetOwner.Place(place), "embedded-id") } returns true
 
-        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L))
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
 
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
         verify(exactly = 0) { showBudgetManager.release(any()) }
@@ -1273,8 +1274,8 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `recordBlockShow answers whether the show went out`() {
-        val first = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
-        val repeated = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+        val first = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+        val repeated = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
 
         assertTrue(first)
         assertFalse(repeated)
@@ -1282,9 +1283,9 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `recordBlockShow of a session that has ended writes nothing, counts nothing and sends no show`() {
-        every { sessionStorageManager.sessionEpoch } returns 1L
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
 
-        val isSent = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, 0L)
+        val isSent = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
 
         assertFalse(isSent)
         assertNull(sessionState.embeddedLastShownByPlace[place])
@@ -1298,10 +1299,10 @@ class EmbeddedResolveInteractorTest {
         val storage = SessionStorageManager(timeProvider)
         val interactorOverRealSession = interactorOver(storage)
         val counting = InAppStub.getInApp().frequency
-        interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, 0L)
+        interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, SessionEpoch(0L))
         storage.clearSessionData()
 
-        val isSent = interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, 1L)
+        val isSent = interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, SessionEpoch(1L))
 
         assertTrue(isSent)
         verify(exactly = 2) { showBudgetManager.commit(ShowBudgetOwner.Place(place), "embedded-id", counting, now) }
@@ -1310,9 +1311,9 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `reservePlaceShow for a session that has ended takes no hold`() {
-        every { sessionStorageManager.sessionEpoch } returns 1L
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
 
-        val reservation = interactor.reservePlaceShow(place, InAppStub.getEmbedded(), 0L)
+        val reservation = interactor.reservePlaceShow(place, InAppStub.getEmbedded(), SessionEpoch(0L))
 
         assertEquals(PlaceShowReservation.STALE, reservation)
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
@@ -1321,20 +1322,20 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `releasePlaceShow for a session that has ended gives back nothing`() {
-        every { sessionStorageManager.sessionEpoch } returns 1L
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
 
-        assertFalse(interactor.releasePlaceShow(place, 0L))
+        assertFalse(interactor.releasePlaceShow(place, SessionEpoch(0L)))
         verify(exactly = 0) { showBudgetManager.release(any()) }
 
-        assertTrue(interactor.releasePlaceShow(place, 1L))
+        assertTrue(interactor.releasePlaceShow(place, SessionEpoch(1L)))
         verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
     }
 
     @Test
     fun `a delay waited out in a session that has ended does not spare the new session its wait`() {
-        every { sessionStorageManager.sessionEpoch } returns 1L
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
 
-        assertFalse(interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", 0L))
+        assertFalse(interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", SessionEpoch(0L)))
 
         assertTrue(sessionState.embeddedDelaysWaitedOut.isEmpty())
     }
@@ -1364,7 +1365,7 @@ class EmbeddedResolveInteractorTest {
         }
         val workers = Executors.newFixedThreadPool(2)
         val record = workers.submit<Boolean> {
-            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, 0L)
+            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, SessionEpoch(0L))
         }
         assertTrue(entered.await(5, TimeUnit.SECONDS))
         val reset = workers.submit { storage.clearSessionData() }
@@ -1375,7 +1376,7 @@ class EmbeddedResolveInteractorTest {
 
         assertTrue(record.get(5, TimeUnit.SECONDS))
         reset.get(5, TimeUnit.SECONDS)
-        assertEquals(1L, storage.sessionEpoch)
+        assertEquals(SessionEpoch(1L), storage.sessionEpoch)
         assertTrue(storage.state.embeddedLastShownByPlace.isEmpty())
         workers.shutdown()
     }
@@ -1412,7 +1413,7 @@ class EmbeddedResolveInteractorTest {
     private fun recordShowOnceTheLockIsFree(storage: SessionStorageManager, sessionChange: () -> Unit): Boolean {
         val interactorOverRealSession = interactorOver(storage)
         return onceTheLockIsFree(storage, sessionChange) {
-            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, 0L)
+            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, SessionEpoch(0L))
         }
     }
 
@@ -1454,7 +1455,7 @@ class EmbeddedResolveInteractorTest {
         val interactorOverRealSession = interactorOver(storage)
 
         val reservation = onceTheLockIsFree(storage, change = { isShown = true }) {
-            interactorOverRealSession.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), 0L)
+            interactorOverRealSession.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L))
         }
 
         assertEquals(PlaceShowReservation.REFUSED, reservation)
@@ -1470,9 +1471,9 @@ class EmbeddedResolveInteractorTest {
         storage.hasSessionExpired()
         val interactorOverEndingSession = interactorOver(storage)
 
-        assertEquals(PlaceShowReservation.STALE, interactorOverEndingSession.reservePlaceShow(place, InAppStub.getEmbedded(), 0L))
-        assertFalse(interactorOverEndingSession.releasePlaceShow(place, 0L))
-        assertFalse(interactorOverEndingSession.markEmbeddedDelayWaitedOut(place, "embedded-id", 0L))
+        assertEquals(PlaceShowReservation.STALE, interactorOverEndingSession.reservePlaceShow(place, InAppStub.getEmbedded(), SessionEpoch(0L)))
+        assertFalse(interactorOverEndingSession.releasePlaceShow(place, SessionEpoch(0L)))
+        assertFalse(interactorOverEndingSession.markEmbeddedDelayWaitedOut(place, "embedded-id", SessionEpoch(0L)))
         verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
         verify(exactly = 0) { showBudgetManager.release(any()) }
     }
@@ -1511,10 +1512,10 @@ class EmbeddedResolveInteractorTest {
         every { sessionStorageManager.isSessionEnding } answers { !isWiped }
         every { sessionStorageManager.sessionEpoch } answers {
             isWiped = true
-            0L
+            SessionEpoch(0L)
         }
 
-        assertFalse(interactor.isLiveSession(0L))
+        assertFalse(interactor.isLiveSession(SessionEpoch(0L)))
     }
 
     @Test
@@ -1527,9 +1528,9 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `filterShowableInAppIds saves nothing into a session that began while the page's config was read`() = runTest {
-        every { sessionStorageManager.sessionEpoch } returns 0L
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(0L)
         coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } coAnswers {
-            every { sessionStorageManager.sessionEpoch } returns 1L
+            every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
             PageConfig(configOf(modalInApp(id = "inapp-1")), isOfEndedSession = false)
         }
 

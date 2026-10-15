@@ -9,17 +9,18 @@ import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 internal interface InAppInteractor {
 
-    val sessionEpoch: Long
+    val sessionEpoch: SessionEpoch
 
-    fun isLiveSession(sessionEpoch: Long): Boolean
+    fun isLiveSession(sessionEpoch: SessionEpoch): Boolean
 
-    fun listenSessionEpoch(): StateFlow<Long>
+    fun listenSessionEpoch(): StateFlow<SessionEpoch>
 
     val returnCheckPending: StateFlow<Boolean>
 
@@ -110,17 +111,17 @@ internal interface InAppInteractor {
         frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
-        sessionEpoch: Long,
+        sessionEpoch: SessionEpoch,
     ): Boolean
 
     /** The winner's `delayTime` elapsed on this place: a later resolve this session hands it out with no delay. */
-    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: Long): Boolean
+    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: SessionEpoch): Boolean
 
-    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded, sessionEpoch: Long): PlaceShowReservation
+    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded, sessionEpoch: SessionEpoch): PlaceShowReservation
 
     fun releasePlaceShow(placeSystemName: PlaceKey)
 
-    fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: Long): Boolean
+    fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch): Boolean
 
     fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome
 

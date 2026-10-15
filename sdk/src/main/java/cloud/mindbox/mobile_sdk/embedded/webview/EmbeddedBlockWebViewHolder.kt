@@ -50,6 +50,7 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -162,9 +163,9 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var hasPageAnswered = false
 
-    private var confirmedSessionEpoch: Long? = null
+    private var confirmedSessionEpoch: SessionEpoch? = null
 
-    private var accountedSessionEpoch: Long? = null
+    private var accountedSessionEpoch: SessionEpoch? = null
 
     private var isSessionRefreshDue = false
 
@@ -242,7 +243,7 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     @MainThread
-    override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) {
+    override fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds) {
         if (!isLaterSession(sessionEpoch)) return
         confirmedSessionEpoch = sessionEpoch
         restartShowTiming(selectionTime)
@@ -250,12 +251,12 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     @MainThread
-    override fun confirmForSession(sessionEpoch: Long) {
+    override fun confirmForSession(sessionEpoch: SessionEpoch) {
         confirmedSessionEpoch = sessionEpoch
     }
 
     @MainThread
-    override fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds? =
+    override fun timeToDisplaySoFar(sessionEpoch: SessionEpoch): Milliseconds? =
         currentTimeToDisplay.takeIf { sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch }
 
     @MainThread
@@ -268,7 +269,7 @@ internal class EmbeddedBlockWebViewHolder(
     @MainThread
     override fun refreshForSession(
         params: Map<String, String>,
-        sessionEpoch: Long,
+        sessionEpoch: SessionEpoch,
         selectionTime: Milliseconds,
         onResult: (DataPushOutcome) -> Unit,
     ) {
@@ -285,7 +286,7 @@ internal class EmbeddedBlockWebViewHolder(
         updateParams(params, onResult)
     }
 
-    private fun isLaterSession(sessionEpoch: Long): Boolean =
+    private fun isLaterSession(sessionEpoch: SessionEpoch): Boolean =
         confirmedSessionEpoch?.let { confirmed -> sessionEpoch > confirmed } ?: true
 
     private fun restartShowTiming(selectionTime: Milliseconds) {
@@ -581,7 +582,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
     }
 
-    private suspend fun isShowStillDue(sessionEpoch: Long, previouslyAccounted: Long?): Boolean =
+    private suspend fun isShowStillDue(sessionEpoch: SessionEpoch, previouslyAccounted: SessionEpoch?): Boolean =
         withContext(Dispatchers.Main) {
             if (!isShowWithheld && !rendersNothing) return@withContext true
             mindboxLogI("[EmbeddedBlock] The show of this content was withheld or its page emptied during the session check, the show waits again")

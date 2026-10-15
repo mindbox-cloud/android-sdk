@@ -25,6 +25,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -64,9 +65,9 @@ class EmbeddedBlockContentControllerTest {
 
         override fun startListening() = Unit
 
-        var endedSessions = setOf<Long>()
+        var endedSessions = setOf<SessionEpoch>()
 
-        override fun isLiveSession(sessionEpoch: Long): Boolean = sessionEpoch !in endedSessions
+        override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = sessionEpoch !in endedSessions
 
         var isReturnCheckPending = false
         var areChannelsDead = false
@@ -78,7 +79,7 @@ class EmbeddedBlockContentControllerTest {
 
         override fun onAppResumedOn(activity: Activity) = Unit
 
-        val reservedShows = mutableListOf<Pair<String, Long>>()
+        val reservedShows = mutableListOf<Pair<String, SessionEpoch>>()
         var reservation = PlaceShowReservation.RESERVED
 
         override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation {
@@ -86,9 +87,9 @@ class EmbeddedBlockContentControllerTest {
             return reservation
         }
 
-        val givenBackShows = mutableListOf<Pair<String, Long>>()
+        val givenBackShows = mutableListOf<Pair<String, SessionEpoch>>()
 
-        override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long) {
+        override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch) {
             givenBackShows.add(placeSystemName.value to sessionEpoch)
         }
 
@@ -137,16 +138,16 @@ class EmbeddedBlockContentControllerTest {
 
         override fun refreshForSession(
             params: Map<String, String>,
-            sessionEpoch: Long,
+            sessionEpoch: SessionEpoch,
             selectionTime: Milliseconds,
             onResult: (DataPushOutcome) -> Unit,
         ) = updateParams(params, onResult)
 
-        override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) = Unit
+        override fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds) = Unit
 
-        override fun confirmForSession(sessionEpoch: Long) = Unit
+        override fun confirmForSession(sessionEpoch: SessionEpoch) = Unit
 
-        override fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds? = null
+        override fun timeToDisplaySoFar(sessionEpoch: SessionEpoch): Milliseconds? = null
 
         override fun withholdShow(isWithheld: Boolean) = Unit
 
@@ -197,16 +198,16 @@ class EmbeddedBlockContentControllerTest {
     private val content = InAppStub.getEmbedded()
 
     private class SessionAwareProvider(private val rendersOnStart: Boolean = true) : ReadyUpdatableProvider() {
-        val confirmedSessions = mutableListOf<Long>()
+        val confirmedSessions = mutableListOf<SessionEpoch>()
         val withheldShows = mutableListOf<Boolean>()
-        val sessionRefreshes = mutableListOf<Long>()
+        val sessionRefreshes = mutableListOf<SessionEpoch>()
         val sessionRefreshSelectionTimes = mutableListOf<Milliseconds>()
         val sessionRefreshParams = mutableListOf<Map<String, String>>()
-        val scheduledSessionRefreshes = mutableListOf<Pair<Long, Milliseconds>>()
+        val scheduledSessionRefreshes = mutableListOf<Pair<SessionEpoch, Milliseconds>>()
         val paramUpdates = mutableListOf<Map<String, String>>()
         var pushResult: ((DataPushOutcome) -> Unit)? = null
         var releaseCount = 0
-        val timeToDisplayBySession = mutableMapOf<Long, Milliseconds>()
+        val timeToDisplayBySession = mutableMapOf<SessionEpoch, Milliseconds>()
         override var rendersNothing = false
             set(value) {
                 field = value
@@ -233,7 +234,7 @@ class EmbeddedBlockContentControllerTest {
 
         override fun refreshForSession(
             params: Map<String, String>,
-            sessionEpoch: Long,
+            sessionEpoch: SessionEpoch,
             selectionTime: Milliseconds,
             onResult: (DataPushOutcome) -> Unit,
         ) {
@@ -245,15 +246,15 @@ class EmbeddedBlockContentControllerTest {
             pushResult = onResult
         }
 
-        override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) {
+        override fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds) {
             scheduledSessionRefreshes.add(sessionEpoch to selectionTime)
         }
 
-        override fun confirmForSession(sessionEpoch: Long) {
+        override fun confirmForSession(sessionEpoch: SessionEpoch) {
             confirmedSessions.add(sessionEpoch)
         }
 
-        override fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds? = timeToDisplayBySession[sessionEpoch]
+        override fun timeToDisplaySoFar(sessionEpoch: SessionEpoch): Milliseconds? = timeToDisplayBySession[sessionEpoch]
 
         override fun withholdShow(isWithheld: Boolean) {
             withheldShows.add(isWithheld)
@@ -1495,7 +1496,7 @@ class EmbeddedBlockContentControllerTest {
         val tracker = mockk<InAppFailureTracker>(relaxed = true)
         val controller = collapsedBlockAway(tracker) { onContentResolved(null) }
         blocksRegistry.lastHandle?.onContentResolved(null)
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         val reportedBeforeReturn = states.size
 
         controller.start()
@@ -1528,7 +1529,7 @@ class EmbeddedBlockContentControllerTest {
         isAppInForeground = true
         blocksRegistry.isReturnCheckPending = true
         start()
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         blocksRegistry.isReturnCheckPending = false
         onReturnChecked()
         idleFor(Duration.ofMillis(51L))
@@ -1610,9 +1611,9 @@ class EmbeddedBlockContentControllerTest {
         val controller = sessionAwareController(providers)
         controller.start()
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 2L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
 
-        assertEquals(listOf(2L), providers.single().confirmedSessions)
+        assertEquals(listOf(SessionEpoch(2L)), providers.single().confirmedSessions)
     }
 
     @Test
@@ -1620,13 +1621,13 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(1, providers.size)
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), providers.single().sessionRefreshParams)
         assertTrue(providers.single().paramUpdates.isEmpty())
         assertEquals(EmbeddedBlockState.Ready, states.last())
@@ -1637,8 +1638,8 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
 
         idleFor(Duration.ofMillis(60_000L))
@@ -1655,11 +1656,11 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         controller.pause()
         controller.start()
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertTrue(providers.single().sessionRefreshes.isEmpty())
         assertTrue(providers.single().paramUpdates.isEmpty())
@@ -1670,12 +1671,12 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         val refreshedLayer = (content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]"))
 
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(listOf(mapOf("items" to "[]")), providers.single().sessionRefreshParams)
         assertTrue(providers.single().paramUpdates.isEmpty())
     }
@@ -1688,13 +1689,13 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         val refreshed = contentWithParams(mapOf("items" to "[]"))
 
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertTrue(providers.single().paramUpdates.isEmpty())
     }
 
@@ -1703,10 +1704,10 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[]")), placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[]")), placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[1]")), placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[1]")), placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(listOf(mapOf("items" to "[]")), providers.single().sessionRefreshParams)
         assertEquals(listOf(mapOf("items" to "[1]")), providers.single().paramUpdates)
@@ -1717,10 +1718,10 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[]")), placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[]")), placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), providers.single().paramUpdates)
     }
@@ -1730,13 +1731,13 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         val refreshed = contentWithParams(mapOf("items" to "[]"))
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 2L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(2L)))
 
-        assertEquals(listOf(1L, 2L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(2L)), providers.single().sessionRefreshes)
         assertEquals(listOf(mapOf("items" to "[]"), mapOf("items" to "[]")), providers.single().sessionRefreshParams)
         assertTrue(providers.single().paramUpdates.isEmpty())
     }
@@ -1746,17 +1747,17 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         val refreshed = contentWithParams(mapOf("items" to "[]"))
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(1, providers.size)
-        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(listOf(mapOf("items" to "[]"), mapOf("items" to "[]")), providers.single().sessionRefreshParams)
     }
 
@@ -1765,12 +1766,12 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         val refreshed = contentWithParams(mapOf("items" to "[]"))
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(3, providers.size)
         assertEquals(1, providers[1].releaseCount)
@@ -1781,10 +1782,10 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         val refreshedLayer = (content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]"))
 
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer(sessionEpoch = SessionEpoch(0L)))
 
         assertEquals(2, providers.size)
         assertEquals(1, providers.first().releaseCount)
@@ -1796,15 +1797,15 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         assertTrue(providers.single().sessionRefreshes.isEmpty())
 
         providers.single().render()
 
         assertEquals(1, providers.size)
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -1812,8 +1813,8 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         isAppInForeground = false
         controller.pause()
 
@@ -1825,7 +1826,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         providers.single().render()
 
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -1833,11 +1834,11 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)))
 
-        assertEquals(listOf(1L to Milliseconds(300L)), providers.single().scheduledSessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L) to Milliseconds(300L)), providers.single().scheduledSessionRefreshes)
         assertTrue(providers.single().sessionRefreshes.isEmpty())
     }
 
@@ -1846,8 +1847,8 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         isAppInForeground = false
         controller.pause()
         providers.single().render()
@@ -1862,7 +1863,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.isReturnCheckPending = false
         controller.onReturnChecked()
 
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -1870,20 +1871,20 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         blocksRegistry.isReturnCheckPending = true
         providers.single().render()
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         blocksRegistry.isReturnCheckPending = false
         controller.onReturnChecked()
 
         assertTrue(providers.single().sessionRefreshes.isEmpty())
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(false, providers.single().withheldShows.last())
     }
 
@@ -1892,13 +1893,13 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         blocksRegistry.areChannelsDead = true
 
         providers.single().render()
 
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -1906,8 +1907,8 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         isAppInForeground = false
         controller.pause()
         providers.single().render()
@@ -1916,15 +1917,15 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         providers.single().render()
 
-        blocksRegistry.endedSessions = setOf(0L, 1L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L), SessionEpoch(1L))
         blocksRegistry.isReturnCheckPending = false
         controller.onReturnChecked()
 
         assertTrue(providers.single().sessionRefreshes.isEmpty())
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 2L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
 
-        assertEquals(listOf(2L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(2L)), providers.single().sessionRefreshes)
         assertEquals(0, providers.single().releaseCount)
     }
 
@@ -1933,9 +1934,9 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
-        blocksRegistry.endedSessions = setOf(0L, 1L)
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L), SessionEpoch(1L))
 
         providers.single().render()
 
@@ -1948,14 +1949,14 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(2, providers.size)
-        assertEquals(listOf(1L), providers.last().confirmedSessions)
+        assertEquals(listOf(SessionEpoch(1L)), providers.last().confirmedSessions)
     }
 
     @Test
@@ -1963,8 +1964,8 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         providers.single().pushResult?.invoke(DataPushOutcome.ABANDONED)
         shadowOf(Looper.getMainLooper()).idle()
@@ -1973,9 +1974,9 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(0, providers.single().releaseCount)
         assertEquals(EmbeddedBlockState.Ready, states.last())
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -1983,33 +1984,33 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         val abandonedPushResult = providers.single().pushResult
         providers.single().isDataPushAbandoned = true
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(1L)), providers.single().sessionRefreshes)
 
         abandonedPushResult?.invoke(DataPushOutcome.ABANDONED)
         shadowOf(Looper.getMainLooper()).idle()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(1, providers.size)
-        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     private fun controllerWithRefreshOutlivingItsSession(providers: MutableList<SessionAwareProvider>): EmbeddedBlockContentController {
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         isAppInForeground = false
         controller.pause()
         isAppInForeground = true
         controller.start()
-        blocksRegistry.endedSessions = setOf(0L, 1L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L), SessionEpoch(1L))
         return controller
     }
 
@@ -2025,9 +2026,9 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(0, providers.single().releaseCount)
         assertEquals(EmbeddedBlockState.Ready, states.last())
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 2L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
 
-        assertEquals(listOf(1L, 2L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(2L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -2037,7 +2038,7 @@ class EmbeddedBlockContentControllerTest {
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 2L))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(2L)))
 
         assertEquals(true, providers.first().withheldShows.last())
         assertEquals(EmbeddedBlockState.Ready, states.last())
@@ -2048,12 +2049,12 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(2, providers.size)
-        assertEquals(listOf(1L), providers.last().confirmedSessions)
+        assertEquals(listOf(SessionEpoch(1L)), providers.last().confirmedSessions)
         assertTrue(providers.last().sessionRefreshes.isEmpty())
         assertTrue(providers.last().scheduledSessionRefreshes.isEmpty())
         assertTrue(providers.last().paramUpdates.isEmpty())
@@ -2064,13 +2065,13 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         assertEquals(true, providers.single().withheldShows.last())
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(false, providers.single().withheldShows.last())
         assertEquals(1, providers.size)
@@ -2081,10 +2082,10 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(2, providers.size)
         assertEquals(listOf(true), providers.first().withheldShows)
@@ -2117,8 +2118,8 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
 
         controller.start()
 
@@ -2134,8 +2135,8 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
 
         controller.start()
 
@@ -2148,14 +2149,14 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, isByOperation = true))
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), isByOperation = true))
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -2163,16 +2164,16 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertEquals(1, providers.size)
-        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -2348,8 +2349,8 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, selectionTimes = selectionTimes)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L, selectionTime = Milliseconds(100L)))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(400L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L), selectionTime = Milliseconds(100L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(400L)))
 
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
@@ -2364,9 +2365,9 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, selectionTimes = selectionTimes)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L, selectionTime = Milliseconds(100L)))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(400L)))
-        providers.first().timeToDisplayBySession[1L] = Milliseconds(7_400L)
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L), selectionTime = Milliseconds(100L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(400L)))
+        providers.first().timeToDisplayBySession[SessionEpoch(1L)] = Milliseconds(7_400L)
 
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
@@ -2381,11 +2382,11 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, selectionTimes = selectionTimes)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L, selectionTime = Milliseconds(100L)))
-        providers.first().timeToDisplayBySession[1L] = Milliseconds(450L)
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L), selectionTime = Milliseconds(100L)))
+        providers.first().timeToDisplayBySession[SessionEpoch(1L)] = Milliseconds(450L)
         providers.first().crashesOnSessionRefresh = true
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(400L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(400L)))
 
         assertEquals(2, providers.size)
         assertEquals(listOf(Milliseconds(100L), Milliseconds(450L)), selectionTimes)
@@ -2397,12 +2398,12 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, selectionTimes = selectionTimes)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L, selectionTime = Milliseconds(100L)))
-        providers.first().timeToDisplayBySession[0L] = Milliseconds(9_000L)
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L), selectionTime = Milliseconds(100L)))
+        providers.first().timeToDisplayBySession[SessionEpoch(0L)] = Milliseconds(9_000L)
         val refreshedLayer = (content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]"))
         blocksRegistry.lastHandle?.onContentResolved(
             content.copy(layers = listOf(refreshedLayer)),
-            placeAnswer(sessionEpoch = 0L, selectionTime = Milliseconds(50L)),
+            placeAnswer(sessionEpoch = SessionEpoch(0L), selectionTime = Milliseconds(50L)),
         )
 
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
@@ -2558,7 +2559,7 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(1, providers.size)
         assertEquals(0, providers.single().releaseCount)
         assertEquals(listOf(true, false), providers.single().withheldShows)
-        assertEquals(listOf(content.inAppId to 0L), blocksRegistry.reservedShows)
+        assertEquals(listOf(content.inAppId to SessionEpoch(0L)), blocksRegistry.reservedShows)
     }
 
     @Test
@@ -2723,7 +2724,7 @@ class EmbeddedBlockContentControllerTest {
     fun `a new session's content parked over a page that rendered nothing in background keeps the block when the app comes back on another screen, and its return refreshes the page in place`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = controllerWithEmptiedPageThroughBackground(providers)
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         controller.onAppResumedOn(otherScreen)
 
@@ -2732,7 +2733,7 @@ class EmbeddedBlockContentControllerTest {
         assertTrue(blocksRegistry.droppedPlaces.isEmpty())
         assertTrue(controller.isLeftBehind)
         assertEquals(listOf(true), providers.single().withheldShows)
-        assertEquals(listOf("main-screen-top" to 1L), blocksRegistry.givenBackShows)
+        assertEquals(listOf("main-screen-top" to SessionEpoch(1L)), blocksRegistry.givenBackShows)
 
         isAppInForeground = true
         controller.start()
@@ -2740,9 +2741,9 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertEquals(1, providers.size)
         assertEquals(0, providers.single().releaseCount)
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(listOf(true, false), providers.single().withheldShows)
-        assertEquals(listOf(content.inAppId to 1L), blocksRegistry.reservedShows)
+        assertEquals(listOf(content.inAppId to SessionEpoch(1L)), blocksRegistry.reservedShows)
     }
 
     @Test
@@ -2764,7 +2765,7 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertEquals(2, providers.size)
         assertEquals(1, providers.first().releaseCount)
-        assertEquals(listOf("another-winner" to 0L), blocksRegistry.reservedShows)
+        assertEquals(listOf("another-winner" to SessionEpoch(0L)), blocksRegistry.reservedShows)
     }
 
     @Test
@@ -2773,7 +2774,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = controllerShowingPage(providers, hostActivity = { blockScreen })
         isAppInForeground = false
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         providers.single().rendersNothing = true
 
         controller.onAppResumedOn(otherScreen)
@@ -2829,9 +2830,9 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, isByOperation = true))
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), isByOperation = true))
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
 
         providers.single().rendersNothing = true
 
@@ -2874,7 +2875,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = controllerWithEmptiedPageThroughBackground(providers)
         assertFalse(controller.isRetainable)
 
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         assertTrue(controller.isRetainable)
         assertEquals(null, controller.heldOutcome)
@@ -2934,7 +2935,7 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = controllerShowingPage(providers)
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
         providers.single().rendersNothing = true
 
@@ -2946,7 +2947,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
 
         assertEquals(1, providers.size)
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(listOf(true, false), providers.single().withheldShows)
     }
 
@@ -2998,7 +2999,7 @@ class EmbeddedBlockContentControllerTest {
             hostActivity = { blockScreen },
         )
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         isAppInForeground = false
         controller.pause()
         controller.onAppResumedOn(otherScreen)
@@ -3011,20 +3012,20 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, hostActivity = { blockScreen })
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         isAppInForeground = false
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(0L)))
 
         controller.onAppResumedOn(otherScreen)
         isAppInForeground = true
 
-        assertEquals(listOf("main-screen-top" to 0L), blocksRegistry.givenBackShows)
+        assertEquals(listOf("main-screen-top" to SessionEpoch(0L)), blocksRegistry.givenBackShows)
         assertTrue(blocksRegistry.reservedShows.isEmpty())
 
         controller.start()
 
-        assertEquals(listOf("another-winner" to 0L), blocksRegistry.reservedShows)
+        assertEquals(listOf("another-winner" to SessionEpoch(0L)), blocksRegistry.reservedShows)
     }
 
     @Test
@@ -3043,17 +3044,17 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, hostActivity = { blockScreen })
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         isAppInForeground = false
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         controller.onAppResumedOn(otherScreen)
         blocksRegistry.isReturnCheckPending = true
         isAppInForeground = true
 
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         controller.onReturnChecked()
 
         assertEquals(EmbeddedBlockState.Ready, states.last())
@@ -3070,10 +3071,10 @@ class EmbeddedBlockContentControllerTest {
     fun `a page still loading when the app came back on another screen is kept and takes the new session's data and selection time once it renders`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = controllerLeftOnAppReturn(providers, rendersOnStart = false)
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
 
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)))
 
         assertTrue(providers.single().sessionRefreshes.isEmpty())
 
@@ -3088,10 +3089,10 @@ class EmbeddedBlockContentControllerTest {
         val selectionTimes = mutableListOf<Milliseconds>()
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = controllerLeftOnAppReturn(providers, selectionTimes = selectionTimes)
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
 
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)))
 
         assertEquals(listOf(Milliseconds(0L), Milliseconds(300L)), selectionTimes)
         assertEquals(1, providers.first().releaseCount)
@@ -3104,9 +3105,9 @@ class EmbeddedBlockContentControllerTest {
         val controller = controllerLeftOnAppReturn(providers, rendersOnStart = false, selectionTimes = selectionTimes)
         blocksRegistry.lastHandle?.onContentResolved(
             content.copy(inAppId = "another-winner"),
-            placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)).copy(isShowReserved = false),
+            placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)).copy(isShowReserved = false),
         )
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
 
         controller.start()
 
@@ -3118,7 +3119,7 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false, hostActivity = { blockScreen }, readyTimeout = Milliseconds(7_000L))
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         idleFor(Duration.ofMillis(6_500L))
         isAppInForeground = false
         controller.pause()
@@ -3141,9 +3142,9 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)))
 
         controller.start()
 
@@ -3155,11 +3156,11 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)))
-        blocksRegistry.lastHandle?.onConfigUnavailable(placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(20L)))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(5L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)))
+        blocksRegistry.lastHandle?.onConfigUnavailable(placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(20L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(5L)))
 
         controller.start()
 
@@ -3172,10 +3173,10 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, selectionTimes = selectionTimes)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)))
-        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(5L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(5L)))
 
         controller.start()
 
@@ -3185,9 +3186,9 @@ class EmbeddedBlockContentControllerTest {
     private fun controllerWithUnreservedContentParked(providers: MutableList<SessionAwareProvider>): EmbeddedBlockContentController {
         val controller = sessionAwareController(providers)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         controller.pause()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L).copy(isShowReserved = false))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)).copy(isShowReserved = false))
         return controller
     }
 
@@ -3199,8 +3200,8 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        assertEquals(listOf(content.inAppId to 1L), blocksRegistry.reservedShows)
-        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(content.inAppId to SessionEpoch(1L)), blocksRegistry.reservedShows)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
     }
 
     @Test
@@ -3429,10 +3430,10 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `content kept for the session check of the return is dropped when the check ends its session`() {
-        val controller = controllerAwayWithAnswerParked { onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 0L)) }
+        val controller = controllerAwayWithAnswerParked { onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = SessionEpoch(0L))) }
         controller.start()
 
-        blocksRegistry.endedSessions = setOf(0L)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         blocksRegistry.isReturnCheckPending = false
         controller.onReturnChecked()
 
@@ -3445,9 +3446,9 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(20L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(20L)))
 
         providers.single().render()
 
@@ -3550,12 +3551,12 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         controller.pause()
         controller.onSessionRenewed()
-        controller.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(300L)).copy(isShowReserved = false))
+        controller.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(300L)).copy(isShowReserved = false))
         assertTrue(blocksRegistry.reservedShows.isEmpty())
 
         controller.start()
 
         assertEquals(listOf(Milliseconds(300L)), selectionTimes)
-        assertEquals(listOf(content.inAppId to 1L), blocksRegistry.reservedShows)
+        assertEquals(listOf(content.inAppId to SessionEpoch(1L)), blocksRegistry.reservedShows)
     }
 }

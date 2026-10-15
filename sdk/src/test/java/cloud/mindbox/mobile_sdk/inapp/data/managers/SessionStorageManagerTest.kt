@@ -11,6 +11,7 @@ import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -304,12 +305,12 @@ class SessionStorageManagerTest {
 
     @Test
     fun `clearSessionData moves the session epoch on with every new session`() {
-        assertEquals(0L, sessionStorageManager.sessionEpoch)
+        assertEquals(SessionEpoch(0L), sessionStorageManager.sessionEpoch)
 
         sessionStorageManager.clearSessionData()
         sessionStorageManager.clearSessionData()
 
-        assertEquals(2L, sessionStorageManager.sessionEpoch)
+        assertEquals(SessionEpoch(2L), sessionStorageManager.sessionEpoch)
     }
 
     @Test
@@ -319,14 +320,14 @@ class SessionStorageManagerTest {
         val reset = synchronized(sessionStorageManager.showBudgetLock) {
             val reset = worker.submit { sessionStorageManager.clearSessionData() }
             Thread.sleep(150)
-            assertEquals(0L, sessionStorageManager.sessionEpoch)
+            assertEquals(SessionEpoch(0L), sessionStorageManager.sessionEpoch)
             assertSame(previousState, sessionStorageManager.state)
             reset
         }
 
         reset.get(5, TimeUnit.SECONDS)
 
-        assertEquals(1L, sessionStorageManager.sessionEpoch)
+        assertEquals(SessionEpoch(1L), sessionStorageManager.sessionEpoch)
         assertNotSame(previousState, sessionStorageManager.state)
         worker.shutdown()
     }
@@ -401,10 +402,10 @@ class SessionStorageManagerTest {
 
     @Test
     fun `a wipe announces the epoch of the session it begins`() = runBlocking {
-        val renewed = async(start = CoroutineStart.UNDISPATCHED) { sessionStorageManager.listenSessionEpoch().first { epoch -> epoch > 0L } }
+        val renewed = async(start = CoroutineStart.UNDISPATCHED) { sessionStorageManager.listenSessionEpoch().first { epoch -> epoch > SessionEpoch(0L) } }
 
         sessionStorageManager.clearSessionData()
 
-        assertEquals(1L, withTimeout(1_000L) { renewed.await() })
+        assertEquals(SessionEpoch(1L), withTimeout(1_000L) { renewed.await() })
     }
 }

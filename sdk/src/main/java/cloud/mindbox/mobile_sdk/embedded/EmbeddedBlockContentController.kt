@@ -23,6 +23,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.Constants
@@ -127,16 +128,16 @@ internal class EmbeddedBlockContentController(
 
     private var heldCollapse: EmbeddedBlockState? = null
 
-    private var appliedSessionEpoch: Long? = null
+    private var appliedSessionEpoch: SessionEpoch? = null
 
-    private class DataPush(val descriptor: PageDescriptor, val sessionEpoch: Long?)
+    private class DataPush(val descriptor: PageDescriptor, val sessionEpoch: SessionEpoch?)
 
     private var dataPush: DataPush? = null
 
     private val liveDataPush: DataPush?
         get() = dataPush?.takeUnless { updatablePage?.isDataPushAbandoned == true }
 
-    private val pageSessionEpoch: Long?
+    private val pageSessionEpoch: SessionEpoch?
         get() = liveDataPush?.sessionEpoch ?: appliedSessionEpoch
 
     private var dueSessionRefresh: EmbeddedPlaceAnswer? = null
@@ -354,7 +355,7 @@ internal class EmbeddedBlockContentController(
     private fun landParkedAnswer(mayHold: Boolean): Boolean =
         applyParkedAnswer(mayHold) && lastReportedState?.nothingToShow == true
 
-    private fun isOfEndedSession(sessionEpoch: Long?): Boolean =
+    private fun isOfEndedSession(sessionEpoch: SessionEpoch?): Boolean =
         sessionEpoch != null && blocksRegistry()?.isLiveSession(sessionEpoch) == false
 
     private fun resumeAfterBeingLeftBehind() {

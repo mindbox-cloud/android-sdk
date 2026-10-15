@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -19,9 +20,9 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     val showBudgetLock = Any()
 
-    private val sessionEpochs = MutableStateFlow(0L)
+    private val sessionEpochs = MutableStateFlow(SessionEpoch.FIRST)
 
-    val sessionEpoch: Long
+    val sessionEpoch: SessionEpoch
         get() = sessionEpochs.value
 
     @Volatile var isSessionEnding: Boolean = false
@@ -92,11 +93,11 @@ internal class SessionStorageManager(private val timeProvider: TimeProvider) {
 
     fun clearSessionData() = synchronized(showBudgetLock) {
         state = SessionState()
-        sessionEpochs.value = sessionEpochs.value + 1
+        sessionEpochs.value = sessionEpochs.value.next()
         isSessionEnding = false
     }
 
-    fun listenSessionEpoch(): StateFlow<Long> = sessionEpochs
+    fun listenSessionEpoch(): StateFlow<SessionEpoch> = sessionEpochs
 
     fun onAppLeftForeground() {
         isReturnCheckPending.value = true

@@ -17,6 +17,7 @@ import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +28,7 @@ import java.io.Closeable
 import java.lang.ref.WeakReference
 
 internal data class EmbeddedPlaceAnswer(
-    val sessionEpoch: Long,
+    val sessionEpoch: SessionEpoch,
     val isByOperation: Boolean,
     val selectionTime: Milliseconds,
     val isShowReserved: Boolean = true,
@@ -78,13 +79,13 @@ internal interface EmbeddedBlocksRegistry {
 
     fun onBlockContentDropped(placeSystemName: PlaceKey)
 
-    fun isLiveSession(sessionEpoch: Long): Boolean
+    fun isLiveSession(sessionEpoch: SessionEpoch): Boolean
 
     @MainThread
     fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation
 
     @MainThread
-    fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long)
+    fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch)
 
     @MainThread
     fun deferUntilReturnChecked(): Boolean
@@ -112,19 +113,19 @@ internal class EmbeddedBlocksRegistryImpl(
     private val handlesByPlace = mutableMapOf<PlaceKey, MutableList<WeakReference<EmbeddedBlockHandle>>>()
 
     private interface AskedPass {
-        val askedInSession: Long
+        val askedInSession: SessionEpoch
         val isTriggered: Boolean
 
-        fun isOperationFreeAskOf(sessionEpoch: Long): Boolean = askedInSession == sessionEpoch && !isTriggered
+        fun isOperationFreeAskOf(sessionEpoch: SessionEpoch): Boolean = askedInSession == sessionEpoch && !isTriggered
     }
 
     private class AnsweredPass(
-        override val askedInSession: Long,
+        override val askedInSession: SessionEpoch,
         override val isTriggered: Boolean,
         val configVersion: ConfigVersion?,
     ) : AskedPass
 
-    private class PassInFlight(override val askedInSession: Long, override val isTriggered: Boolean) : AskedPass {
+    private class PassInFlight(override val askedInSession: SessionEpoch, override val isTriggered: Boolean) : AskedPass {
         var isConfigAnnouncedMidResolve: Boolean = false
         var answer: AnsweredPass? = null
 
@@ -141,7 +142,7 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private var newestConfigVersion: ConfigVersion? = null
 
-    private class SessionRenewal(val sessionEpoch: Long, val tick: Milliseconds)
+    private class SessionRenewal(val sessionEpoch: SessionEpoch, val tick: Milliseconds)
 
     private class ResolvePass(
         val trigger: InAppEventType?,
@@ -185,7 +186,7 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private val placesAppearedMidResolve = mutableSetOf<PlaceKey>()
 
-    private var handledSessionEpoch: Long? = null
+    private var handledSessionEpoch: SessionEpoch? = null
 
     private class PendingDelay(
         val job: Job,
@@ -282,14 +283,14 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    override fun isLiveSession(sessionEpoch: Long): Boolean = inAppInteractor.isLiveSession(sessionEpoch)
+    override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = inAppInteractor.isLiveSession(sessionEpoch)
 
     @MainThread
     override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer): PlaceShowReservation =
         inAppInteractor.reservePlaceShow(placeSystemName, content, answer.sessionEpoch)
 
     @MainThread
-    override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long) {
+    override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch) {
         if (liveHandles(placeSystemName).any { handle -> handle.mayStillBeSeen }) return
         mindboxLogI("[EmbeddedBlock] The blocks of place '$placeSystemName' have left the screen, giving back the show reserved for the answer that waits for them")
         inAppInteractor.releasePlaceShow(placeSystemName, sessionEpoch)
@@ -465,7 +466,7 @@ internal class EmbeddedBlocksRegistryImpl(
         this[place] = this[place]?.mergedWith(pass) ?: pass
     }
 
-    private fun onSessionEpoch(sessionEpoch: Long) {
+    private fun onSessionEpoch(sessionEpoch: SessionEpoch) {
         val handled = handledSessionEpoch
         if (handled != null && sessionEpoch <= handled) return
         handledSessionEpoch = sessionEpoch
@@ -504,7 +505,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun isAnsweredInNewSession(place: PlaceKey, sessionEpoch: Long): Boolean {
+    private fun isAnsweredInNewSession(place: PlaceKey, sessionEpoch: SessionEpoch): Boolean {
         val pass: AskedPass = resolvingPlaces[place] ?: answeredPasses[place] ?: return false
         if (!pass.isOperationFreeAskOf(sessionEpoch)) return false
         mindboxLogI("[EmbeddedBlock] Place '$place': a new session, and its pass in flight or its last answer was asked in it with no operation — its answer is the new session's")

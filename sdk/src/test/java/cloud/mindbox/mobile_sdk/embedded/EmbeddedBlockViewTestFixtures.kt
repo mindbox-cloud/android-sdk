@@ -8,11 +8,12 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
 
 internal fun placeAnswer(
-    sessionEpoch: Long = 0L,
+    sessionEpoch: SessionEpoch = SessionEpoch(0L),
     isByOperation: Boolean = false,
     selectionTime: Milliseconds = Milliseconds(0L),
 ): EmbeddedPlaceAnswer = EmbeddedPlaceAnswer(sessionEpoch, isByOperation, selectionTime)
@@ -29,7 +30,7 @@ internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
 
     override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
-    override fun isLiveSession(sessionEpoch: Long): Boolean = true
+    override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = true
 
     override fun deferUntilReturnChecked(): Boolean = false
 
@@ -38,7 +39,7 @@ internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
     override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer) =
         PlaceShowReservation.RESERVED
 
-    override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long) = Unit
+    override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch) = Unit
 
     override fun onReturnCheckOver() = Unit
 

@@ -19,6 +19,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowRes
 import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.mockk.verify
@@ -59,7 +60,7 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         override fun startListening() = Unit
 
-        override fun isLiveSession(sessionEpoch: Long): Boolean = true
+        override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = true
 
         override fun deferUntilReturnChecked(): Boolean = false
 
@@ -68,7 +69,7 @@ class MindboxEmbeddedBlockViewRetainTest {
         override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer) =
             PlaceShowReservation.RESERVED
 
-        override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: Long) = Unit
+        override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch) = Unit
 
         override fun onReturnCheckOver() = Unit
     }
@@ -248,7 +249,7 @@ class MindboxEmbeddedBlockViewRetainTest {
     }
 
     private fun EmbeddedBlockHandle.refuseInNewSession() {
-        onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+        onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         idle()
     }
 

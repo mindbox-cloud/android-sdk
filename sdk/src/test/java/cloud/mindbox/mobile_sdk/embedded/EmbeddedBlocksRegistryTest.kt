@@ -19,6 +19,7 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -134,14 +135,14 @@ class EmbeddedBlocksRegistryTest {
 
     private val placeEvents = MutableSharedFlow<EmbeddedPlaceEvent>()
     private val configVersions = MutableSharedFlow<ConfigVersion>()
-    private val sessionEpochs = MutableStateFlow(0L)
+    private val sessionEpochs = MutableStateFlow(SessionEpoch(0L))
     private val returnCheckPending = MutableStateFlow(false)
 
-    private var currentSessionEpoch = 0L
+    private var currentSessionEpoch = SessionEpoch(0L)
     private var isSessionEnding = false
     private var isAppPresent = true
 
-    private fun isLive(sessionEpoch: Long): Boolean = !isSessionEnding && sessionEpoch == currentSessionEpoch
+    private fun isLive(sessionEpoch: SessionEpoch): Boolean = !isSessionEnding && sessionEpoch == currentSessionEpoch
 
     private var clock = Milliseconds(0L)
 
@@ -166,8 +167,8 @@ class EmbeddedBlocksRegistryTest {
         every { interactor.returnCheckPending } returns returnCheckPending
         every { interactor.reservePlaceShow(any(), any(), any()) } returns PlaceShowReservation.RESERVED
         every { interactor.releasePlaceShow(any(), any()) } returns true
-        every { interactor.markEmbeddedDelayWaitedOut(any(), any(), any()) } answers { isLive(thirdArg()) }
-        every { interactor.isLiveSession(any()) } answers { isLive(firstArg()) }
+        every { interactor.markEmbeddedDelayWaitedOut(any(), any(), any()) } answers { isLive(SessionEpoch(thirdArg())) }
+        every { interactor.isLiveSession(any()) } answers { isLive(SessionEpoch(firstArg())) }
         every { interactor.sessionEpoch } answers { currentSessionEpoch }
     }
 
@@ -963,7 +964,7 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `an answer carries the session its resolve started in and the time its selection took`() {
-        currentSessionEpoch = 3L
+        currentSessionEpoch = SessionEpoch(3L)
         clock = Milliseconds(1_000L)
         coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
             clock = Milliseconds(1_300L)
@@ -977,7 +978,7 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        assertEquals(3L, handle.answers.single().sessionEpoch)
+        assertEquals(SessionEpoch(3L), handle.answers.single().sessionEpoch)
         assertEquals(Milliseconds(300L), handle.answers.single().selectionTime)
     }
 
@@ -992,16 +993,16 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         controller.onBlockAppeared(place)
         idleMain()
         firstResolveGate.complete(winner())
         idleMain()
 
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
-        assertEquals(1L, handle.answers.single().sessionEpoch)
-        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 1L) }
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 0L) }
+        assertEquals(SessionEpoch(1L), handle.answers.single().sessionEpoch)
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(0L)) }
     }
 
     @Test
@@ -1015,7 +1016,7 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
@@ -1059,13 +1060,13 @@ class EmbeddedBlocksRegistryTest {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(delay = Milliseconds(5_000L))
         val handle = RecordingHandle()
         val controller = controller()
-        every { interactor.markEmbeddedDelayWaitedOut(place, content.inAppId, 0L) } returns false
+        every { interactor.markEmbeddedDelayWaitedOut(place, content.inAppId, SessionEpoch(0L)) } returns false
         controller.register(place, handle)
         idleMain()
         controller.onBlockAppeared(place)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         scope.testScheduler.advanceTimeBy(5_001L)
         scope.testScheduler.runCurrent()
         idleMain()
@@ -1086,7 +1087,7 @@ class EmbeddedBlocksRegistryTest {
         scope.testScheduler.advanceTimeBy(3_000L)
         scope.testScheduler.runCurrent()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         controller.onBlockAppeared(place)
         idleMain()
         scope.testScheduler.advanceTimeBy(2_001L)
@@ -1099,7 +1100,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
-        assertEquals(1L, handle.answers.single().sessionEpoch)
+        assertEquals(SessionEpoch(1L), handle.answers.single().sessionEpoch)
     }
 
     @Test
@@ -1113,8 +1114,8 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         val reportedBeforeRenewal = states.size
 
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
         scope.testScheduler.advanceTimeBy(4_999L)
         scope.testScheduler.runCurrent()
@@ -1124,7 +1125,7 @@ class EmbeddedBlocksRegistryTest {
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertEquals(0, pages.single().releaseCount)
         assertTrue(pages.single().sessionRefreshes.isEmpty())
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
 
         scope.testScheduler.advanceTimeBy(2L)
         scope.testScheduler.runCurrent()
@@ -1132,8 +1133,8 @@ class EmbeddedBlocksRegistryTest {
 
         assertEquals(reportedBeforeRenewal, states.size)
         assertEquals(0, pages.single().releaseCount)
-        assertEquals(listOf(1L), pages.single().sessionRefreshes.map { refresh -> refresh.first })
-        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        assertEquals(listOf(SessionEpoch(1L)), pages.single().sessionRefreshes.map { refresh -> refresh.first })
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
     }
 
     @Test
@@ -1147,7 +1148,7 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         controller.onBlockAppeared(place)
         idleMain()
 
@@ -1193,7 +1194,7 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         firstResolveGate.complete(EmbeddedResolveOutcome.ConfigUnavailable(olderConfig))
         idleMain()
 
@@ -1296,8 +1297,8 @@ class EmbeddedBlocksRegistryTest {
         isSessionEnding = true
         whileItEnds()
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
     }
 
@@ -1329,7 +1330,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
-        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        assertEquals(listOf(SessionEpoch(1L) to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
     }
 
     @Test
@@ -1369,7 +1370,7 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, queuedOperation) }
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
         assertEquals(
-            listOf(Triple(1L, false, Milliseconds(300L))),
+            listOf(Triple(SessionEpoch(1L), false, Milliseconds(300L))),
             handle.answers.map { answer -> Triple(answer.sessionEpoch, answer.isByOperation, answer.selectionTime) },
         )
     }
@@ -1425,18 +1426,18 @@ class EmbeddedBlocksRegistryTest {
         controller.register(leftPlace, leftBySession)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         clock = Milliseconds(4_000L)
-        sessionEpochs.value = 1L
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
         coVerify(exactly = 1) { interactor.selectInAppForPlace(backgroundPlace, any()) }
         coVerify(exactly = 0) { interactor.selectInAppForPlace(awayPlace, any()) }
         coVerify(exactly = 1) { interactor.selectInAppForPlace(leftPlace, any()) }
-        assertEquals(listOf(1L), onScreen.answers.map { answer -> answer.sessionEpoch })
-        assertEquals(listOf(1L), inBackground.answers.map { answer -> answer.sessionEpoch })
-        assertEquals(listOf(1L to false), leftBySession.answers.map { answer -> answer.sessionEpoch to answer.isShowReserved })
+        assertEquals(listOf(SessionEpoch(1L)), onScreen.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), inBackground.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L) to false), leftBySession.answers.map { answer -> answer.sessionEpoch to answer.isShowReserved })
         verify(exactly = 0) { interactor.reservePlaceShow(leftPlace, any(), any()) }
         assertEquals(false, onScreen.answers.single().isByOperation)
     }
@@ -1457,13 +1458,13 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
 
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        assertEquals(listOf(SessionEpoch(1L) to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
     }
 
     @Test
@@ -1572,7 +1573,7 @@ class EmbeddedBlocksRegistryTest {
         val handle = RecordingHandle()
         queueAnOperationBehindAPassWaitingForTheConfig(handle, isOperationBeforeTheAnnouncement = true) { renewTheSession() }
 
-        assertEquals(listOf(1L to false, 1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        assertEquals(listOf(SessionEpoch(1L) to false, SessionEpoch(1L) to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
     }
 
     @Test
@@ -1580,7 +1581,7 @@ class EmbeddedBlocksRegistryTest {
         val handle = RecordingHandle()
         queueAnOperationBehindAPassWaitingForTheConfig(handle, isOperationBeforeTheAnnouncement = false) { renewTheSession() }
 
-        assertEquals(listOf(1L to false, 1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        assertEquals(listOf(SessionEpoch(1L) to false, SessionEpoch(1L) to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
     }
 
     @Test
@@ -1603,7 +1604,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(2, selections)
-        assertEquals(listOf(0L, 1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(0L), SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -1620,7 +1621,7 @@ class EmbeddedBlocksRegistryTest {
         announceNewerConfig()
 
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(0L, 1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(0L), SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -1666,16 +1667,16 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, handle)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         controller.onBlockAppeared(place)
         idleMain()
-        sessionEpochs.value = 1L
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
         startedPass.complete(winner(configVersion = newerConfig))
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -1686,14 +1687,14 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, handle)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         controller.onBlockAppeared(place)
         idleMain()
-        sessionEpochs.value = 1L
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -1704,8 +1705,8 @@ class EmbeddedBlocksRegistryTest {
         val controller = controller()
         controller.register(place, handle)
         idleMain()
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         handle.isActive = true
@@ -1717,7 +1718,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -1876,8 +1877,8 @@ class EmbeddedBlocksRegistryTest {
 
         deliverWinnerWithoutPage(handle)
 
-        verify(exactly = 1) { interactor.reservePlaceShow(place, winnerWithoutPage, 0L) }
-        verify(exactly = 1) { interactor.releasePlaceShow(place, 0L) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, winnerWithoutPage, SessionEpoch(0L)) }
+        verify(exactly = 1) { interactor.releasePlaceShow(place, SessionEpoch(0L)) }
         assertEquals(listOf<InAppType.Embedded?>(winnerWithoutPage), handle.received)
     }
 
@@ -1888,7 +1889,7 @@ class EmbeddedBlocksRegistryTest {
         deliverWinnerWithoutPage(handle, PlaceShowReservation.REFUSED)
 
         assertEquals(listOf<InAppType.Embedded?>(null), handle.received)
-        verify(exactly = 1) { interactor.releasePlaceShow(place, 0L) }
+        verify(exactly = 1) { interactor.releasePlaceShow(place, SessionEpoch(0L)) }
     }
 
     @Test
@@ -2027,9 +2028,9 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, inBackground)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         clock = Milliseconds(4_000L)
-        sessionEpochs.value = 1L
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, any()) }
@@ -2040,7 +2041,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L), inBackground.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), inBackground.answers.map { answer -> answer.sessionEpoch })
         assertEquals(Milliseconds(50L), inBackground.answers.single().selectionTime)
     }
 
@@ -2059,8 +2060,8 @@ class EmbeddedBlocksRegistryTest {
             controller.register(place, RecordingHandle(isActive = false, isPausedForBackground = true))
             idleMain()
 
-            currentSessionEpoch = 1L
-            sessionEpochs.value = 1L
+            currentSessionEpoch = SessionEpoch(1L)
+            sessionEpochs.value = SessionEpoch(1L)
             idleMain()
 
             coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
@@ -2083,8 +2084,8 @@ class EmbeddedBlocksRegistryTest {
         val controller = controller()
         controller.register(place, inBackground)
         idleMain()
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         isAppPresent = true
@@ -2093,7 +2094,7 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
         assertEquals(listOf<InAppType.Embedded?>(content), inBackground.received)
-        assertEquals(listOf(1L to false), inBackground.answers.map { answer -> answer.sessionEpoch to answer.isShowReserved })
+        assertEquals(listOf(SessionEpoch(1L) to false), inBackground.answers.map { answer -> answer.sessionEpoch to answer.isShowReserved })
         verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
     }
 
@@ -2113,11 +2114,11 @@ class EmbeddedBlocksRegistryTest {
         handle.isPausedForBackground = true
         isAppPresent = false
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
-        currentSessionEpoch = 2L
-        sessionEpochs.value = 2L
+        currentSessionEpoch = SessionEpoch(2L)
+        sessionEpochs.value = SessionEpoch(2L)
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
@@ -2128,7 +2129,7 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(2L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(2L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -2147,8 +2148,8 @@ class EmbeddedBlocksRegistryTest {
         handle.isPausedForBackground = true
         isAppPresent = false
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         handle.isPausedForBackground = false
@@ -2179,7 +2180,7 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(leftPlace)
         idleMain()
 
-        verify(exactly = 1) { interactor.reservePlaceShow(backgroundPlace, content, 0L) }
+        verify(exactly = 1) { interactor.reservePlaceShow(backgroundPlace, content, SessionEpoch(0L)) }
         verify(exactly = 0) { interactor.reservePlaceShow(place, any(), any()) }
         verify(exactly = 0) { interactor.reservePlaceShow(leftPlace, any(), any()) }
         assertEquals(listOf(true), inBackground.answers.map { answer -> answer.isShowReserved })
@@ -2202,11 +2203,11 @@ class EmbeddedBlocksRegistryTest {
         controller.register(placeOnScreen, leftBesideOnScreen)
         idleMain()
 
-        controller.giveBackParkedShow(place, 0L)
-        controller.giveBackParkedShow(sharedPlace, 0L)
-        controller.giveBackParkedShow(placeOnScreen, 0L)
+        controller.giveBackParkedShow(place, SessionEpoch(0L))
+        controller.giveBackParkedShow(sharedPlace, SessionEpoch(0L))
+        controller.giveBackParkedShow(placeOnScreen, SessionEpoch(0L))
 
-        verify(exactly = 1) { interactor.releasePlaceShow(place, 0L) }
+        verify(exactly = 1) { interactor.releasePlaceShow(place, SessionEpoch(0L)) }
         verify(exactly = 0) { interactor.releasePlaceShow(sharedPlace, any()) }
         verify(exactly = 0) { interactor.releasePlaceShow(placeOnScreen, any()) }
     }
@@ -2267,7 +2268,7 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        verify(exactly = 1) { interactor.reservePlaceShow(place, content, 0L) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(0L)) }
         assertEquals(listOf(true), handle.answers.map { answer -> answer.isShowReserved })
     }
 
@@ -2291,13 +2292,13 @@ class EmbeddedBlocksRegistryTest {
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
 
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -2312,18 +2313,18 @@ class EmbeddedBlocksRegistryTest {
         scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         returnCheckPending.value = false
         controller.onReturnCheckOver()
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
 
-        sessionEpochs.value = 1L
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
-        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        assertEquals(listOf(SessionEpoch(1L) to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
     }
 
     @Test
@@ -2341,8 +2342,8 @@ class EmbeddedBlocksRegistryTest {
         handle.isActive = false
         handle.isPausedForBackground = true
         isAppPresent = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
         handle.isActive = true
         handle.isPausedForBackground = false
@@ -2352,7 +2353,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
-        assertEquals(listOf(1L to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        assertEquals(listOf(SessionEpoch(1L) to true), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
     }
 
     private fun EmbeddedBlocksRegistryImpl.holdOperationForTheReturnCheck(handle: RecordingHandle, operation: InAppEventType) {
@@ -2410,16 +2411,16 @@ class EmbeddedBlocksRegistryTest {
 
         handle.isActive = false
         handle.isHoldingContent = true
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         controller.finishTheReturnCheck()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
 
-        sessionEpochs.value = 1L
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
-        assertEquals(listOf(1L to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
+        assertEquals(listOf(SessionEpoch(1L) to false), handle.answers.map { answer -> answer.sessionEpoch to answer.isByOperation })
     }
 
     @Test
@@ -2451,8 +2452,8 @@ class EmbeddedBlocksRegistryTest {
 
         handle.isActive = false
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         coVerify(exactly = 0) { interactor.selectInAppForPlace(any(), any()) }
@@ -2495,15 +2496,15 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        currentSessionEpoch = 1L
+        currentSessionEpoch = SessionEpoch(1L)
         clock = Milliseconds(4_000L)
-        sessionEpochs.value = 1L
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
         clock = Milliseconds(9_000L)
         firstResolveGate.complete(winner())
         idleMain()
 
-        assertEquals(listOf(1L), handle.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
         assertEquals(listOf(Milliseconds(5_000L)), handle.answers.map { answer -> answer.selectionTime })
     }
 
@@ -2516,14 +2517,14 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         scope.cancel()
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         scope = TestScope(UnconfinedTestDispatcher())
         controller.startListening()
         idleMain()
 
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
-        assertEquals(listOf(1L), inBackground.answers.map { answer -> answer.sessionEpoch })
+        assertEquals(listOf(SessionEpoch(1L)), inBackground.answers.map { answer -> answer.sessionEpoch })
     }
 
     @Test
@@ -2584,7 +2585,7 @@ class EmbeddedBlocksRegistryTest {
         override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
         override val contentView: View = View(RuntimeEnvironment.getApplication())
         var releaseCount = 0
-        val sessionRefreshes = mutableListOf<Pair<Long, Milliseconds>>()
+        val sessionRefreshes = mutableListOf<Pair<SessionEpoch, Milliseconds>>()
         val sessionRefreshParams = mutableListOf<Map<String, String>>()
         val withheldShows = mutableListOf<Boolean>()
 
@@ -2600,7 +2601,7 @@ class EmbeddedBlocksRegistryTest {
 
         override fun refreshForSession(
             params: Map<String, String>,
-            sessionEpoch: Long,
+            sessionEpoch: SessionEpoch,
             selectionTime: Milliseconds,
             onResult: (DataPushOutcome) -> Unit,
         ) {
@@ -2611,11 +2612,11 @@ class EmbeddedBlocksRegistryTest {
 
         override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) = onResult(DataPushOutcome.CONFIRMED)
 
-        override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) = Unit
+        override fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds) = Unit
 
-        override fun confirmForSession(sessionEpoch: Long) = Unit
+        override fun confirmForSession(sessionEpoch: SessionEpoch) = Unit
 
-        override fun timeToDisplaySoFar(sessionEpoch: Long): Milliseconds? = null
+        override fun timeToDisplaySoFar(sessionEpoch: SessionEpoch): Milliseconds? = null
 
         override fun withholdShow(isWithheld: Boolean) {
             withheldShows.add(isWithheld)
@@ -2658,8 +2659,8 @@ class EmbeddedBlocksRegistryTest {
         onAppResumedOn(on)
         idleMain()
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
     }
 
@@ -2700,13 +2701,13 @@ class EmbeddedBlocksRegistryTest {
         registry.comeBackOnAnotherScreenWithTheSessionOver()
 
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
 
         isAppInForeground = true
         block.start()
         idleMain()
 
-        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
         assertEquals(EmbeddedBlockState.Ready, states.last())
     }
 
@@ -2738,7 +2739,7 @@ class EmbeddedBlocksRegistryTest {
         )
         assertEquals(1, pages.single().releaseCount)
         assertTrue(pages.single().withheldShows.isEmpty())
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
     }
 
     @Test
@@ -2761,7 +2762,7 @@ class EmbeddedBlocksRegistryTest {
         registry.comeBackOnTheBlockScreenWithTheSessionOver()
 
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
         assertTrue(pages.single().sessionRefreshes.isEmpty())
         val reportedBeforeReturn = states.size
 
@@ -2770,8 +2771,8 @@ class EmbeddedBlocksRegistryTest {
         block.start()
         idleMain()
 
-        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
-        assertEquals(listOf(1L to Milliseconds(30L)), pages.single().sessionRefreshes)
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
+        assertEquals(listOf(SessionEpoch(1L) to Milliseconds(30L)), pages.single().sessionRefreshes)
         assertEquals(0, pages.single().releaseCount)
         assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
     }
@@ -2795,8 +2796,8 @@ class EmbeddedBlocksRegistryTest {
         block.start()
         idleMain()
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         assertEquals(EmbeddedBlockState.Ready, states.last())
@@ -2874,10 +2875,10 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(0, pages.single().releaseCount)
-        assertEquals(listOf(1L to Milliseconds(7_000L)), pages.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L) to Milliseconds(7_000L)), pages.single().sessionRefreshes)
         assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), pages.single().sessionRefreshParams)
         assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
-        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
     }
 
     @Test
@@ -2904,12 +2905,12 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         clock = Milliseconds(12_000L)
         isSessionEnding = false
-        currentSessionEpoch = 1L
-        sessionEpochs.value = 1L
+        currentSessionEpoch = SessionEpoch(1L)
+        sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
         assertEquals(0, pages.single().releaseCount)
-        assertEquals(listOf(1L to Milliseconds(25L)), pages.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L) to Milliseconds(25L)), pages.single().sessionRefreshes)
     }
 
     @Test
@@ -2926,12 +2927,12 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         block.pause()
 
-        currentSessionEpoch = 2L
-        sessionEpochs.value = 2L
+        currentSessionEpoch = SessionEpoch(2L)
+        sessionEpochs.value = SessionEpoch(2L)
         idleMain()
 
         coVerify(exactly = 4) { interactor.selectInAppForPlace(place, any()) }
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 2L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(2L)) }
     }
 
     private fun EmbeddedBlockContentController.leaveForAnotherScreen() {
@@ -2966,7 +2967,7 @@ class EmbeddedBlocksRegistryTest {
         assertEquals(1, pages.single().releaseCount)
         assertTrue(pages.single().withheldShows.isEmpty())
         assertTrue(pages.single().sessionRefreshes.isEmpty())
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
     }
 
     @Test
@@ -2988,15 +2989,15 @@ class EmbeddedBlocksRegistryTest {
         registry.comeBackOnAnotherScreenWithTheSessionOver()
 
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
         val reportedBeforeReturn = states.size
 
         clock = Milliseconds(9_000L)
         block.start()
         idleMain()
 
-        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
-        assertEquals(listOf(1L to Milliseconds(30L)), pages.single().sessionRefreshes)
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
+        assertEquals(listOf(SessionEpoch(1L) to Milliseconds(30L)), pages.single().sessionRefreshes)
         assertEquals(0, pages.single().releaseCount)
         assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
     }
@@ -3054,7 +3055,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         assertEquals(0, pages.single().releaseCount)
-        assertEquals(listOf(1L to Milliseconds(7_000L)), pages.single().sessionRefreshes)
+        assertEquals(listOf(SessionEpoch(1L) to Milliseconds(7_000L)), pages.single().sessionRefreshes)
         assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), pages.single().sessionRefreshParams)
         assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
     }
@@ -3083,15 +3084,15 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         coVerify(exactly = 3) { interactor.selectInAppForPlace(place, any()) }
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
         val reportedBeforeReturn = states.size
 
         clock = Milliseconds(15_000L)
         block.start()
         idleMain()
 
-        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 1L) }
-        assertEquals(listOf(1L to Milliseconds(7_000L)), pages.single().sessionRefreshes)
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
+        assertEquals(listOf(SessionEpoch(1L) to Milliseconds(7_000L)), pages.single().sessionRefreshes)
         assertEquals(0, pages.single().releaseCount)
         assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
     }
@@ -3117,7 +3118,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
 
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
-        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, 0L) }
+        verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(0L)) }
         assertEquals(EmbeddedBlockState.Ready, states.last())
     }
 
@@ -3136,7 +3137,7 @@ class EmbeddedBlocksRegistryTest {
         block.release()
         idleMain()
 
-        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), 1L) }
+        verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
         verify(atLeast = 1) { interactor.releasePlaceShow(place) }
     }
 
@@ -3167,13 +3168,13 @@ class EmbeddedBlocksRegistryTest {
         onScreen.leaveForBackground()
         answerInBackground.complete(winner(givenBackWinner))
         idleMain()
-        verify(exactly = 1) { interactor.reservePlaceShow(place, givenBackWinner, 0L) }
+        verify(exactly = 1) { interactor.reservePlaceShow(place, givenBackWinner, SessionEpoch(0L)) }
 
         isAppPresent = true
         registry.onAppResumedOn(screen())
         idleMain()
 
-        verify(exactly = 1) { interactor.releasePlaceShow(place, 0L) }
+        verify(exactly = 1) { interactor.releasePlaceShow(place, SessionEpoch(0L)) }
         isAppInForeground = true
         return onAnotherScreen
     }
@@ -3187,7 +3188,7 @@ class EmbeddedBlocksRegistryTest {
         block.start()
         idleMain()
 
-        verify(exactly = 2) { interactor.reservePlaceShow(place, givenBackWinner, 0L) }
+        verify(exactly = 2) { interactor.reservePlaceShow(place, givenBackWinner, SessionEpoch(0L)) }
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertEquals(2, pages.size)
     }
@@ -3197,12 +3198,12 @@ class EmbeddedBlocksRegistryTest {
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
         val block = blockOnAnotherScreenWhoseSiblingGaveBackTheShow(states, pages)
-        every { interactor.reservePlaceShow(place, givenBackWinner, 0L) } returns PlaceShowReservation.REFUSED
+        every { interactor.reservePlaceShow(place, givenBackWinner, SessionEpoch(0L)) } returns PlaceShowReservation.REFUSED
 
         block.start()
         idleMain()
 
-        verify(exactly = 2) { interactor.reservePlaceShow(place, givenBackWinner, 0L) }
+        verify(exactly = 2) { interactor.reservePlaceShow(place, givenBackWinner, SessionEpoch(0L)) }
         assertEquals(EmbeddedBlockState.Empty, states.last())
         assertEquals(1, pages.size)
         assertEquals(1, pages.single().releaseCount)

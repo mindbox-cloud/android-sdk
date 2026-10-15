@@ -33,6 +33,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.countsShows
@@ -59,13 +60,13 @@ internal class InAppInteractorImpl(
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
 
-    override val sessionEpoch: Long
+    override val sessionEpoch: SessionEpoch
         get() = sessionStorageManager.sessionEpoch
 
-    override fun isLiveSession(sessionEpoch: Long): Boolean =
+    override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean =
         !sessionStorageManager.isSessionEnding && sessionEpoch == sessionStorageManager.sessionEpoch
 
-    override fun listenSessionEpoch(): StateFlow<Long> = sessionStorageManager.listenSessionEpoch()
+    override fun listenSessionEpoch(): StateFlow<SessionEpoch> = sessionStorageManager.listenSessionEpoch()
 
     override val returnCheckPending: StateFlow<Boolean>
         get() = sessionStorageManager.returnCheckPending
@@ -216,7 +217,7 @@ internal class InAppInteractorImpl(
         return remembered
     }
 
-    override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: Long): Boolean =
+    override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: SessionEpoch): Boolean =
         withinLiveSession(sessionEpoch) { state ->
             state.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
         } != null
@@ -373,7 +374,7 @@ internal class InAppInteractorImpl(
     override fun reservePlaceShow(
         placeSystemName: PlaceKey,
         content: InAppType.Embedded,
-        sessionEpoch: Long,
+        sessionEpoch: SessionEpoch,
     ): PlaceShowReservation = synchronized(sessionStorageManager.showBudgetLock) {
         if (!isLiveSession(sessionEpoch)) return PlaceShowReservation.STALE
         if (sessionStorageManager.state.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
@@ -402,7 +403,7 @@ internal class InAppInteractorImpl(
         showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
     }
 
-    override fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: Long): Boolean =
+    override fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch): Boolean =
         withinLiveSession(sessionEpoch) { showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName)) } != null
 
     override fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome {
@@ -423,7 +424,7 @@ internal class InAppInteractorImpl(
         frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
-        sessionEpoch: Long,
+        sessionEpoch: SessionEpoch,
     ): Boolean {
         val isNewShow = withinLiveSession(sessionEpoch) { state ->
             if (state.embeddedLastShownByPlace.put(placeSystemName, inAppId) == inAppId) {
@@ -442,7 +443,7 @@ internal class InAppInteractorImpl(
         return true
     }
 
-    private inline fun <T> withinLiveSession(sessionEpoch: Long, action: (SessionState) -> T): T? =
+    private inline fun <T> withinLiveSession(sessionEpoch: SessionEpoch, action: (SessionState) -> T): T? =
         synchronized(sessionStorageManager.showBudgetLock) {
             if (isLiveSession(sessionEpoch)) action(sessionStorageManager.state) else null
         }
