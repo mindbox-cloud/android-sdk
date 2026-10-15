@@ -76,8 +76,6 @@ internal class MobileConfigRepositoryImpl(
 
         object AwaitingDownload : Publication
 
-        class AwaitingStoredDownload(val writesAtConclusion: Long) : Publication
-
         object Stored : Publication
     }
 
@@ -123,7 +121,7 @@ internal class MobileConfigRepositoryImpl(
             return@synchronized
         }
         if (publication == Publication.AwaitingDownload) {
-            publication = Publication.AwaitingStoredDownload(MindboxPreferences.inAppConfigWrites)
+            publication = Publication.Stored
         }
         store()
     }
@@ -138,12 +136,9 @@ internal class MobileConfigRepositoryImpl(
         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
     }
 
-    private fun isPublishable(inAppConfigString: String): Boolean = when (val current = publication) {
+    private fun isPublishable(inAppConfigString: String): Boolean = when (publication) {
         Publication.Open -> true
         Publication.AwaitingDownload -> false
-        is Publication.AwaitingStoredDownload ->
-            MindboxPreferences.inAppConfigWrites > current.writesAtConclusion &&
-                inAppConfigString == MindboxPreferences.inAppConfig
         Publication.Stored -> inAppConfigString == MindboxPreferences.inAppConfig
     }
 
@@ -154,7 +149,6 @@ internal class MobileConfigRepositoryImpl(
                     mindboxLogI("The config emitted is not the one the current session stored, not publishing it")
                     return@withLock
                 }
-                if (publication != Publication.Open) publication = Publication.Stored
                 applyConfig(inAppConfigString)
             }
         }

@@ -271,7 +271,6 @@ internal class MobileConfigRepositoryImplTest {
                 stored.value = firstArg()
                 stored.writes++
             }
-            every { MindboxPreferences.inAppConfigWrites } answers { stored.writes }
             every { MindboxPreferences.inAppConfigUpdatedTime = any() } just runs
             every { DbManager.listenConfigurations() } returns flowOf(mockk(relaxed = true))
             block(stored)

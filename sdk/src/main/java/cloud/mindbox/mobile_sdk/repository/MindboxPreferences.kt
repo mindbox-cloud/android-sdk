@@ -12,7 +12,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicLong
 
 internal object MindboxPreferences {
 
@@ -76,12 +75,6 @@ internal object MindboxPreferences {
             }
         }
     val inAppConfigFlow: MutableSharedFlow<String> = MutableSharedFlow(replay = 20)
-
-    private val inAppConfigWriteCount = AtomicLong(0L)
-
-    val inAppConfigWrites: Long
-        get() = inAppConfigWriteCount.get()
-
     var inAppConfig: String
         get() = LoggingExceptionHandler.runCatching(defaultValue = "") {
             SharedPreferencesManager.getString(IN_APP_CONFIG) ?: ""
@@ -89,7 +82,6 @@ internal object MindboxPreferences {
         set(value) {
             LoggingExceptionHandler.runCatching {
                 SharedPreferencesManager.put(IN_APP_CONFIG, value)
-                inAppConfigWriteCount.incrementAndGet()
                 prefScope.launch {
                     inAppConfigFlow.emit(value)
                 }
