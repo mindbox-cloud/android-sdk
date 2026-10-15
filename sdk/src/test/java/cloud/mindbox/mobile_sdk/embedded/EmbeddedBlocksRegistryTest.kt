@@ -77,13 +77,10 @@ class EmbeddedBlocksRegistryTest {
         var pendingCount = 0
         var unavailableCount = 0
 
-        var whenResolved: () -> Unit = {}
-
         override fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer) {
             received.add(content)
             selectionTimes.add(answer.selectionTime)
             answers.add(answer)
-            whenResolved()
         }
 
         override fun onContentPending() {
@@ -1919,6 +1916,21 @@ class EmbeddedBlocksRegistryTest {
         assertEquals(listOf(false, false), handle.answers.map { answer -> answer.isByOperation })
     }
 
+    private fun withPassesOnAJoinedWorker(action: () -> Unit) {
+        workerScope = CoroutineScope(
+            object : CoroutineDispatcher() {
+                override fun dispatch(context: CoroutineContext, block: Runnable) {
+                    thread { block.run() }.join()
+                }
+            }
+        )
+        try {
+            action()
+        } finally {
+            workerScope = null
+        }
+    }
+
     @Test
     fun `a new session's ask held until a screen of the app resumes is made when the app resumes while the block's return that read no config is still finishing`() {
         failTheFirstSelection()
@@ -1930,15 +1942,13 @@ class EmbeddedBlocksRegistryTest {
         currentSessionEpoch = SessionEpoch(1L)
         sessionEpochs.value = SessionEpoch(1L)
         idleMain()
-        val resumed = screen()
-        handle.whenResolved = {
-            isAppPresent = true
-            controller.onAppResumedOn(resumed)
-        }
-
         handle.isActive = true
         handle.isPausedForBackground = false
-        controller.onBlockAppeared(place)
+        withPassesOnAJoinedWorker { controller.onBlockAppeared(place) }
+        shadowOf(Looper.getMainLooper()).runOneTask()
+
+        isAppPresent = true
+        controller.onAppResumedOn(screen())
         idleMain()
 
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
@@ -2168,18 +2178,7 @@ class EmbeddedBlocksRegistryTest {
         val controller = controller()
         controller.register(place, handle)
         idleMain()
-        workerScope = CoroutineScope(
-            object : CoroutineDispatcher() {
-                override fun dispatch(context: CoroutineContext, block: Runnable) {
-                    thread { block.run() }.join()
-                }
-            }
-        )
-        try {
-            controller.onBlockAppeared(place)
-        } finally {
-            workerScope = null
-        }
+        withPassesOnAJoinedWorker { controller.onBlockAppeared(place) }
 
         announceNewerConfig()
 
