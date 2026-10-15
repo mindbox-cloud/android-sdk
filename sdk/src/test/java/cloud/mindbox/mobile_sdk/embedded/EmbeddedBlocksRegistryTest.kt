@@ -1891,6 +1891,34 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
+    fun `a block that registers at a place forgotten while its pass flew is asked by the new session that pass was asked in`() {
+        val startedPass = CompletableDeferred<EmbeddedResolveOutcome>()
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) startedPass.await() else winner(configVersion = newerConfig)
+        }
+        val controller = controller()
+        val registration = controller.register(place, RecordingHandle())
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+        registration.close()
+        idleMain()
+        startedPass.complete(winner(configVersion = newerConfig))
+        idleMain()
+        val registeredInBackground = RecordingHandle(isActive = false, isPausedForBackground = true)
+        controller.register(place, registeredInBackground)
+        idleMain()
+
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        assertEquals(2, selections)
+        assertEquals(listOf(SessionEpoch(1L)), registeredInBackground.answers.map { answer -> answer.sessionEpoch })
+    }
+
+    @Test
     fun `a place whose pass already read the config announced while it flies is not asked again for it`() {
         val secondPass = CompletableDeferred<EmbeddedResolveOutcome>()
         var selections = 0
