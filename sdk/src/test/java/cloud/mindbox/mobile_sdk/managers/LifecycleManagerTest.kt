@@ -579,12 +579,12 @@ internal class LifecycleManagerTest {
     }
 
     @Test
-    fun `the first screen resumed while none was is reported, one resumed alongside it is not`() {
-        val firstResumed = mutableListOf<Activity>()
+    fun `a screen resumed while none was is reported, one resumed alongside it is not`() {
+        val resumedWhenNoneWas = mutableListOf<Activity>()
         val manager = createManagerNoCallbacks(isAppInBackground = false)
         manager.callbacks = object : LifecycleManager.Callbacks {
-            override fun onFirstActivityResumed(activity: Activity) {
-                firstResumed += activity
+            override fun onActivityResumedWhenNoneWas(activity: Activity) {
+                resumedWhenNoneWas += activity
             }
         }
         val first = buildActivityA()
@@ -596,7 +596,7 @@ internal class LifecycleManagerTest {
         manager.onActivityPaused(second)
         manager.onActivityResumed(second)
 
-        assertEquals(listOf(first, second), firstResumed)
+        assertEquals(listOf(first, second), resumedWhenNoneWas)
     }
 
     @Test

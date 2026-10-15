@@ -208,7 +208,7 @@ internal class MindboxSetupLifecycleManagerTest {
     }
 
     @Test
-    fun `the first screen resumed is passed to the embedded blocks`() {
+    fun `a screen resumed while none was is passed to the embedded blocks`() {
         val blocksRegistry = mockk<EmbeddedBlocksRegistry>(relaxed = true)
         val manager = LifecycleManager(null, null, isAppInBackground = true)
         LifecycleManager.instance = manager
@@ -216,7 +216,7 @@ internal class MindboxSetupLifecycleManagerTest {
         withAppModule(blocksRegistry = blocksRegistry) {
             callAttachLifecycleCallbacks()
 
-            manager.callbacks?.onFirstActivityResumed(activity)
+            manager.callbacks?.onActivityResumedWhenNoneWas(activity)
 
             verify(exactly = 1) { blocksRegistry.onAppResumedOn(activity) }
         }

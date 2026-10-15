@@ -151,7 +151,7 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private val placesAwaitingReturnCheck = mutableMapOf<PlaceKey, ResolvePass>()
 
-    private val placesAwaitingFirstResume = mutableMapOf<PlaceKey, HeldRenewal>()
+    private val placesAwaitingResumedScreen = mutableMapOf<PlaceKey, HeldRenewal>()
 
     private val placesAppearedMidResolve = mutableSetOf<PlaceKey>()
 
@@ -274,8 +274,8 @@ internal class EmbeddedBlocksRegistryImpl(
     override fun onAppResumedOn(activity: Activity) {
         runOnMain {
             forEachLiveHandle { handle -> handle.onAppResumedOn(activity) }
-            val held = placesAwaitingFirstResume.toMap()
-            placesAwaitingFirstResume.clear()
+            val held = placesAwaitingResumedScreen.toMap()
+            placesAwaitingResumedScreen.clear()
             held.forEach { (place, renewal) ->
                 val handles = liveHandles(place)
                 when {
@@ -314,7 +314,7 @@ internal class EmbeddedBlocksRegistryImpl(
         reResolveQueuedPlaces.remove(place)
         placesAwaitingNewSession.remove(place)
         placesAwaitingReturnCheck.remove(place)
-        placesAwaitingFirstResume.remove(place)
+        placesAwaitingResumedScreen.remove(place)
         inAppInteractor.releasePlaceShow(place)
     }
 
@@ -448,7 +448,7 @@ internal class EmbeddedBlocksRegistryImpl(
                 handles.any { handle -> handle.isRenewedWhileAway } -> {
                     mindboxLogI("[EmbeddedBlock] A new session began while no screen of the app is resumed, place '$place' is asked once one is")
                     val held = HeldRenewal(renewalPass, pending)
-                    placesAwaitingFirstResume[place] = placesAwaitingFirstResume[place]?.mergedWith(held) ?: held
+                    placesAwaitingResumedScreen[place] = placesAwaitingResumedScreen[place]?.mergedWith(held) ?: held
                 }
                 pending != null -> dropCarriedOperation(place)
                 else -> Unit

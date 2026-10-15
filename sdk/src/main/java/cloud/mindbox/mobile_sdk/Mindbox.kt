@@ -691,7 +691,7 @@ public object Mindbox : MindboxLog {
                 embeddedBlocksRegistry?.onReturnCheckOver()
             }
 
-            override fun onFirstActivityResumed(activity: Activity) {
+            override fun onActivityResumedWhenNoneWas(activity: Activity) {
                 embeddedBlocksRegistry?.onAppResumedOn(activity)
             }
 

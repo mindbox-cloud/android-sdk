@@ -45,7 +45,7 @@ internal class LifecycleManager internal constructor(
 
         fun onAppReturnHandled() {}
 
-        fun onFirstActivityResumed(activity: Activity) {}
+        fun onActivityResumedWhenNoneWas(activity: Activity) {}
     }
 
     companion object {
@@ -196,11 +196,11 @@ internal class LifecycleManager internal constructor(
     override fun onActivityResumed(activity: Activity) {
         mindboxLogI("onActivityResumed. activity: ${activity.javaClass.simpleName}")
         isCurrentActivityResumed = true
-        val isFirstResumed = resumedActivities.isEmpty()
+        val wasNoneResumed = resumedActivities.isEmpty()
         resumedActivities.add(activity)
         isResumeTracked = true
         callbacks?.onActivityResumed(activity)
-        if (isFirstResumed) loggingRunCatching { callbacks?.onFirstActivityResumed(activity) }
+        if (wasNoneResumed) loggingRunCatching { callbacks?.onActivityResumedWhenNoneWas(activity) }
     }
 
     override fun onActivityPaused(activity: Activity) {
