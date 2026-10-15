@@ -1155,6 +1155,28 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `a data push whose sdk scope dies while it waits for the page is reported abandoned, not refused`() {
+        val originalScope = Mindbox.mindboxScope
+        val dyingScope = CoroutineScope(Dispatchers.Default)
+        try {
+            startAndAwaitPageLoad()
+            setMindboxScope(dyingScope)
+            val outcomes = ConcurrentLinkedQueue<DataPushOutcome>()
+            holder.updateParams(mapOf("items" to "[]")) { outcome -> outcomes.add(outcome) }
+            await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
+
+            dyingScope.cancel()
+
+            await { outcomes.isNotEmpty() }
+            letTheShowRecordingSettle()
+            assertEquals(listOf(DataPushOutcome.ABANDONED), outcomes.toList())
+            assertTrue(holder.isDataPushAbandoned)
+        } finally {
+            setMindboxScope(originalScope)
+        }
+    }
+
+    @Test
     fun `a data push the page answers with an error fails at once, without waiting out its ack budget`() {
         startAndAwaitPageLoad()
         var updateResult: DataPushOutcome? = null
@@ -1454,6 +1476,41 @@ class EmbeddedBlockWebViewHolderTest {
 
         verify(exactly = 1, timeout = 5_000L) {
             inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+        }
+    }
+
+    @Test
+    fun `a new session's data push into a dead sdk scope is reported abandoned once, and the session's show waits for the render after the data is sent again`() {
+        renderAndCountTheFirstShow()
+        val originalScope = Mindbox.mindboxScope
+        try {
+            setMindboxScope(CoroutineScope(Dispatchers.Unconfined).also { it.cancel() })
+            val outcomes = mutableListOf<DataPushOutcome>()
+
+            holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) { outcome ->
+                outcomes.add(outcome)
+            }
+
+            assertEquals(listOf(DataPushOutcome.ABANDONED), outcomes)
+            assertTrue(holder.isDataPushAbandoned)
+
+            setMindboxScope(originalScope)
+            holder.pause()
+            holder.start()
+            letTheShowRecordingSettle()
+            verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), 1L) }
+
+            holder.refreshForSession(mapOf("items" to "[]"), sessionEpoch = 1L, selectionTime = Milliseconds(0L)) {}
+            assertFalse(holder.isDataPushAbandoned)
+            answerThePush()
+            postFromPage(request(action = "contentRendered", payload = """{"count":2}""", id = "after-refresh"))
+
+            verify(exactly = 1, timeout = 5_000L) {
+                inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), 1L)
+            }
+            assertEquals(listOf(DataPushOutcome.ABANDONED), outcomes)
+        } finally {
+            setMindboxScope(originalScope)
         }
     }
 

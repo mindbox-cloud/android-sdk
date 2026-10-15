@@ -221,8 +221,11 @@ class EmbeddedBlockContentControllerTest {
             releaseCount++
         }
 
+        override var isDataPushAbandoned = false
+
         override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
             paramUpdates.add(params)
+            isDataPushAbandoned = false
             pushResult = onResult
         }
 
@@ -238,6 +241,7 @@ class EmbeddedBlockContentControllerTest {
             sessionRefreshSelectionTimes.add(selectionTime)
             sessionRefreshParams.add(params)
             check(!crashesOnSessionRefresh) { "the page crashed on the session refresh" }
+            isDataPushAbandoned = false
             pushResult = onResult
         }
 
@@ -1856,6 +1860,48 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(2, providers.size)
         assertEquals(listOf(1L), providers.last().confirmedSessions)
+    }
+
+    @Test
+    fun `a new session's data push the SDK abandoned rebuilds nothing and is sent again by the session's next answer`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        providers.single().pushResult?.invoke(DataPushOutcome.ABANDONED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, providers.size)
+        assertEquals(0, providers.single().releaseCount)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+    }
+
+    @Test
+    fun `a new session's data push the SDK abandoned is sent again by the session's next answer arriving before the abandonment is reported`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+        val abandonedPushResult = providers.single().pushResult
+        providers.single().isDataPushAbandoned = true
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+
+        abandonedPushResult?.invoke(DataPushOutcome.ABANDONED)
+        shadowOf(Looper.getMainLooper()).idle()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(1, providers.size)
+        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
     }
 
     private fun controllerWithRefreshOutlivingItsSession(providers: MutableList<SessionAwareProvider>): EmbeddedBlockContentController {
