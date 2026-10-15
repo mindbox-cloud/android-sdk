@@ -1835,10 +1835,13 @@ class EmbeddedBlocksRegistryTest {
         assertEquals(listOf(SessionEpoch(1L)), handle.answers.map { answer -> answer.sessionEpoch })
     }
 
-    private fun failTheFirstSelection() {
+    private fun failTheFirstSelection(after: CompletableDeferred<Unit>? = null) {
         var selections = 0
         coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
-            if (selections++ == 0) throw IllegalStateException("the selection read no config")
+            if (selections++ == 0) {
+                after?.await()
+                throw IllegalStateException("the selection read no config")
+            }
             winner(configVersion = newerConfig)
         }
     }
@@ -1864,14 +1867,7 @@ class EmbeddedBlocksRegistryTest {
     @Test
     fun `a new session asks again a place whose block started in it before the new session was announced when that start reads no config after the announcement`() {
         val failingStart = CompletableDeferred<Unit>()
-        var selections = 0
-        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
-            if (selections++ == 0) {
-                failingStart.await()
-                throw IllegalStateException("the selection read no config")
-            }
-            winner(configVersion = newerConfig)
-        }
+        failTheFirstSelection(after = failingStart)
         val handle = RecordingHandle()
         val controller = controller()
         controller.register(place, handle)
@@ -1885,8 +1881,30 @@ class EmbeddedBlocksRegistryTest {
         failingStart.complete(Unit)
         idleMain()
 
-        assertEquals(2, selections)
+        coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
         assertEquals(listOf<InAppType.Embedded?>(null, content), handle.received)
+    }
+
+    @Test
+    fun `a new session does not ask again a place whose block started in it and stopped before the new session was announced when that start reads no config after the announcement`() {
+        val failingStart = CompletableDeferred<Unit>()
+        failTheFirstSelection(after = failingStart)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        currentSessionEpoch = SessionEpoch(1L)
+        controller.onBlockAppeared(place)
+        idleMain()
+        handle.isActive = false
+        sessionEpochs.value = SessionEpoch(1L)
+        idleMain()
+
+        failingStart.complete(Unit)
+        idleMain()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(null), handle.received)
     }
 
     @Test
