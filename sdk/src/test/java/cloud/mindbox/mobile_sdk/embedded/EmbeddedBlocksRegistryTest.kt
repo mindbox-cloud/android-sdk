@@ -26,9 +26,11 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +53,8 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
+import kotlin.coroutines.CoroutineContext
 
 /**
  * The central controller is deliberately dumb: a registry and a router. Both directions call
@@ -1944,6 +1948,82 @@ class EmbeddedBlocksRegistryTest {
 
         assertEquals(2, selections)
         assertEquals(listOf<InAppType.Embedded?>(content, null), handle.received)
+    }
+
+    private fun cancelTheSdkScopeAndResubscribe(controller: EmbeddedBlocksRegistryImpl) {
+        val cancelled = scope
+        scope = TestScope(UnconfinedTestDispatcher())
+        cancelled.cancel()
+        controller.startListening()
+        idleMain()
+    }
+
+    @Test
+    fun `a pass cancelled with the sdk scope after a config was announced while it flew leaves its place to the resubscription's ask`() {
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) awaitCancellation()
+            winner(configVersion = newerConfig)
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+        announceNewerConfig()
+
+        cancelTheSdkScopeAndResubscribe(controller)
+
+        assertEquals(2, selections)
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
+    }
+
+    @Test
+    fun `an operation queued behind a pass cancelled with the sdk scope is still asked`() {
+        var selections = 0
+        coEvery { interactor.selectInAppForPlace(place, any()) } coAnswers {
+            if (selections++ == 0) awaitCancellation()
+            winner(configVersion = newerConfig)
+        }
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        controller.onBlockAppeared(place)
+        idleMain()
+        announceNewerConfig()
+        emitQueuedOperation()
+
+        cancelTheSdkScopeAndResubscribe(controller)
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, queuedOperation) }
+    }
+
+    @Test
+    fun `a config announced after a pass read it off the main thread but before its answer reached the main thread does not ask the place again`() {
+        coEvery { interactor.selectInAppForPlace(place, any()) } returns winner(configVersion = newerConfig)
+        val handle = RecordingHandle()
+        val controller = controller()
+        controller.register(place, handle)
+        idleMain()
+        workerScope = CoroutineScope(
+            object : CoroutineDispatcher() {
+                override fun dispatch(context: CoroutineContext, block: Runnable) {
+                    thread { block.run() }.join()
+                }
+            }
+        )
+        try {
+            controller.onBlockAppeared(place)
+        } finally {
+            workerScope = null
+        }
+
+        announceNewerConfig()
+
+        coVerify(exactly = 1) { interactor.selectInAppForPlace(place, any()) }
+        assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
     }
 
     @Test
