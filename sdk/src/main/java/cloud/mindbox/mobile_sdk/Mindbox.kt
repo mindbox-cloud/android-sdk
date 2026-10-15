@@ -1394,7 +1394,8 @@ public object Mindbox : MindboxLog {
         }
     }
 
-    private fun softReinitialization(
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun softReinitialization(
         context: Context,
     ) {
         MindboxDI.appModule.inAppWebViewPrewarmManager.terminate()
