@@ -132,8 +132,18 @@ internal class EmbeddedBlocksRegistryImpl(
         var isConfigAnnouncedMidResolve: Boolean = false
         var isAskedAgainByAppearance: Boolean = false
         var answer: AnsweredPass? = null
+        private var hasStoodInUnanswered: Boolean = false
 
         override fun standsForTheAskOf(sessionEpoch: SessionEpoch): Boolean = answer?.standsForTheAskOf(sessionEpoch) ?: super.standsForTheAskOf(sessionEpoch)
+
+        fun standsInForTheAskOf(sessionEpoch: SessionEpoch): Boolean {
+            if (!standsForTheAskOf(sessionEpoch)) return false
+            if (answer == null) hasStoodInUnanswered = true
+            return true
+        }
+
+        val leavesNewSessionUnanswered: Boolean
+            get() = hasStoodInUnanswered && answer?.configVersion == null
 
         fun isAnsweredFromConfigOlderThan(newest: ConfigVersion?): Boolean {
             if (!isConfigAnnouncedMidResolve || newest == null) return false
@@ -449,11 +459,17 @@ internal class EmbeddedBlocksRegistryImpl(
             runOnMain {
                 resolvingPlaces.remove(place)
                 val isAnsweredFromOlderConfig = inFlight.isAnsweredFromConfigOlderThan(newestConfigVersion)
+                val isNewSessionLeftUnanswered = inFlight.leavesNewSessionUnanswered && cause !is CancellationException
                 val queued = reResolveQueuedPlaces.remove(place)
                 when {
                     queued != null -> {
                         mindboxLogI("[EmbeddedBlock] Re-running queued resolve for place '$place'")
-                        resolveQueued(place, if (isAnsweredFromOlderConfig) queued.mergedWith(ResolvePass(trigger = null)) else queued)
+                        val isAskedAgain = isAnsweredFromOlderConfig || isNewSessionLeftUnanswered
+                        resolveQueued(place, if (isAskedAgain) queued.mergedWith(ResolvePass(trigger = null)) else queued)
+                    }
+                    isNewSessionLeftUnanswered && handlesByPlace.containsKey(place) -> {
+                        mindboxLogI("[EmbeddedBlock] Place '$place': its pass stood for the new session's ask and read no config — asking again")
+                        resolvePlace(place)
                     }
                     isAnsweredFromOlderConfig && cause !is CancellationException && handlesByPlace.containsKey(place) -> {
                         val answeredFrom = inFlight.answer?.configVersion?.number?.toString() ?: "no config"
@@ -532,8 +548,9 @@ internal class EmbeddedBlocksRegistryImpl(
     }
 
     private fun isAnsweredInNewSession(place: PlaceKey, sessionEpoch: SessionEpoch): Boolean {
-        val pass: AskedPass = resolvingPlaces[place] ?: answeredPasses[place] ?: return false
-        if (!pass.standsForTheAskOf(sessionEpoch)) return false
+        val inFlight = resolvingPlaces[place]
+        val isAnswered = inFlight?.standsInForTheAskOf(sessionEpoch) ?: answeredPasses[place]?.standsForTheAskOf(sessionEpoch) ?: false
+        if (!isAnswered) return false
         mindboxLogI("[EmbeddedBlock] Place '$place': a new session, and its pass in flight or its last answer was asked in it with no operation — its answer is the new session's")
         return true
     }
