@@ -19,6 +19,7 @@ import org.junit.Assert.assertFalse
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
+import cloud.mindbox.mobile_sdk.embedded.webview.DataPushOutcome
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -138,7 +139,7 @@ class EmbeddedBlockContentControllerTest {
             params: Map<String, String>,
             sessionEpoch: Long,
             selectionTime: Milliseconds,
-            onResult: (Boolean) -> Unit,
+            onResult: (DataPushOutcome) -> Unit,
         ) = updateParams(params, onResult)
 
         override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) = Unit
@@ -155,7 +156,7 @@ class EmbeddedBlockContentControllerTest {
 
         override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
-        override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
+        override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) = onResult(DataPushOutcome.CONFIRMED)
     }
 
     private val blocksRegistry = FakeBlocksRegistry()
@@ -203,7 +204,7 @@ class EmbeddedBlockContentControllerTest {
         val sessionRefreshParams = mutableListOf<Map<String, String>>()
         val scheduledSessionRefreshes = mutableListOf<Pair<Long, Milliseconds>>()
         val paramUpdates = mutableListOf<Map<String, String>>()
-        var pushResult: ((Boolean) -> Unit)? = null
+        var pushResult: ((DataPushOutcome) -> Unit)? = null
         var releaseCount = 0
         val timeToDisplayBySession = mutableMapOf<Long, Milliseconds>()
         override var rendersNothing = false
@@ -220,7 +221,7 @@ class EmbeddedBlockContentControllerTest {
             releaseCount++
         }
 
-        override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+        override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
             paramUpdates.add(params)
             pushResult = onResult
         }
@@ -231,7 +232,7 @@ class EmbeddedBlockContentControllerTest {
             params: Map<String, String>,
             sessionEpoch: Long,
             selectionTime: Milliseconds,
-            onResult: (Boolean) -> Unit,
+            onResult: (DataPushOutcome) -> Unit,
         ) {
             sessionRefreshes.add(sessionEpoch)
             sessionRefreshSelectionTimes.add(selectionTime)
@@ -837,8 +838,8 @@ class EmbeddedBlockContentControllerTest {
             providerFactory = { _, selectionTime ->
                 selectionTimes.add(selectionTime)
                 object : ReadyUpdatableProvider() {
-                    override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
-                        onResult(false)
+                    override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
+                        onResult(DataPushOutcome.REFUSED)
                     }
                 }
             },
@@ -907,9 +908,9 @@ class EmbeddedBlockContentControllerTest {
     fun `same winner with new params updates the content in place`() {
         var updatedParams: Map<String, String>? = null
         val updatableProvider = object : ReadyUpdatableProvider() {
-            override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+            override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
                 updatedParams = params
-                onResult(true)
+                onResult(DataPushOutcome.CONFIRMED)
             }
         }
         val controller = EmbeddedBlockContentController(
@@ -951,9 +952,9 @@ class EmbeddedBlockContentControllerTest {
         class RecordingUpdatableProvider : ReadyUpdatableProvider() {
             var updatedParams: Map<String, String>? = null
 
-            override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+            override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
                 updatedParams = params
-                onResult(true)
+                onResult(DataPushOutcome.CONFIRMED)
             }
         }
 
@@ -1592,7 +1593,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer())
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer())
 
-        providers.single().pushResult?.invoke(false)
+        providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, providers.size)
@@ -1634,7 +1635,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
-        providers.single().pushResult?.invoke(true)
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
 
         idleFor(Duration.ofMillis(60_000L))
         providers.single().render()
@@ -1850,7 +1851,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
 
-        providers.first().pushResult?.invoke(false)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(2, providers.size)
@@ -1875,7 +1876,7 @@ class EmbeddedBlockContentControllerTest {
         val providers = mutableListOf<SessionAwareProvider>()
         controllerWithRefreshOutlivingItsSession(providers)
 
-        providers.first().pushResult?.invoke(false)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, providers.size)
@@ -1891,7 +1892,7 @@ class EmbeddedBlockContentControllerTest {
     fun `the next session's refusal is held by the page whose refresh was left unconfirmed past the end of its session`() {
         val providers = mutableListOf<SessionAwareProvider>()
         controllerWithRefreshOutlivingItsSession(providers)
-        providers.first().pushResult?.invoke(false)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 2L))
@@ -2024,7 +2025,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
 
-        providers.single().pushResult?.invoke(false)
+        providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
 
@@ -2208,7 +2209,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L, selectionTime = Milliseconds(100L)))
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(400L)))
 
-        providers.first().pushResult?.invoke(false)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(2, providers.size)
@@ -2225,7 +2226,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L, selectionTime = Milliseconds(400L)))
         providers.first().timeToDisplayBySession[1L] = Milliseconds(7_400L)
 
-        providers.first().pushResult?.invoke(false)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(2, providers.size)
@@ -2262,7 +2263,7 @@ class EmbeddedBlockContentControllerTest {
             placeAnswer(sessionEpoch = 0L, selectionTime = Milliseconds(50L)),
         )
 
-        providers.first().pushResult?.invoke(false)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(2, providers.size)
@@ -2815,7 +2816,7 @@ class EmbeddedBlockContentControllerTest {
         val refreshedLayer = (content.layers.single() as Layer.WebViewLayer).copy(params = mapOf("items" to "[]"))
         blocksRegistry.lastHandle?.onContentResolved(content.copy(layers = listOf(refreshedLayer)), placeAnswer())
 
-        providers.single().pushResult?.invoke(false)
+        providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, providers.size)

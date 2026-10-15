@@ -1029,9 +1029,9 @@ class EmbeddedBlockWebViewHolderTest {
         startAndAwaitPageLoad()
         val viewBeforeUpdate = webView
 
-        var updateResult: Boolean? = null
-        holder.updateParams(mapOf("items" to """[{"inAppId":"inapp-2"}]""")) { isUpdated ->
-            updateResult = isUpdated
+        var updateResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to """[{"inAppId":"inapp-2"}]""")) { outcome ->
+            updateResult = outcome
         }
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
 
@@ -1052,7 +1052,7 @@ class EmbeddedBlockWebViewHolderTest {
                 """"id":${outgoing.get("id")},"version":1,"timestamp":2}"""
         )
         await { updateResult != null }
-        assertEquals(true, updateResult)
+        assertEquals(DataPushOutcome.CONFIRMED, updateResult)
         assertTrue(viewBeforeUpdate === webView)
     }
 
@@ -1078,14 +1078,14 @@ class EmbeddedBlockWebViewHolderTest {
         startAndAwaitPageLoad()
         holder.pause()
 
-        var updateResult: Boolean? = null
-        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        var updateResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to "[]")) { outcome -> updateResult = outcome }
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
 
         answerDataPush(lastOutgoingMessage()!!.get("id"))
 
         await { updateResult != null }
-        assertEquals(true, updateResult)
+        assertEquals(DataPushOutcome.CONFIRMED, updateResult)
     }
 
     @Test
@@ -1094,8 +1094,8 @@ class EmbeddedBlockWebViewHolderTest {
         startAndAwaitPageLoad()
         holder.pause()
 
-        var updateResult: Boolean? = null
-        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        var updateResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to "[]")) { outcome -> updateResult = outcome }
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
         val push = lastOutgoingMessage()!!
 
@@ -1106,7 +1106,7 @@ class EmbeddedBlockWebViewHolderTest {
         answerDataPush(push.get("id"))
 
         await { updateResult != null }
-        assertEquals(true, updateResult)
+        assertEquals(DataPushOutcome.CONFIRMED, updateResult)
     }
 
     @Test
@@ -1114,8 +1114,8 @@ class EmbeddedBlockWebViewHolderTest {
         rebuildHolder(ackBudget = Milliseconds(1_000L))
         startAndAwaitPageLoad()
 
-        var updateResult: Boolean? = null
-        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        var updateResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to "[]")) { outcome -> updateResult = outcome }
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
 
         holder.pause()
@@ -1125,23 +1125,23 @@ class EmbeddedBlockWebViewHolderTest {
         holder.start()
 
         await { updateResult != null }
-        assertEquals(false, updateResult)
+        assertEquals(DataPushOutcome.REFUSED, updateResult)
     }
 
     @Test
     fun `a second data push abandons the first wait`() {
         startAndAwaitPageLoad()
 
-        var firstResult: Boolean? = null
-        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> firstResult = isUpdated }
+        var firstResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to "[]")) { outcome -> firstResult = outcome }
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
 
-        var secondResult: Boolean? = null
-        holder.updateParams(mapOf("items" to """[{"inAppId":"inapp-2"}]""")) { isUpdated ->
-            secondResult = isUpdated
+        var secondResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to """[{"inAppId":"inapp-2"}]""")) { outcome ->
+            secondResult = outcome
         }
         await { firstResult != null }
-        assertEquals(false, firstResult)
+        assertEquals(DataPushOutcome.ABANDONED, firstResult)
 
         await {
             lastOutgoingPayload()?.getAsJsonArray("items")?.any { item ->
@@ -1151,14 +1151,14 @@ class EmbeddedBlockWebViewHolderTest {
         answerDataPush(lastOutgoingMessage()!!.get("id"))
 
         await { secondResult != null }
-        assertEquals(true, secondResult)
+        assertEquals(DataPushOutcome.CONFIRMED, secondResult)
     }
 
     @Test
     fun `a data push the page answers with an error fails at once, without waiting out its ack budget`() {
         startAndAwaitPageLoad()
-        var updateResult: Boolean? = null
-        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        var updateResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to "[]")) { outcome -> updateResult = outcome }
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
         val push = lastOutgoingMessage()!!
 
@@ -1168,7 +1168,7 @@ class EmbeddedBlockWebViewHolderTest {
         )
 
         await(timeoutMs = 2_000L) { updateResult != null }
-        assertEquals(false, updateResult)
+        assertEquals(DataPushOutcome.REFUSED, updateResult)
     }
 
     @Test
@@ -1252,8 +1252,8 @@ class EmbeddedBlockWebViewHolderTest {
     @Test
     fun `a page answer without an action is still matched to its push by id`() {
         startAndAwaitPageLoad()
-        var updateResult: Boolean? = null
-        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        var updateResult: DataPushOutcome? = null
+        holder.updateParams(mapOf("items" to "[]")) { outcome -> updateResult = outcome }
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
 
         postFromPage(
@@ -1261,7 +1261,7 @@ class EmbeddedBlockWebViewHolderTest {
         )
 
         await { updateResult != null }
-        assertEquals(true, updateResult)
+        assertEquals(DataPushOutcome.CONFIRMED, updateResult)
     }
 
     @Test
@@ -1275,11 +1275,11 @@ class EmbeddedBlockWebViewHolderTest {
 
     @Test
     fun `updateParams before the page exists reports failure`() {
-        var updateResult: Boolean? = null
+        var updateResult: DataPushOutcome? = null
 
-        holder.updateParams(mapOf("items" to "[]")) { isUpdated -> updateResult = isUpdated }
+        holder.updateParams(mapOf("items" to "[]")) { outcome -> updateResult = outcome }
 
-        assertEquals(false, updateResult)
+        assertEquals(DataPushOutcome.REFUSED, updateResult)
     }
 
     @Test

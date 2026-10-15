@@ -270,7 +270,7 @@ internal class EmbeddedBlockWebViewHolder(
         params: Map<String, String>,
         sessionEpoch: Long,
         selectionTime: Milliseconds,
-        onResult: (Boolean) -> Unit,
+        onResult: (DataPushOutcome) -> Unit,
     ) {
         if (webViewController != null) {
             if (isLaterSession(sessionEpoch)) {
@@ -296,14 +296,19 @@ internal class EmbeddedBlockWebViewHolder(
         }
     }
 
-    override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+    override val isDataPushAbandoned: Boolean
+        get() = pendingAckJob?.isCancelled == true
+
+    override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
+        pendingAckJob?.cancel()
         val controller = webViewController ?: run {
-            onResult(false)
+            pendingAckJob = null
+            onResult(DataPushOutcome.REFUSED)
             return
         }
         layer = layer.copy(params = params)
         didReportShownContent = false
-        pendingAckJob?.cancel()
+        var outcome = DataPushOutcome.REFUSED
         pendingAckJob = Mindbox.mindboxScope.launch {
             val configuration: Configuration = DbManager.listenConfigurations().first()
             val payload = startPayload(configuration)
@@ -319,9 +324,20 @@ internal class EmbeddedBlockWebViewHolder(
                     if (response == null) answer.cancel()
                     response
                 }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
             }.getOrNull() != null
             mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId answered success=$isUpdated")
-            onResult(isUpdated)
+            outcome = if (isUpdated) DataPushOutcome.CONFIRMED else DataPushOutcome.REFUSED
+        }.apply {
+            invokeOnCompletion { cause ->
+                if (cause is CancellationException) {
+                    mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId was abandoned before the page answered it")
+                    onResult(DataPushOutcome.ABANDONED)
+                } else {
+                    onResult(outcome)
+                }
+            }
         }
     }
 
@@ -770,7 +786,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun handleError(message: BridgeMessage.Error) {
         mindboxLogW("[EmbeddedBlock] WebView error message: ${message.payload}")
-        pendingResponsesById.remove(message.id)?.cancel("WebView error: ${message.payload}")
+        pendingResponsesById.remove(message.id)?.completeExceptionally(IllegalStateException("WebView error: ${message.payload}"))
     }
 
     private fun cancelPendingResponses(reason: String) {

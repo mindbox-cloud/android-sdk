@@ -5,6 +5,12 @@ import cloud.mindbox.mobile_sdk.embedded.EmbeddedContentProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 
+internal enum class DataPushOutcome {
+    CONFIRMED,
+    REFUSED,
+    ABANDONED,
+}
+
 /**
  * An updatable provider can refresh its content in place over the bridge (`initDataUpdated`)
  * without recreating the webview — used when a new config keeps the same winner but changes
@@ -12,15 +18,20 @@ import cloud.mindbox.mobile_sdk.models.Milliseconds
  **/
 internal interface EmbeddedUpdatableContentProvider : EmbeddedContentProvider {
 
-    fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit)
+    @MainThread
+    fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit)
 
     @MainThread
     fun refreshForSession(
         params: Map<String, String>,
         sessionEpoch: Long,
         selectionTime: Milliseconds,
-        onResult: (Boolean) -> Unit,
+        onResult: (DataPushOutcome) -> Unit,
     )
+
+    @get:MainThread
+    val isDataPushAbandoned: Boolean
+        get() = false
 
     @MainThread
     fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds)

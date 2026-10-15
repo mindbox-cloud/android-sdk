@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.embedded
 import android.app.Activity
 import android.os.Looper
 import android.view.View
+import cloud.mindbox.mobile_sdk.embedded.webview.DataPushOutcome
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
@@ -2220,14 +2221,14 @@ class EmbeddedBlocksRegistryTest {
             params: Map<String, String>,
             sessionEpoch: Long,
             selectionTime: Milliseconds,
-            onResult: (Boolean) -> Unit,
+            onResult: (DataPushOutcome) -> Unit,
         ) {
             sessionRefreshes.add(sessionEpoch to selectionTime)
             sessionRefreshParams.add(params)
-            onResult(true)
+            onResult(DataPushOutcome.CONFIRMED)
         }
 
-        override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) = onResult(true)
+        override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) = onResult(DataPushOutcome.CONFIRMED)
 
         override fun scheduleSessionRefresh(sessionEpoch: Long, selectionTime: Milliseconds) = Unit
 

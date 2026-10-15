@@ -15,6 +15,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTra
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
+import cloud.mindbox.mobile_sdk.embedded.webview.DataPushOutcome
 import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -125,6 +126,16 @@ internal class EmbeddedBlockContentController(
     private var heldCollapse: EmbeddedBlockState? = null
 
     private var appliedSessionEpoch: Long? = null
+
+    private class DataPush(val sessionEpoch: Long?)
+
+    private var dataPush: DataPush? = null
+
+    private val liveDataPush: DataPush?
+        get() = dataPush?.takeUnless { (provider as? EmbeddedUpdatableContentProvider)?.isDataPushAbandoned == true }
+
+    private val pageSessionEpoch: Long?
+        get() = liveDataPush?.sessionEpoch ?: appliedSessionEpoch
 
     private var dueSessionRefresh: EmbeddedPlaceAnswer? = null
 
@@ -349,7 +360,7 @@ internal class EmbeddedBlockContentController(
             parkedAnswer = null
             dropAnswerOfEndedSession()
         }
-        if (parkedAnswer != null || !isOfEndedSession(appliedSessionEpoch)) return
+        if (parkedAnswer != null || !isOfEndedSession(pageSessionEpoch)) return
         mindboxLogI(
             "[EmbeddedBlock] Block '$placeSystemName' is back on its screen, " +
                 "keeping its page of an ended session until the new session answers"
@@ -565,7 +576,7 @@ internal class EmbeddedBlockContentController(
     private fun winnerWithoutPage(content: InAppType.Embedded): String = "Winner ${content.inAppId} has no webview layer"
 
     private fun isNewSessionFor(answer: EmbeddedPlaceAnswer): Boolean =
-        appliedSessionEpoch?.let { pageSession -> answer.sessionEpoch > pageSession } == true
+        pageSessionEpoch?.let { pageSession -> answer.sessionEpoch > pageSession } == true
 
     private fun keepingFirstSelectionOfNewSession(answer: EmbeddedPlaceAnswer, earlier: EmbeddedPlaceAnswer?): EmbeddedPlaceAnswer {
         val first = earlier?.takeIf { held -> held.sessionEpoch == answer.sessionEpoch && isNewSessionFor(answer) } ?: return answer
@@ -622,19 +633,24 @@ internal class EmbeddedBlockContentController(
         val descriptor = descriptorOf(content.inAppId, layer)
         val epoch = ++updateEpoch
         val isNewSession = isNewSessionFor(answer)
-        val previousSessionEpoch = appliedSessionEpoch
-        if (isNewSession) appliedSessionEpoch = answer.sessionEpoch
-        val onResult: (Boolean) -> Unit = { isUpdated ->
+        val push = DataPush(sessionEpoch = if (isNewSession) answer.sessionEpoch else pageSessionEpoch)
+        dataPush = push
+        val onResult: (DataPushOutcome) -> Unit = { outcome ->
             mainHandler.post {
                 if (isReleased || provider !== current || epoch != updateEpoch) return@post
+                dataPush = null
                 when {
-                    isUpdated -> {
+                    outcome == DataPushOutcome.CONFIRMED -> {
                         appliedDescriptor = descriptor
                         appliedContent = content
+                        appliedSessionEpoch = push.sessionEpoch
                     }
+                    outcome == DataPushOutcome.ABANDONED -> mindboxLogI(
+                        "[EmbeddedBlock] The data push to the page of '$placeSystemName' was abandoned before the page answered, " +
+                            "the place's next answer sends it again"
+                    )
                     heldOutcome != null -> {
                         mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed while the block has nothing to show, not rebuilding")
-                        if (isNewSession && appliedSessionEpoch == answer.sessionEpoch) appliedSessionEpoch = previousSessionEpoch
                     }
                     isOfEndedSession(answer.sessionEpoch) -> mindboxLogI(
                         "[EmbeddedBlock] The page of '$placeSystemName' did not take the data of a session that has ended, " +
@@ -875,6 +891,7 @@ internal class EmbeddedBlockContentController(
         provider?.let { current -> loggingRunCatching { current.release() } }
         provider = null
         appliedSessionEpoch = null
+        dataPush = null
         dueSessionRefresh = null
         heldCollapse = null
     }
