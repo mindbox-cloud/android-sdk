@@ -423,18 +423,19 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `a delayed winner keeps the config wait of its first selection when the config's arrival re-checks the place`() {
-        val configLoaded = CompletableDeferred<Unit>()
+    fun `a delayed winner keeps the selection time of its first pass when a newer config announced mid-resolve asks the place again`() {
+        val firstPassGate = CompletableDeferred<Unit>()
         var selections = 0
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } coAnswers {
             selections++
             if (selections == 1) {
-                configLoaded.await()
+                firstPassGate.await()
                 advance(Milliseconds(1_070L))
+                winner(delay = Milliseconds(10_000L), configVersion = olderConfig)
             } else {
                 advance(Milliseconds(15L))
+                winner(delay = Milliseconds(10_000L), configVersion = newerConfig)
             }
-            winner(delay = Milliseconds(10_000L))
         }
         val handle = RecordingHandle()
         val controller = controller()
@@ -445,7 +446,7 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         scope.launch { configVersions.emit(newerConfig) }
         idleMain()
-        configLoaded.complete(Unit)
+        firstPassGate.complete(Unit)
         idleMain()
         scope.testScheduler.advanceTimeBy(10_001L)
         scope.testScheduler.runCurrent()

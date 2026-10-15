@@ -34,6 +34,7 @@ import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import com.android.volley.VolleyError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,7 +70,7 @@ internal class MobileConfigRepositoryImpl(
 
     private val configState = MutableStateFlow(ConfigState(current = null, lastPublished = null))
 
-    private val configVersions = MutableSharedFlow<ConfigVersion>(extraBufferCapacity = 1)
+    private val configVersions = MutableSharedFlow<ConfigVersion>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     private var configSubscription: Job? = null
 

@@ -13,6 +13,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.managers.LifecycleManager
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
@@ -109,7 +110,36 @@ internal class EmbeddedBlocksRegistryImpl(
     // PopupWindow, an app that swaps views itself — only lets its block go, and a strong entry in
     // this process-wide map would keep the block, its view and the Activity behind it alive.
     private val handlesByPlace = mutableMapOf<PlaceKey, MutableList<WeakReference<EmbeddedBlockHandle>>>()
-    private val resolvingPlaces = mutableSetOf<PlaceKey>()
+
+    private interface AskedPass {
+        val askedInSession: Long
+        val isTriggered: Boolean
+
+        fun isOperationFreeAskOf(sessionEpoch: Long): Boolean = askedInSession == sessionEpoch && !isTriggered
+    }
+
+    private class AnsweredPass(
+        override val askedInSession: Long,
+        override val isTriggered: Boolean,
+        val configVersion: ConfigVersion?,
+    ) : AskedPass
+
+    private class PassInFlight(override val askedInSession: Long, override val isTriggered: Boolean) : AskedPass {
+        var isConfigAnnouncedMidResolve: Boolean = false
+        var answer: AnsweredPass? = null
+
+        fun isAnsweredFromConfigOlderThan(newest: ConfigVersion?): Boolean {
+            if (!isConfigAnnouncedMidResolve || newest == null) return false
+            val answeredFrom = answer?.configVersion ?: return true
+            return answeredFrom < newest
+        }
+    }
+
+    private val resolvingPlaces = mutableMapOf<PlaceKey, PassInFlight>()
+
+    private val answeredPasses = mutableMapOf<PlaceKey, AnsweredPass>()
+
+    private var newestConfigVersion: ConfigVersion? = null
 
     private class SessionRenewal(val sessionEpoch: Long, val tick: Milliseconds)
 
@@ -184,8 +214,8 @@ internal class EmbeddedBlocksRegistryImpl(
         val scope = scopeProvider()
         channelJobs = listOf(
             scope.launch {
-                inAppInteractor.listenConfigVersions().collect {
-                    runOnMain { invalidateAll(reason = "config update") }
+                inAppInteractor.listenConfigVersions().collect { version ->
+                    runOnMain { onConfigPublished(version) }
                 }
             },
             scope.launch {
@@ -278,7 +308,9 @@ internal class EmbeddedBlocksRegistryImpl(
             placesAwaitingResumedScreen.clear()
             held.forEach { (place, renewal) ->
                 val handles = liveHandles(place)
+                val renewedSession = renewal.pass.renewal?.sessionEpoch
                 when {
+                    renewal.pending == null && renewedSession != null && isAnsweredInNewSession(place, renewedSession) -> Unit
                     handles.any { handle -> handle.isActive || handle.isRenewedWhileAway } -> {
                         mindboxLogI("[EmbeddedBlock] The app is back on screen, asking place '$place' for its new session")
                         resolvePlace(place, renewal.pass.askedAt(monotonicNow()))
@@ -311,6 +343,7 @@ internal class EmbeddedBlocksRegistryImpl(
     private fun forgetPlaceIfEmpty(place: PlaceKey) {
         if (handlesByPlace[place]?.isEmpty() != true) return
         handlesByPlace.remove(place)
+        answeredPasses.remove(place)
         reResolveQueuedPlaces.remove(place)
         placesAwaitingNewSession.remove(place)
         placesAwaitingReturnCheck.remove(place)
@@ -343,7 +376,7 @@ internal class EmbeddedBlocksRegistryImpl(
             placesAwaitingNewSession.merge(place, pass)
             return
         }
-        if (!resolvingPlaces.add(place)) {
+        if (place in resolvingPlaces) {
             mindboxLogI(
                 "[EmbeddedBlock] Place '$place' is already resolving, queueing one more pass"
             )
@@ -351,6 +384,8 @@ internal class EmbeddedBlocksRegistryImpl(
             reResolveQueuedPlaces.merge(place, pass)
             return
         }
+        val inFlight = PassInFlight(askedInSession = sessionEpoch, isTriggered = pass.trigger != null)
+        resolvingPlaces[place] = inFlight
         val triggerEvent = pass.trigger
         val isByOperation = triggerEvent != null && !pass.includesNonOperation
         val requestedAt = pass.renewal?.takeIf { renewal -> renewal.sessionEpoch == sessionEpoch }?.tick ?: monotonicNow()
@@ -371,6 +406,9 @@ internal class EmbeddedBlocksRegistryImpl(
             val selectionTime = Milliseconds(monotonicNow().interval - requestedAt.interval)
             runOnMain {
                 val hasAppearedMidResolve = placesAppearedMidResolve.remove(place)
+                val answered = AnsweredPass(sessionEpoch, inFlight.isTriggered, resolved.getOrNull()?.configVersion)
+                inFlight.answer = answered
+                if (inAppInteractor.isLiveSession(sessionEpoch)) answeredPasses[place] = answered
                 val delivered = EmbeddedPlaceAnswer(
                     sessionEpoch = sessionEpoch,
                     isByOperation = isByOperation && !hasAppearedMidResolve,
@@ -386,9 +424,18 @@ internal class EmbeddedBlocksRegistryImpl(
             runOnMain {
                 resolvingPlaces.remove(place)
                 placesAppearedMidResolve.remove(place)
-                reResolveQueuedPlaces.remove(place)?.let { queued ->
-                    mindboxLogI("[EmbeddedBlock] Re-running queued resolve for place '$place'")
-                    resolveQueued(place, queued)
+                val isAnsweredFromOlderConfig = inFlight.isAnsweredFromConfigOlderThan(newestConfigVersion)
+                val queued = reResolveQueuedPlaces.remove(place)
+                when {
+                    queued != null -> {
+                        mindboxLogI("[EmbeddedBlock] Re-running queued resolve for place '$place'")
+                        resolveQueued(place, if (isAnsweredFromOlderConfig) queued.mergedWith(ResolvePass(trigger = null)) else queued)
+                    }
+                    isAnsweredFromOlderConfig && handlesByPlace.containsKey(place) -> {
+                        val answeredFrom = inFlight.answer?.configVersion?.number?.toString() ?: "no config"
+                        mindboxLogI("[EmbeddedBlock] Place '$place': answered from config $answeredFrom, older than ${newestConfigVersion?.number} — asking again")
+                        resolvePlace(place)
+                    }
                 }
             }
         }
@@ -441,6 +488,7 @@ internal class EmbeddedBlocksRegistryImpl(
             )
             when {
                 handles.isEmpty() -> Unit
+                pending == null && isAnsweredInNewSession(place, renewal.sessionEpoch) -> Unit
                 handles.any { handle -> handle.isActive } || (isPresent && handles.any { handle -> handle.isRenewedWhileAway }) -> {
                     mindboxLogI("[EmbeddedBlock] A new session began, asking place '$place' again")
                     resolvePlace(place, renewalPass)
@@ -454,6 +502,13 @@ internal class EmbeddedBlocksRegistryImpl(
                 else -> Unit
             }
         }
+    }
+
+    private fun isAnsweredInNewSession(place: PlaceKey, sessionEpoch: Long): Boolean {
+        val pass: AskedPass = resolvingPlaces[place] ?: answeredPasses[place] ?: return false
+        if (!pass.isOperationFreeAskOf(sessionEpoch)) return false
+        mindboxLogI("[EmbeddedBlock] Place '$place': a new session, and its pass in flight or its last answer was asked in it with no operation — its answer is the new session's")
+        return true
     }
 
     private fun dropCarriedOperation(place: PlaceKey) {
@@ -488,19 +543,44 @@ internal class EmbeddedBlocksRegistryImpl(
     private val isHandledSessionOver: Boolean
         get() = handledSessionEpoch?.let { handled -> !inAppInteractor.isLiveSession(handled) } == true
 
+    private fun onConfigPublished(version: ConfigVersion) {
+        newestConfigVersion = maxOf(newestConfigVersion ?: version, version)
+        forEachActivePlace(reason = "config update") { place -> askForConfig(place, version) }
+    }
+
+    private fun askForConfig(place: PlaceKey, version: ConfigVersion) {
+        val inFlight = resolvingPlaces[place]
+        val answeredFrom = answeredPasses[place]?.configVersion
+        when {
+            inFlight != null -> {
+                inFlight.isConfigAnnouncedMidResolve = true
+                mindboxLogI("[EmbeddedBlock] Place '$place': config ${version.number} arrived while its pass is in flight — that pass answers from it or is asked again when it lands")
+            }
+            answeredFrom != null && answeredFrom >= version ->
+                mindboxLogI("[EmbeddedBlock] Place '$place': already answered from config ${version.number} — not asking again")
+            else -> reResolve(place, reason = "config update")
+        }
+    }
+
     private fun invalidateAll(reason: String) {
+        forEachActivePlace(reason) { place -> reResolve(place, reason) }
+    }
+
+    private fun forEachActivePlace(reason: String, action: (PlaceKey) -> Unit) {
         handlesByPlace.keys.toList().forEach { place ->
             val handles = liveHandles(place)
             when {
                 handles.isEmpty() -> Unit
-                handles.any { handle -> handle.isActive } -> {
-                    mindboxLogI("[EmbeddedBlock] Re-resolving place '$place' ($reason)")
-                    resolvePlace(place)
-                }
+                handles.any { handle -> handle.isActive } -> action(place)
                 else ->
                     mindboxLogI("[EmbeddedBlock] Place '$place' is paused, nowhere to display — skipping ($reason)")
             }
         }
+    }
+
+    private fun reResolve(place: PlaceKey, reason: String) {
+        mindboxLogI("[EmbeddedBlock] Re-resolving place '$place' ($reason)")
+        resolvePlace(place)
     }
 
     private fun handleResolved(place: PlaceKey, outcome: EmbeddedResolveOutcome, answer: EmbeddedPlaceAnswer) {
