@@ -1680,6 +1680,102 @@ class EmbeddedBlockContentControllerTest {
         assertTrue(providers.single().paramUpdates.isEmpty())
     }
 
+    private fun contentWithParams(params: Map<String, String>): InAppType.Embedded =
+        content.copy(layers = listOf((content.layers.single() as Layer.WebViewLayer).copy(params = params)))
+
+    @Test
+    fun `a new session's content with new params answered twice before the page takes them is sent to the page once`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        val refreshed = contentWithParams(mapOf("items" to "[]"))
+
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(listOf(1L), providers.single().sessionRefreshes)
+        assertTrue(providers.single().paramUpdates.isEmpty())
+    }
+
+    @Test
+    fun `other params answered while a new session's params are on their way to the page replace them`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[]")), placeAnswer(sessionEpoch = 1L))
+
+        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[1]")), placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(listOf(mapOf("items" to "[]")), providers.single().sessionRefreshParams)
+        assertEquals(listOf(mapOf("items" to "[1]")), providers.single().paramUpdates)
+    }
+
+    @Test
+    fun `the params a page shows answered while a new session's other params are on their way to it are sent to it again`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        blocksRegistry.lastHandle?.onContentResolved(contentWithParams(mapOf("items" to "[]")), placeAnswer(sessionEpoch = 1L))
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), providers.single().paramUpdates)
+    }
+
+    @Test
+    fun `a later session answering with the params on their way to the page refreshes the page for that session with those params`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        val refreshed = contentWithParams(mapOf("items" to "[]"))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 2L))
+
+        assertEquals(listOf(1L, 2L), providers.single().sessionRefreshes)
+        assertEquals(listOf(mapOf("items" to "[]"), mapOf("items" to "[]")), providers.single().sessionRefreshParams)
+        assertTrue(providers.single().paramUpdates.isEmpty())
+    }
+
+    @Test
+    fun `a new session's params the page could not take while a collapse is held are sent again once the same content clears the hold`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        val refreshed = contentWithParams(mapOf("items" to "[]"))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = 1L))
+
+        providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
+        shadowOf(Looper.getMainLooper()).idle()
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(1, providers.size)
+        assertEquals(listOf(1L, 1L), providers.single().sessionRefreshes)
+        assertEquals(listOf(mapOf("items" to "[]"), mapOf("items" to "[]")), providers.single().sessionRefreshParams)
+    }
+
+    @Test
+    fun `content whose params were on their way to a page that another winner replaced builds its page again`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = 0L))
+        val refreshed = contentWithParams(mapOf("items" to "[]"))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "another-winner"), placeAnswer(sessionEpoch = 1L))
+
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = 1L))
+
+        assertEquals(3, providers.size)
+        assertEquals(1, providers[1].releaseCount)
+    }
+
     @Test
     fun `new params for a page still loading rebuild it instead of updating it in place`() {
         val providers = mutableListOf<SessionAwareProvider>()
