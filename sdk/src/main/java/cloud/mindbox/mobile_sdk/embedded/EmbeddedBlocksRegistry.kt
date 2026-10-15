@@ -127,6 +127,7 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private class PassInFlight(override val askedInSession: SessionEpoch, override val isTriggered: Boolean) : AskedPass {
         var isConfigAnnouncedMidResolve: Boolean = false
+        var isAskedAgainByAppearance: Boolean = false
         var answer: AnsweredPass? = null
 
         fun isAnsweredFromConfigOlderThan(newest: ConfigVersion?): Boolean {
@@ -183,8 +184,6 @@ internal class EmbeddedBlocksRegistryImpl(
     private val placesAwaitingReturnCheck = mutableMapOf<PlaceKey, ResolvePass>()
 
     private val placesAwaitingResumedScreen = mutableMapOf<PlaceKey, HeldRenewal>()
-
-    private val placesAppearedMidResolve = mutableSetOf<PlaceKey>()
 
     private var handledSessionEpoch: SessionEpoch? = null
 
@@ -377,11 +376,12 @@ internal class EmbeddedBlocksRegistryImpl(
             placesAwaitingNewSession.merge(place, pass)
             return
         }
-        if (place in resolvingPlaces) {
+        val running = resolvingPlaces[place]
+        if (running != null) {
             mindboxLogI(
                 "[EmbeddedBlock] Place '$place' is already resolving, queueing one more pass"
             )
-            if (pass.includesAppearance) placesAppearedMidResolve.add(place)
+            if (pass.includesAppearance) running.isAskedAgainByAppearance = true
             reResolveQueuedPlaces.merge(place, pass)
             return
         }
@@ -406,13 +406,12 @@ internal class EmbeddedBlocksRegistryImpl(
             }
             val selectionTime = Milliseconds(monotonicNow().interval - requestedAt.interval)
             runOnMain {
-                val hasAppearedMidResolve = placesAppearedMidResolve.remove(place)
                 val answered = AnsweredPass(sessionEpoch, inFlight.isTriggered, resolved.getOrNull()?.configVersion)
                 inFlight.answer = answered
                 if (inAppInteractor.isLiveSession(sessionEpoch)) answeredPasses[place] = answered
                 val delivered = EmbeddedPlaceAnswer(
                     sessionEpoch = sessionEpoch,
-                    isByOperation = isByOperation && !hasAppearedMidResolve,
+                    isByOperation = isByOperation && !inFlight.isAskedAgainByAppearance,
                     selectionTime = selectionTime,
                 )
                 resolved.fold(
@@ -424,7 +423,6 @@ internal class EmbeddedBlocksRegistryImpl(
         job.invokeOnCompletion {
             runOnMain {
                 resolvingPlaces.remove(place)
-                placesAppearedMidResolve.remove(place)
                 val isAnsweredFromOlderConfig = inFlight.isAnsweredFromConfigOlderThan(newestConfigVersion)
                 val queued = reResolveQueuedPlaces.remove(place)
                 when {
