@@ -117,19 +117,23 @@ internal class EmbeddedBlocksRegistryImpl(
         val askedInSession: SessionEpoch
         val isTriggered: Boolean
 
-        fun isOperationFreeAskOf(sessionEpoch: SessionEpoch): Boolean = askedInSession == sessionEpoch && !isTriggered
+        fun standsForTheAskOf(sessionEpoch: SessionEpoch): Boolean = askedInSession == sessionEpoch && !isTriggered
     }
 
     private class AnsweredPass(
         override val askedInSession: SessionEpoch,
         override val isTriggered: Boolean,
         val configVersion: ConfigVersion?,
-    ) : AskedPass
+    ) : AskedPass {
+        override fun standsForTheAskOf(sessionEpoch: SessionEpoch): Boolean = configVersion != null && super.standsForTheAskOf(sessionEpoch)
+    }
 
     private class PassInFlight(override val askedInSession: SessionEpoch, override val isTriggered: Boolean) : AskedPass {
         var isConfigAnnouncedMidResolve: Boolean = false
         var isAskedAgainByAppearance: Boolean = false
         var answer: AnsweredPass? = null
+
+        override fun standsForTheAskOf(sessionEpoch: SessionEpoch): Boolean = answer?.standsForTheAskOf(sessionEpoch) ?: super.standsForTheAskOf(sessionEpoch)
 
         fun isAnsweredFromConfigOlderThan(newest: ConfigVersion?): Boolean {
             if (!isConfigAnnouncedMidResolve || newest == null) return false
@@ -509,7 +513,7 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private fun isAnsweredInNewSession(place: PlaceKey, sessionEpoch: SessionEpoch): Boolean {
         val pass: AskedPass = resolvingPlaces[place] ?: answeredPasses[place] ?: return false
-        if (!pass.isOperationFreeAskOf(sessionEpoch)) return false
+        if (!pass.standsForTheAskOf(sessionEpoch)) return false
         mindboxLogI("[EmbeddedBlock] Place '$place': a new session, and its pass in flight or its last answer was asked in it with no operation — its answer is the new session's")
         return true
     }
