@@ -494,6 +494,75 @@ internal class MobileConfigRepositoryImplTest {
         assertFalse(sessionState.configFetchingError)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `after a reset a soft re-init that abandons the hung download publishes the config downloaded again to a waiting reader`() = withStoredConfig { stored ->
+        stored.value = "cached"
+        val repository = createRepository(gatewayManager = gatewayAnswering(CompletableDeferred(), CompletableDeferred("downloaded again")))
+        repository.startListening()
+        MindboxPreferences.inAppConfigFlow.emit("cached")
+        repository.resetCurrentConfig()
+        backgroundScope.launch { repository.fetchMobileConfig() }
+        val reader = async { repository.getInAppsSectionIfAvailable() }
+        runCurrent()
+
+        Mindbox.mindboxScope.cancel()
+        setMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+        repository.startListening()
+        if (repository.abandonAwaitedDownload()) repository.fetchMobileConfig()
+        MindboxPreferences.inAppConfigFlow.emit("downloaded again")
+        runCurrent()
+
+        assertTrue(reader.isCompleted)
+        assertNotNull(reader.await())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `a download abandoned by a soft re-init stores nothing when it concludes after the one requested again`() = withStoredConfig { stored ->
+        val abandoned = CompletableDeferred<String>()
+        val repository = createRepository(gatewayManager = gatewayAnswering(abandoned, CompletableDeferred("of the new endpoint")))
+        repository.startListening()
+        repository.resetCurrentConfig()
+        val abandonedFetch = launch { repository.fetchMobileConfig() }
+        runCurrent()
+
+        assertTrue(repository.abandonAwaitedDownload())
+        repository.fetchMobileConfig()
+        abandoned.complete("of the old endpoint")
+        abandonedFetch.join()
+
+        assertEquals("of the new endpoint", stored.value)
+        assertEquals(1L, stored.writes)
+    }
+
+    @Test
+    fun `a soft re-init abandons no download while no session awaits one`() {
+        assertFalse(repository.abandonAwaitedDownload())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `a soft re-init abandons no download once the awaited one has concluded`() = withStoredConfig {
+        val gateway = mockk<GatewayManager> { coEvery { fetchMobileConfig(any()) } returns "downloaded" }
+        val repository = createRepository(gatewayManager = gateway)
+        repository.startListening()
+        repository.resetCurrentConfig()
+        repository.fetchMobileConfig()
+
+        assertFalse(repository.abandonAwaitedDownload())
+
+        MindboxPreferences.inAppConfigFlow.emit("downloaded")
+
+        assertTrue(repository.hasConfig())
+        assertFalse(repository.abandonAwaitedDownload())
+    }
+
+    private fun gatewayAnswering(vararg downloads: CompletableDeferred<String>): GatewayManager {
+        val pending = ArrayDeque(downloads.toList())
+        return mockk { coEvery { fetchMobileConfig(any()) } coAnswers { pending.removeFirst().await() } }
+    }
+
     private fun volleyError(statusCode: Int): VolleyError =
         VolleyError(NetworkResponse(statusCode, ByteArray(0), false, 0L, emptyList()))
 
