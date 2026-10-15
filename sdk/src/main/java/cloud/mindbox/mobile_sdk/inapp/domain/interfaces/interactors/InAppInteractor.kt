@@ -29,8 +29,9 @@ internal interface InAppInteractor {
     suspend fun listenToTargetingEvents()
 
     /**
-     * Emits the version of every config once it is applied — unlike the raw preference flow, this
+     * Emits the version of a config once it is applied — unlike the raw preference flow, this
      * fires only after the config is readable, so a pass asked on the emission reads that version or a newer one.
+     * A collector that falls behind receives the newest version only.
      */
     fun listenConfigVersions(): Flow<ConfigVersion>
 
