@@ -415,7 +415,7 @@ internal class EmbeddedBlocksRegistryImpl(
             runOnMain {
                 val answered = AnsweredPass(sessionEpoch, inFlight.isTriggered, resolved.getOrNull()?.configVersion)
                 inFlight.answer = answered
-                if (inAppInteractor.isLiveSession(sessionEpoch)) answeredPasses[place] = answered
+                if (inAppInteractor.isLiveSession(sessionEpoch) && handlesByPlace.containsKey(place)) answeredPasses[place] = answered
                 val delivered = EmbeddedPlaceAnswer(
                     sessionEpoch = sessionEpoch,
                     isByOperation = isByOperation && !inFlight.isAskedAgainByAppearance,
