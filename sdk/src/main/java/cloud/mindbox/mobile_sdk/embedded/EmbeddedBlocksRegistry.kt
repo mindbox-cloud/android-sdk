@@ -206,8 +206,8 @@ internal class EmbeddedBlocksRegistryImpl(
 
     private companion object {
         fun List<ResolvePass>.holding(pass: ResolvePass): List<ResolvePass> {
-            val newest = lastOrNull() ?: return listOf(pass)
-            return if (newest.trigger != null && pass.trigger != null) this + pass else dropLast(1) + newest.mergedWith(pass)
+            val first = firstOrNull() ?: return listOf(pass)
+            return if (first.trigger != null && pass.trigger != null) this + pass else listOf(first.mergedWith(pass)) + drop(1)
         }
     }
 
