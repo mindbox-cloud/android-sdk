@@ -116,7 +116,6 @@ class EmbeddedResolveInteractorTest {
     @Before
     fun setUp() {
         every { sessionStorageManager.state } returns sessionState
-        every { mobileConfigRepository.hasConfig() } returns true
         frequencyManager = spyk(InAppFrequencyManagerImpl(inAppRepository))
         interactor = InAppInteractorImpl(
             mobileConfigRepository = mobileConfigRepository,

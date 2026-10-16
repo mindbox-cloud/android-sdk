@@ -102,9 +102,6 @@ internal class MobileConfigRepositoryImpl(
         }
     }
 
-    /** Where the next published config comes from, for its log line. */
-    @Volatile private var nextConfigSource = "cache"
-
     override suspend fun fetchMobileConfig() {
         val generation = synchronized(publicationLock) { configGeneration }
         val downloaded = try {
@@ -116,7 +113,6 @@ internal class MobileConfigRepositoryImpl(
             throw error
         }
         concludeDownload(generation) {
-            nextConfigSource = "downloaded"
             MindboxPreferences.inAppConfig = downloaded
             MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
         }
@@ -135,12 +131,10 @@ internal class MobileConfigRepositoryImpl(
 
     private fun storeAfterFailedDownload(error: Throwable) {
         if (error is VolleyError && error.networkResponse?.statusCode == MobileConfigRepository.CONFIG_NOT_FOUND) {
-            nextConfigSource = "empty"
             MindboxPreferences.inAppConfig = ""
             return
         }
         if (error is VolleyError) sessionStorageManager.state.configFetchingError = true
-        nextConfigSource = if (MindboxPreferences.inAppConfig.isBlank()) "no config" else "cache"
         // needed to trigger flow event
         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
     }
@@ -201,8 +195,7 @@ internal class MobileConfigRepositoryImpl(
         // Prewarm stage 2: warm what the config's webview in-apps will need
         // (or release the warm instance when the config proves there are none).
         inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
-        mindboxLogI(message = "Config ${entry.version.number} is ready ($nextConfigSource): $updatedInAppConfig")
-        nextConfigSource = "cache"
+        mindboxLogI(message = "Config ${entry.version.number} is ready: $updatedInAppConfig")
     }
 
     override fun listenConfigVersions(): Flow<ConfigVersion> = configVersions
@@ -430,7 +423,10 @@ internal class MobileConfigRepositoryImpl(
 
     private suspend fun getConfig(): InAppConfig = awaitConfigEntry().config
 
-    private suspend fun awaitConfigEntry(): ConfigEntry = configState.mapNotNull { state -> state.current }.first()
+    private suspend fun awaitConfigEntry(): ConfigEntry {
+        if (configState.value.current == null) mindboxLogI("No config of this session yet, waiting for it")
+        return configState.mapNotNull { state -> state.current }.first()
+    }
 
     private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean, val version: ConfigVersion)
 

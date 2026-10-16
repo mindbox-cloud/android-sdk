@@ -153,7 +153,6 @@ internal class InAppInteractorImpl(
         triggerEvent: InAppEventType,
         isRetryAfterSessionReset: Boolean,
     ): EmbeddedResolveOutcome {
-        if (!mobileConfigRepository.hasConfig()) logI("No config of this session yet, place '$placeSystemName' waits for it")
         val section = mobileConfigRepository.getInAppsSectionIfAvailable()
         val configVersion = section.configVersion
         val inApps = section.inApps ?: run {
