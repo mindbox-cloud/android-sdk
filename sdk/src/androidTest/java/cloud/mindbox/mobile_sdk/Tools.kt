@@ -12,5 +12,5 @@ fun setDatabaseTestMode(isTestMode: Boolean) {
 
 fun initCoreComponents() {
     // for cancel method after test
-    Mindbox.initComponents(InstrumentationRegistry.getInstrumentation().targetContext, null)
+    Mindbox.initComponents(InstrumentationRegistry.getInstrumentation().targetContext)
 }

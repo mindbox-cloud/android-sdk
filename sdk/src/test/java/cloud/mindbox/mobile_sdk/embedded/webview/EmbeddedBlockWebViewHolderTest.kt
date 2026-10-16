@@ -1426,6 +1426,42 @@ class EmbeddedBlockWebViewHolderTest {
         }
     }
 
+    private fun EmbeddedBlockWebViewHolder.retainedMarkup(): Any? {
+        val field = EmbeddedBlockWebViewHolder::class.java.getDeclaredField("lastLoadedContent")
+        field.isAccessible = true
+        return field.get(this)
+    }
+
+    @Test
+    fun `the page markup is let go once the page answers`() {
+        startAndAwaitPageLoad()
+        assertTrue(holder.retainedMarkup() != null)
+
+        postFromPage(request("init", "{}"))
+
+        assertNull(holder.retainedMarkup())
+    }
+
+    @Test
+    fun `release cancels a content fetch still in flight`() {
+        var isFetching = false
+        var wasCancelled = false
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers {
+            isFetching = true
+            try {
+                kotlinx.coroutines.awaitCancellation()
+            } finally {
+                wasCancelled = true
+            }
+        }
+        holder.start()
+        await { isFetching }
+
+        holder.release()
+
+        await { wasCancelled }
+    }
+
     @Test
     fun `release destroys the webview and start after release does nothing`() {
         startAndAwaitPageLoad()

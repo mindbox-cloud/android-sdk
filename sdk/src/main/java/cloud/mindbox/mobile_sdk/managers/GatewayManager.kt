@@ -471,17 +471,18 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     }
 
     suspend fun fetchWebViewContent(contentUrl: String): String {
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
             try {
                 val request = WebViewContentRequest(
                     url = contentUrl,
-                    listener = { response -> continuation.resume(response) },
-                    errorListener = { error -> continuation.resumeWithException(error) },
+                    listener = { response -> if (continuation.isActive) continuation.resume(response) },
+                    errorListener = { error -> if (continuation.isActive) continuation.resumeWithException(error) },
                 )
+                continuation.invokeOnCancellation { request.cancel() }
                 mindboxServiceGenerator.addToRequestQueue(request)
             } catch (e: Exception) {
                 mindboxLogE("Failed to fetch WebView content", e)
-                continuation.resumeWithException(e)
+                if (continuation.isActive) continuation.resumeWithException(e)
             }
         }
     }

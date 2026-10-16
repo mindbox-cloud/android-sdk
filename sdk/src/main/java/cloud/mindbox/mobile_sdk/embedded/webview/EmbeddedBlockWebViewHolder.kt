@@ -200,6 +200,8 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var pendingAckJob: Job? = null
 
+    @Volatile private var loadJob: Job? = null
+
     override fun start() {
         if (isReleased) return
         presence.value = true
@@ -223,11 +225,13 @@ internal class EmbeddedBlockWebViewHolder(
         presence.value = false
         isReleased = true
         pendingAckJob?.cancel()
+        loadJob?.cancel()
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
         }
         heldFailure.set(null)
+        lastLoadedContent = null
         cancelPendingResponses("Embedded block content is released")
         webViewController?.let { controller ->
             controller.setEventListener(null)
@@ -353,7 +357,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
         webViewController = controller
 
-        Mindbox.mindboxScope.launch {
+        loadJob = Mindbox.mindboxScope.launch {
             val configuration: Configuration = DbManager.listenConfigurations().first()
             val handlers = createActionHandlers(configuration)
 
@@ -439,7 +443,7 @@ internal class EmbeddedBlockWebViewHolder(
             commonBridgeActions.register(this)
             registerSuspend(WebViewAction.READY) { handleReadyAction(configuration) }
             register(WebViewAction.INIT) {
-                hasPageAnswered = true
+                onPageAnswered()
                 BridgeMessage.SUCCESS_PAYLOAD
             }
             register(WebViewAction.CONTENT_RENDERED, ::handleContentRenderedAction)
@@ -447,9 +451,14 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     private fun handleReadyAction(configuration: Configuration): String {
-        hasPageAnswered = true
+        onPageAnswered()
         registerForBroadcasts()
         return startPayload(configuration)
+    }
+
+    private fun onPageAnswered() {
+        hasPageAnswered = true
+        lastLoadedContent = null
     }
 
     private fun registerForBroadcasts() {
@@ -495,7 +504,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     @MainThread
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
-        hasPageAnswered = true
+        onPageAnswered()
         if (didReportShownContent) {
             mindboxLogI("[EmbeddedBlock] The page reported itself again with nothing asked of it, ignoring: the block is already shown")
             return BridgeMessage.SUCCESS_PAYLOAD
