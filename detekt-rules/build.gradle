@@ -25,3 +25,9 @@ dependencies {
     testImplementation libs.detekt.test
     testImplementation libs.junit
 }
+
+// CI runs `testDebugUnitTest` across the build; a plain JVM module only has `test`, so without
+// this alias the rule tests are silently skipped there.
+tasks.register('testDebugUnitTest') {
+    dependsOn 'test'
+}

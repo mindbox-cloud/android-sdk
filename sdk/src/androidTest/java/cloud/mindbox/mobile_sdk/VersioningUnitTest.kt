@@ -53,6 +53,7 @@ class VersioningUnitTest {
             instanceId = MindboxPreferences.instanceId,
             version = MindboxPreferences.infoUpdatedVersion,
             tokens = emptyList(),
+            trackingIds = emptyList(),
         )
 
         eventList.add(event)

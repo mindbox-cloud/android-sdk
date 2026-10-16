@@ -7,6 +7,8 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfi
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
+import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolver
+import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.UpdateData
@@ -44,6 +46,8 @@ class MindboxTest {
         coEvery { registerToken(any(), any()) } returns "tokenHMS"
     }
 
+    private val trackingIdsResolver = mockk<TrackingIdsResolver>()
+
     private val thirdProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "RuStore"
         coEvery { registerToken(any(), any()) } returns "tokenRuStore"
@@ -52,7 +56,12 @@ class MindboxTest {
     @Before
     fun setUp() {
         mockkObject(MindboxDI)
-        every { MindboxDI.appModule } returns mockk(relaxed = true)
+        coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+        every { trackingIdsResolver.hasChanged(any()) } returns false
+        every { trackingIdsResolver.markSent(any()) } just runs
+        every { MindboxDI.appModule } returns mockk(relaxed = true) {
+            every { trackingIdsResolver } returns this@MindboxTest.trackingIdsResolver
+        }
         mockkObject(MindboxPreferences)
         mockkObject(PushNotificationManager)
         mockkObject(MindboxEventManager)
@@ -77,6 +86,30 @@ class MindboxTest {
         Mindbox.updateAppInfo(context)
 
         verify(exactly = 0) { MindboxEventManager.appInfoUpdate(context, any()) }
+    }
+
+    @Test
+    fun `updateAppInfo calls appInfoUpdate when only the tracking ids changed`() = runTest {
+        val trackingIds = listOf(TrackingId("google", "38400000-8cf0-11bd-b23e-10b96e40000d"))
+        coEvery { trackingIdsResolver.resolve(any()) } returns trackingIds
+        every { trackingIdsResolver.hasChanged(trackingIds) } returns true
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
+
+        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, any()) }
+        verify(exactly = 1) { trackingIdsResolver.markSent(trackingIds) }
+    }
+
+    @Test
+    fun `updateAppInfo does not call appInfoUpdate when the tracking ids are unchanged`() = runTest {
+        val trackingIds = listOf(TrackingId("google", "38400000-8cf0-11bd-b23e-10b96e40000d"))
+        coEvery { trackingIdsResolver.resolve(any()) } returns trackingIds
+        every { trackingIdsResolver.hasChanged(trackingIds) } returns false
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
+
+        verify(exactly = 0) { MindboxEventManager.appInfoUpdate(context, any()) }
+        verify(exactly = 0) { trackingIdsResolver.markSent(any()) }
     }
 
     @Test
@@ -115,6 +148,7 @@ class MindboxTest {
                         TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
+                    trackingIds = emptyList(),
                 )
             )
         }
@@ -138,6 +172,7 @@ class MindboxTest {
                         TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
+                    trackingIds = emptyList(),
                 )
             )
         }
@@ -161,6 +196,7 @@ class MindboxTest {
                         TokenData(token = "NEW_TOKEN", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
+                    trackingIds = emptyList(),
                 )
             )
         }
@@ -193,6 +229,7 @@ class MindboxTest {
                         TokenData(token = "NEW_TOKEN", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
+                    trackingIds = emptyList(),
                 )
             )
         }
@@ -215,6 +252,7 @@ class MindboxTest {
                         TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
+                    trackingIds = emptyList(),
                 )
             )
         }
@@ -249,6 +287,7 @@ class MindboxTest {
                             TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                             TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                         ),
+                        trackingIds = emptyList(),
                     ),
                     any()
                 )
