@@ -18,8 +18,9 @@ import kotlinx.coroutines.sync.withLock
  *
  * Services come from two sources. Provider modules register themselves at app startup
  * ([registerDiscovered]); the integrator may pass a list to `Mindbox.init` or
- * `Mindbox.initPushServices` ([registerExplicit]). Once an explicit list is passed, it alone
+ * `Mindbox.initPushServices` ([registerExplicit]). Once a non-empty list is passed, it alone
  * decides which services are used and in what order, and lists from several calls are merged.
+ * An empty list changes nothing.
  *
  * Registration is synchronous and cheap. Services are initialized later, by [initializeAvailable].
  */
@@ -77,17 +78,14 @@ internal class PushServiceRegistry(
 
     fun registerExplicit(services: List<MindboxPushService>) {
         val tags = services.map { it.tag }.distinct()
+        if (tags.isEmpty()) {
+            // Flutter and React Native always pass an empty list to init, meaning "no list here".
+            mindboxLogI("Push services list is empty, keeping the services in use")
+            return
+        }
         synchronized(lock) {
             val current = explicitTags
-            if (tags.isEmpty()) {
-                mindboxLogW("Push services list is empty")
-                if (current == null) {
-                    explicitTags = emptyList()
-                    updateActive()
-                }
-                return
-            }
-            if (!current.isNullOrEmpty() && current.toSet() != tags.toSet()) {
+            if (current != null && current.toSet() != tags.toSet()) {
                 mindboxLogW("Different push services lists passed: $current and $tags. All of them are used")
             }
             if (current == null && discoveredTags.isNotEmpty() && discoveredTags.toSet() != tags.toSet()) {

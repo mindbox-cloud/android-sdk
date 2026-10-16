@@ -525,9 +525,10 @@ public object Mindbox : MindboxLog {
      *
      * This method must be called synchronously in onCreate on an application class
      *
-     * [pushServices] decides which push services are used and in what order: services of provider
-     * modules missing from the list are not used. Lists passed here and to [initPushServices]
-     * are merged.
+     * A non-empty [pushServices] decides which push services are used and in what order: services
+     * of provider modules missing from the list are not used. Lists passed here and to
+     * [initPushServices] are merged. An empty list works as if no list was passed: the provider
+     * modules added to the app are used. To have no push services, do not add provider modules.
      *
      * @param application used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
@@ -575,7 +576,10 @@ public object Mindbox : MindboxLog {
      * This method should be called in
      * [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in [Application.onCreate] on an application class
      *
-     * If you use this method, invoke [Mindbox.initPushServices] with the same list in [Application.onCreate] or else pushes won't be shown when application is inactive
+     * A non-empty [pushServices] decides which push services are used and in what order. To keep
+     * that choice when the app is started by a push and this method is not called, pass the same
+     * list to [Mindbox.initPushServices] in [Application.onCreate]. An empty list works as if no
+     * list was passed: the provider modules added to the app are used.
      *
      * @param activity used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
@@ -841,11 +845,13 @@ public object Mindbox : MindboxLog {
      * Method to initialise push services
      *
      * Call this method in onCreate in your Application class if you call [Mindbox.init] not there
-     * and want to choose the push services yourself. Without it, the services of the provider
-     * modules added to the app are used, in the order FCM, HCM, RuStore.
+     * and want to choose the push services yourself. Unless a non-empty list is passed here or to
+     * [Mindbox.init], the services of the provider modules added to the app are used, in the order
+     * FCM, HCM, RuStore.
      *
-     * [pushServices] decides which push services are used and in what order. Lists passed here and
-     * to [Mindbox.init] are merged, so calling this method more than once is safe.
+     * A non-empty [pushServices] decides which push services are used and in what order. Lists
+     * passed here and to [Mindbox.init] are merged, so calling this method more than once is safe.
+     * An empty list changes nothing.
      *
      * @param context used to initialize the main tools
      * @param pushServices list, containing [MindboxPushService]s, i.e.

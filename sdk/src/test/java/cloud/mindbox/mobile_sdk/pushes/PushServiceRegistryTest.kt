@@ -118,12 +118,33 @@ class PushServiceRegistryTest {
     }
 
     @Test
-    fun `empty explicit list means no push services even when some were discovered`() {
+    fun `empty list keeps discovered services, as Flutter and React Native init passes one`() {
         registry.registerDiscovered(firebase)
+        registry.registerDiscovered(huawei)
 
         registry.registerExplicit(emptyList())
 
-        assertEquals(emptyList<String>(), registry.tags)
+        assertEquals(listOf("FCM", "HCM"), registry.tags)
+        assertTrue(registry.isRegistered("HCM"))
+    }
+
+    @Test
+    fun `empty list passed before discovery does not block it`() {
+        registry.registerExplicit(emptyList())
+
+        registry.registerDiscovered(firebase)
+
+        assertEquals(listOf("FCM"), registry.tags)
+    }
+
+    @Test
+    fun `non-empty list after an empty one decides the services`() {
+        registry.registerDiscovered(firebase)
+        registry.registerExplicit(emptyList())
+
+        registry.registerExplicit(listOf(ruStore))
+
+        assertEquals(listOf("RuStore"), registry.tags)
     }
 
     @Test
