@@ -537,7 +537,6 @@ internal class EmbeddedBlockContentController(
 
     private fun applyResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer, mayHold: Boolean) {
         if (content == null) {
-            mindboxLogI("[EmbeddedBlock] Nothing to show for place '$placeSystemName'")
             collapseOrHold(EmbeddedBlockState.Empty, answer, mayHold)
             return
         }
@@ -855,7 +854,7 @@ internal class EmbeddedBlockContentController(
         if (isReleased || hasEverResolved()) return
         mindboxLogW(
             "[EmbeddedBlock] No answer within ${configWaitDuration.interval}ms of waiting for " +
-                "'$placeSystemName', collapsing; a later answer is dropped, the next appearance " +
+                "'$placeSystemName', failing; a later answer is dropped, the next appearance " +
                 "on screen asks afresh"
         )
         hasGivenUp = true
@@ -872,10 +871,6 @@ internal class EmbeddedBlockContentController(
 
     private fun onReadyTimeout() {
         if (!isStarted || provider == null) return
-        mindboxLogW(
-            "[EmbeddedBlock] Page for '$placeSystemName' stayed silent for " +
-                "${readyTimeout.interval}ms of waiting, reporting failure",
-        )
         sendFailure(
             content = appliedContent,
             code = FailureReason.PRESENTATION_FAILED,

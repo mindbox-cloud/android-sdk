@@ -539,7 +539,7 @@ internal class EmbeddedBlockWebViewHolder(
             renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
         }
         report(EmbeddedBlockState.Ready)
-        if (isActive) accountForShow()
+        if (isActive) accountForShow() else mindboxLogI("[EmbeddedBlock] Rendered off screen, shown when back on screen")
         return BridgeMessage.SUCCESS_PAYLOAD
     }
 
