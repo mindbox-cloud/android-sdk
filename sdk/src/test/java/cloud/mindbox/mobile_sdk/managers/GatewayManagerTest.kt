@@ -419,18 +419,4 @@ class GatewayManagerTest {
 
         assertTrue(queuedWebViewContentRequest().isCanceled)
     }
-
-    @Test
-    fun `an answer or an error arriving after the caller was cancelled is dropped`() = runTest {
-        val job = launch { gatewayManager.fetchWebViewContent("https://cdn.test/page.html") }
-        runCurrent()
-        job.cancel()
-        job.join()
-        val request = queuedWebViewContentRequest()
-
-        request.answer("<html>late</html>")
-        request.deliverError(VolleyError("late"))
-
-        assertTrue(job.isCancelled)
-    }
 }

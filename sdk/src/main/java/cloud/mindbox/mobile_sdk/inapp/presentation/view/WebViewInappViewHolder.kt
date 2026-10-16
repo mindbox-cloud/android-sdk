@@ -616,6 +616,7 @@ internal class WebViewInAppViewHolder(
                             )
                         }
                     }.onFailure { e ->
+                        if (e is CancellationException) throw e
                         controller.executeOnViewThread {
                             if (isClosed) {
                                 mindboxLogI("Content of In-App ${wrapper.inAppType.inAppId} failed to load after it closed, not reporting it")

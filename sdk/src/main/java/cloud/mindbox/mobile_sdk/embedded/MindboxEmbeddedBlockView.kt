@@ -505,7 +505,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun detachFromHost(): Unit = loggingRunCatching {
         if (isDeliveryScheduled) deliverPendingEvent()
-        clearContent()
+        if (shownAppearance == MindboxEmbeddedBlockAppearance.CONTENT) clearContent() else cancelRevealAnimation()
         observedLifecycle?.removeObserver(hostDestroyObserver)
         observedLifecycle = null
         screenOwnerAtAttach = null

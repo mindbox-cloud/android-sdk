@@ -29,6 +29,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBla
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -255,6 +256,7 @@ internal class InAppWebViewPrewarmManagerImpl(
 
         val html = runCatching { gatewayManager.value.fetchWebViewContent(plan.contentUrl) }
             .getOrElse { error ->
+                if (error is CancellationException) return
                 mindboxLogW("[WebView] Prewarm: content page fetch failed: $error")
                 scheduleSettleRelease()
                 return

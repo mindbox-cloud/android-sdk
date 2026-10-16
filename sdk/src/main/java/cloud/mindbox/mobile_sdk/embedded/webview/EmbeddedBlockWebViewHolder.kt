@@ -385,7 +385,10 @@ internal class EmbeddedBlockWebViewHolder(
             runCatching {
                 gatewayManager.fetchWebViewContent(contentUrl)
             }.onSuccess { response: String ->
-                onContentPageLoaded(WebViewHtmlContent(baseUrl = layer.baseUrl ?: "", html = response))
+                controller.executeOnViewThread {
+                    if (isReleased) return@executeOnViewThread
+                    onContentPageLoaded(WebViewHtmlContent(baseUrl = layer.baseUrl ?: "", html = response))
+                }
             }.onFailure { error ->
                 if (error is CancellationException) throw error
                 reportLoadFailure("Failed to fetch HTML content for the embedded block", error)
@@ -607,6 +610,7 @@ internal class EmbeddedBlockWebViewHolder(
         if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
     }
 
+    @MainThread
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         val controller = webViewController ?: run {
             mindboxLogW("[EmbeddedBlock] WebView controller is null when loading content, skipping")

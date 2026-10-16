@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * The whole real chain — block view → content controller → WebView holder → WebView controller →
  * `android.webkit.WebView` with a page that speaks the bridge — must be collectable once the block
  * leaves, in every way a block can leave: after the page rendered, mid-fetch (without waiting for
- * the download), mid-page-load, after
+ * the download), mid-page-load, released on a live screen, after
  * a storm of re-deliveries, after a silent page's timeout, with a data-push ack pending, after a
  * background/foreground round trip, and twenty at once. Releases are awaited through the real main
  * looper (the test thread only polls and collects), never by sleeping on main.
@@ -177,6 +177,22 @@ class EmbeddedBlockChainReleaseTest {
         val block = attachBlock(readyTimeout = Milliseconds(1_000L))
         val chain = deliver(block, server.page(count = 1, silent = true))
         await(timeoutMs = 5_000) { fails.get() == 1 }
+        awaitAlive(chain, VIEW_LINKS)
+
+        leave()
+
+        assertReleased(chain)
+        assertRegistriesEmpty()
+    }
+
+    @Test
+    fun releasingABlockOnALiveScreenFreesEverythingBehindItsView() {
+        val block = attachBlock()
+        val chain = deliver(block, server.page(count = 1))
+        awaitLoads(1)
+
+        onMain { checkNotNull(block.get()).release() }
+        awaitAlive(chain, VIEW_LINKS)
 
         leave()
 
@@ -331,18 +347,32 @@ class EmbeddedBlockChainReleaseTest {
         fun alive(): List<String> = links.filterValues { reference -> reference.get() != null }.keys.toList()
 
         companion object {
+            /** Every link must be there: a chain missing a link would pass the release check on nothing. */
             fun of(block: MindboxEmbeddedBlockView): Chain {
-                val links = linkedMapOf<String, WeakReference<Any>>("view" to WeakReference(block))
-                val controller = block.field("contentController")
-                controller?.let { links["controller"] = WeakReference(it) }
-                val holder = controller?.field("provider")
-                holder?.let { links["holder"] = WeakReference(it) }
-                val webViewController = holder?.field("webViewController")
-                webViewController?.let { links["webViewController"] = WeakReference(it) }
-                webViewController?.field("webView")?.let { links["webView"] = WeakReference(it) }
-                return Chain(links)
+                val controller = checkNotNull(block.field("contentController")) { "the block has no content controller" }
+                val holder = checkNotNull(controller.field("provider")) { "the block has no content provider yet" }
+                val webViewController = checkNotNull(holder.field("webViewController")) { "the holder has no WebView controller" }
+                val webView = checkNotNull(webViewController.field("webView")) { "the WebView controller has no WebView" }
+                return Chain(
+                    linkedMapOf(
+                        "view" to WeakReference(block),
+                        "controller" to WeakReference(controller),
+                        "holder" to WeakReference(holder),
+                        "webViewController" to WeakReference(webViewController),
+                        "webView" to WeakReference(webView),
+                    ),
+                )
             }
         }
+    }
+
+    /** The view and its controller live with the screen; everything behind them must be collectable. */
+    private fun awaitAlive(chain: Chain, expected: List<String>, withinMs: Long = 5_000) {
+        val deadline = System.currentTimeMillis() + withinMs
+        while (chain.alive() != expected && System.currentTimeMillis() < deadline) {
+            collect()
+        }
+        assertEquals("alive after ${withinMs}ms", expected, chain.alive())
     }
 
     private fun assertReleased(chain: Chain, withinMs: Long = 15_000) {
@@ -517,6 +547,7 @@ $slowScript
         const val PLACE = "chain-release"
         const val BLOCK_HEIGHT_PX = 300
         val CHAIN_LINKS = listOf("view", "controller", "holder", "webViewController", "webView")
+        val VIEW_LINKS = listOf("view", "controller")
 
         fun Any.field(name: String): Any? {
             var type: Class<*>? = javaClass
