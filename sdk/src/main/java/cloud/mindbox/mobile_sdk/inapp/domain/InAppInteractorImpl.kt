@@ -153,6 +153,7 @@ internal class InAppInteractorImpl(
         triggerEvent: InAppEventType,
         isRetryAfterSessionReset: Boolean,
     ): EmbeddedResolveOutcome {
+        if (!mobileConfigRepository.hasConfig()) logI("No config of this session yet, place '$placeSystemName' waits for it")
         val section = mobileConfigRepository.getInAppsSectionIfAvailable()
         val configVersion = section.configVersion
         val inApps = section.inApps ?: run {
@@ -437,7 +438,6 @@ internal class InAppInteractorImpl(
             false
         }
         if (!isNewShow) return false
-        logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
         inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
         return true
     }
@@ -493,6 +493,7 @@ internal class InAppInteractorImpl(
         loggingRunCatching { mobileConfigRepository.resetCurrentConfig() }
         loggingRunCatching { inAppRepository.clearInAppEvents() }
         sessionStorageManager.clearSessionData()
+        logI("Session ${sessionStorageManager.sessionEpoch.number} started")
     }
 
     override fun isTimeDelayInapp(inAppId: String): Boolean {

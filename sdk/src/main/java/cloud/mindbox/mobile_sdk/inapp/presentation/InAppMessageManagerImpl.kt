@@ -294,6 +294,7 @@ internal class InAppMessageManagerImpl(
                 }
             }
             processingJob?.cancel()
+            mindboxLogI("──────────────── [New session] ────────────────")
             inAppInteractor.beginNewSession()
             loggingRunCatching { userVisitManager.saveUserVisit() }
             loggingRunCatching { inAppMessageDelayedManager.clearSession() }
