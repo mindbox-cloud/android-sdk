@@ -337,7 +337,11 @@ internal class EmbeddedBlockWebViewHolder(
             }.onFailure { error ->
                 if (error is CancellationException) throw error
             }.getOrNull() != null
-            mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId answered success=$isUpdated")
+            if (isUpdated) {
+                mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': the page took the new data — waiting for contentRendered")
+            } else {
+                mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId answered success=false")
+            }
             outcome = if (isUpdated) DataPushOutcome.CONFIRMED else DataPushOutcome.REFUSED
         }.apply {
             invokeOnCompletion { cause ->
@@ -579,7 +583,7 @@ internal class EmbeddedBlockWebViewHolder(
         val previouslyAccounted = accountedSessionEpoch
         accountedSessionEpoch = sessionEpoch
         val timeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
-        mindboxLogI("[EmbeddedBlock] In-app $inAppId is shown, timeToDisplay=${timeToDisplay.interval} ms")
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': in-app $inAppId is shown in session ${sessionEpoch.number}, timeToDisplay=${timeToDisplay.interval} ms")
         val shownFrequency = frequency
         val shownTags = gatedTags()
         Mindbox.mindboxScope.launch {

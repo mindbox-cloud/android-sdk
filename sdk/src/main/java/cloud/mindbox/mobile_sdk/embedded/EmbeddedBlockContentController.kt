@@ -267,7 +267,7 @@ internal class EmbeddedBlockContentController(
             if (isActive) {
                 mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' waits for the session check of the app's return")
             } else {
-                mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
+                mindboxLogI("[EmbeddedBlock] The answer for '$placeSystemName' arrived off screen, deferring it")
             }
             val earlierOfSameInApp = parkedAnswer?.takeIf { parked -> content != null && parked.selectedInAppId == content.inAppId }
             parkedAnswer = ParkedAnswer.Resolved(content, keepingFirstSelectionOfNewSession(answer, earlierOfSameInApp?.answer))
@@ -342,7 +342,6 @@ internal class EmbeddedBlockContentController(
 
     override fun onSessionRenewed() {
         if (isStarted || isReleased || isAwayInBackground || !holdsLiveContent) return
-        mindboxLogI("[EmbeddedBlock] A new session began while block '$placeSystemName' was off screen, its place is asked again and the answer waits for its return")
         leftBehind = true
     }
 
@@ -412,10 +411,7 @@ internal class EmbeddedBlockContentController(
         }
         when (blocksRegistry()?.reserveShow(place, toReserve, answer) ?: PlaceShowReservation.RESERVED) {
             PlaceShowReservation.RESERVED -> applyResolved(content, answer, mayHold)
-            PlaceShowReservation.REFUSED -> {
-                mindboxLogI("[EmbeddedBlock] In-app ${toReserve.inAppId} is back on screen at '$place' but the show budgets are spent, the place has nothing to show")
-                applyResolved(null, answer, mayHold)
-            }
+            PlaceShowReservation.REFUSED -> applyResolved(null, answer, mayHold)
             PlaceShowReservation.STALE -> {
                 dropAnswerOfEndedSession()
                 return false
@@ -604,7 +600,7 @@ internal class EmbeddedBlockContentController(
             current.scheduleSessionRefresh(due.sessionEpoch, due.selectionTime)
             return
         }
-        mindboxLogI("[EmbeddedBlock] A new session picked ${content.inAppId} for '$placeSystemName' again, refreshing the page in place")
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': same in-app — updating the page in place")
         pushPageData(current, layer, content, answer)
     }
 
