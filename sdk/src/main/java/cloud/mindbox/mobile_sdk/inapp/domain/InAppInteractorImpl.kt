@@ -386,7 +386,7 @@ internal class InAppInteractorImpl(
             return@withinLiveSession PlaceShowReservation.RESERVED
         }
         if (!isAllowedByFrequency(content.inAppId)) {
-            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place has nothing to show")
+            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked")
             return@withinLiveSession PlaceShowReservation.REFUSED
         }
         val outcome = showBudgetManager.reserve(ShowBudgetOwner.Place(placeSystemName), content.inAppId, content.frequency, content.isPriority)
@@ -437,7 +437,6 @@ internal class InAppInteractorImpl(
             false
         }
         if (!isNewShow) return false
-        logI("In-app $inAppId sends its show, timeToDisplay=${timeToDisplay.interval} ms")
         inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
         return true
     }
@@ -493,6 +492,7 @@ internal class InAppInteractorImpl(
         loggingRunCatching { mobileConfigRepository.resetCurrentConfig() }
         loggingRunCatching { inAppRepository.clearInAppEvents() }
         sessionStorageManager.clearSessionData()
+        logI("Session ${sessionStorageManager.sessionEpoch.number} started")
     }
 
     override fun isTimeDelayInapp(inAppId: String): Boolean {

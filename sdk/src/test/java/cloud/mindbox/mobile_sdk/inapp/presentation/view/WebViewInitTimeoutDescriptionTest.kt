@@ -1,0 +1,21 @@
+package cloud.mindbox.mobile_sdk.inapp.presentation.view
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/** iOS sends the same texts, so one search finds the failure on both platforms. */
+internal class WebViewInitTimeoutDescriptionTest {
+
+    @Test
+    fun `a page that never sent init is described as on iOS`() {
+        assertEquals("Page did not send init within 7s.", WebViewInAppViewHolder.initTimeoutDescription(isBridgeMissing = false))
+    }
+
+    @Test
+    fun `a loaded page without the JS bridge is described as on iOS`() {
+        assertEquals(
+            "JS bridge not found on the loaded page within 7s.",
+            WebViewInAppViewHolder.initTimeoutDescription(isBridgeMissing = true)
+        )
+    }
+}

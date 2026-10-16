@@ -195,7 +195,7 @@ internal class MobileConfigRepositoryImpl(
         // Prewarm stage 2: warm what the config's webview in-apps will need
         // (or release the warm instance when the config proves there are none).
         inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
-        mindboxLogI(message = "Providing config: $updatedInAppConfig")
+        mindboxLogI(message = "Config ${entry.version.number} is ready: $updatedInAppConfig")
     }
 
     override fun listenConfigVersions(): Flow<ConfigVersion> = configVersions
@@ -423,7 +423,10 @@ internal class MobileConfigRepositoryImpl(
 
     private suspend fun getConfig(): InAppConfig = awaitConfigEntry().config
 
-    private suspend fun awaitConfigEntry(): ConfigEntry = configState.mapNotNull { state -> state.current }.first()
+    private suspend fun awaitConfigEntry(): ConfigEntry {
+        if (configState.value.current == null) mindboxLogI("No config of this session yet, waiting for it")
+        return configState.mapNotNull { state -> state.current }.first()
+    }
 
     private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean, val version: ConfigVersion)
 
