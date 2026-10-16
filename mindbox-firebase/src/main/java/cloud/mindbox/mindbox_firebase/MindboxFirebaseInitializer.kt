@@ -1,0 +1,5 @@
+package cloud.mindbox.mindbox_firebase
+
+import cloud.mindbox.mobile_sdk.pushes.MindboxPushServiceInitializer
+
+internal class MindboxFirebaseInitializer : MindboxPushServiceInitializer(MindboxFirebase)

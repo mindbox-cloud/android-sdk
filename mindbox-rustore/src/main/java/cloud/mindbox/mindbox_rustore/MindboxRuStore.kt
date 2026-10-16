@@ -14,6 +14,7 @@ public fun MindboxRuStore(projectId: String): MindboxRuStore = MindboxRuStore.ap
 
 /***
  * Use factory function MindboxRuStore(projectId) to set up RuStore projectId.
+ * Without it, the project id is read from the `ru.rustore.sdk.pushclient.project_id` meta-data.
  */
 public object MindboxRuStore : MindboxPushService, MindboxPushConverter<RemoteMessage>() {
 

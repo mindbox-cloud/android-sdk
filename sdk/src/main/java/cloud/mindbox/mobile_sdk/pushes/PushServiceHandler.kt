@@ -77,9 +77,9 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
         }
     }
 
-    internal fun isServiceAvailable(context: Context): Boolean = try {
+    internal fun isServiceAvailable(context: Context, logUnavailable: Boolean = true): Boolean = try {
         val isAvailable = isAvailable(context)
-        if (!isAvailable) {
+        if (!isAvailable && logUnavailable) {
             MindboxLoggerImpl.w(this, "$notificationProvider services are not available")
         }
         isAvailable

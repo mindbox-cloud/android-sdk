@@ -9,8 +9,19 @@
             android:enabled="@bool/mindbox_enable_rustore_push_client_init_provider"
             android:exported="false"
             tools:node="mergeOnlyAttributes" />
+        <!-- Read by the React Native SDK to find push providers; the native SDK uses the initializer below. -->
         <meta-data
             android:name="cloud.mindbox.push.provider.rustore"
             android:value="cloud.mindbox.mindbox_rustore.MindboxRuStore" />
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="cloud.mindbox.mindbox_rustore.MindboxRuStoreInitializer"
+                android:value="androidx.startup" />
+        </provider>
     </application>
 </manifest>

@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk
 import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolver
 import cloud.mindbox.mobile_sdk.models.TrackingId
@@ -10,12 +11,20 @@ import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
+import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.pushes.PushServiceRegistry
 import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import io.mockk.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -32,11 +41,15 @@ class MindboxTest {
     private val firstProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "FCM"
         coEvery { registerToken(any(), any()) } returns "tokenFCM"
+        every { isServiceAvailable(any(), any()) } returns true
+        coEvery { initService(any()) } just runs
     }
 
     private val secondProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "HMS"
         coEvery { registerToken(any(), any()) } returns "tokenHMS"
+        every { isServiceAvailable(any(), any()) } returns true
+        coEvery { initService(any()) } just runs
     }
 
     private val trackingIdsResolver = mockk<TrackingIdsResolver>()
@@ -44,6 +57,8 @@ class MindboxTest {
     private val thirdProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "RuStore"
         coEvery { registerToken(any(), any()) } returns "tokenRuStore"
+        every { isServiceAvailable(any(), any()) } returns true
+        coEvery { initService(any()) } just runs
     }
 
     @Before
@@ -71,7 +86,23 @@ class MindboxTest {
         every { MindboxPreferences.firstInitializationTime = any() } just runs
         every { MindboxPreferences.infoUpdatedVersion } returns 1
 
-        Mindbox.pushServiceHandlers = listOf(firstProvider, secondProvider, thirdProvider)
+        Mindbox.pushServiceRegistry = PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
+            .apply {
+                registerExplicit(listOf(firstProvider, secondProvider, thirdProvider).map(::pushService))
+                runBlocking { initializeAvailable(context) }
+            }
+    }
+
+    @After
+    fun tearDown() {
+        Mindbox.pushServiceRegistry = PushServiceRegistry { Mindbox.mindboxScope }
+        unmockkAll()
+    }
+
+    private fun pushService(handler: PushServiceHandler): MindboxPushService = object : MindboxPushService {
+        override val tag: String = handler.notificationProvider
+
+        override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler) = handler
     }
 
     @Test
