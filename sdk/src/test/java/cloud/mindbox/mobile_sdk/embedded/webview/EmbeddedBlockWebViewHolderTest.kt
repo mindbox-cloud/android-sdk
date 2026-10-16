@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.embedded.webview
 
+import cloud.mindbox.mobile_sdk.utils.setMindboxScope
+import kotlinx.coroutines.SupervisorJob
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -40,7 +42,6 @@ import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
-import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
@@ -1424,6 +1425,60 @@ class EmbeddedBlockWebViewHolderTest {
         coVerify(exactly = 1, timeout = 5_000L) {
             inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), Milliseconds(800L), any(), any())
         }
+    }
+
+    private fun EmbeddedBlockWebViewHolder.retainedMarkup(): Any? {
+        val field = EmbeddedBlockWebViewHolder::class.java.getDeclaredField("lastLoadedContent")
+        field.isAccessible = true
+        return field.get(this)
+    }
+
+    @Test
+    fun `the page markup is let go once the page answers`() {
+        startAndAwaitPageLoad()
+        assertTrue(holder.retainedMarkup() != null)
+
+        postFromPage(request("init", "{}"))
+
+        assertNull(holder.retainedMarkup())
+    }
+
+    @Test
+    fun `release cancels a content fetch still in flight`() {
+        var isFetching = false
+        var wasCancelled = false
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers {
+            isFetching = true
+            try {
+                kotlinx.coroutines.awaitCancellation()
+            } finally {
+                wasCancelled = true
+            }
+        }
+        holder.start()
+        await { isFetching }
+
+        holder.release()
+
+        await { wasCancelled }
+    }
+
+    @Test
+    fun `a soft re-initialization of the SDK does not cancel a block's page load`() {
+        val page = CompletableDeferred<String>()
+        var isFetching = false
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers {
+            isFetching = true
+            page.await()
+        }
+        holder.start()
+        await { isFetching }
+
+        Mindbox.mindboxScope.cancel()
+        setMindboxScope(CoroutineScope(Dispatchers.Default + SupervisorJob() + Mindbox.coroutineExceptionHandler))
+        page.complete("<html>block</html>")
+
+        await { shadowOf(webView).lastLoadDataWithBaseURL != null }
     }
 
     @Test

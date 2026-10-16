@@ -1,6 +1,10 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
+import com.android.volley.Request
+import com.android.volley.VolleyError
+import com.android.volley.toolbox.StringRequest
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.launch
@@ -372,5 +376,47 @@ class GatewayManagerTest {
         val request = slot<MindboxRequest>()
         verify { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
         assertTrue(request.captured.isCanceled)
+    }
+
+    private fun queuedWebViewContentRequest(): StringRequest {
+        val request = slot<Request<*>>()
+        verify { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        return request.captured as StringRequest
+    }
+
+    private fun StringRequest.answer(page: String) {
+        StringRequest::class.java.getDeclaredMethod("deliverResponse", String::class.java)
+            .apply { isAccessible = true }
+            .invoke(this, page)
+    }
+
+    @Test
+    fun `fetchWebViewContent resumes with the page the request answers with`() = runTest {
+        val page = async { gatewayManager.fetchWebViewContent("https://cdn.test/page.html") }
+        runCurrent()
+
+        queuedWebViewContentRequest().answer("<html>page</html>")
+
+        assertEquals("<html>page</html>", page.await())
+    }
+
+    @Test
+    fun `fetchWebViewContent fails with the request's error`() = runTest {
+        val page = async { runCatching { gatewayManager.fetchWebViewContent("https://cdn.test/page.html") } }
+        runCurrent()
+
+        queuedWebViewContentRequest().deliverError(VolleyError("no network"))
+
+        assertTrue(page.await().exceptionOrNull() is VolleyError)
+    }
+
+    @Test
+    fun `fetchWebViewContent cancels its Volley request when the waiting coroutine is cancelled`() = runTest {
+        val job = launch { gatewayManager.fetchWebViewContent("https://cdn.test/page.html") }
+        runCurrent()
+        job.cancel()
+        job.join()
+
+        assertTrue(queuedWebViewContentRequest().isCanceled)
     }
 }

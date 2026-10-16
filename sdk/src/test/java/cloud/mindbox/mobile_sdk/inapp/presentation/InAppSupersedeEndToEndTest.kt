@@ -49,7 +49,6 @@ import org.json.JSONTokener
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -438,10 +437,9 @@ internal class InAppSupersedeEndToEndTest {
 
         content.complete("<html>story</html>")
         val armedBeforeTheMainThreadRan = initTimeoutOf(story) != null
-        shadowOf(Looper.getMainLooper()).idle()
+        await { initTimeoutOf(story) != null }
 
         assertFalse(armedBeforeTheMainThreadRan)
-        assertNotNull(initTimeoutOf(story))
     }
 
     @Test

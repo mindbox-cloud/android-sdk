@@ -883,7 +883,7 @@ internal class EmbeddedBlockContentController(
                 "${readyTimeout.interval}ms after the content was handed to it",
         )
         hasGivenUp = true
-        loggingRunCatching { provider?.pause() }
+        dropProvider()
         report(EmbeddedBlockState.Failed(FailureReason.PRESENTATION_FAILED))
     }
 

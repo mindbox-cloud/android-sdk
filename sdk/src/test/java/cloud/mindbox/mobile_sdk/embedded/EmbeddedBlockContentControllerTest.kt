@@ -706,6 +706,37 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a page silent past its budget is dropped rather than kept alive behind the collapsed block`() {
+        var releases = 0
+        val silentProvider = object : EmbeddedContentProvider {
+            override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+            override val contentView: View? = View(RuntimeEnvironment.getApplication())
+
+            override fun start() = Unit
+
+            override fun pause() = Unit
+
+            override fun release() {
+                releases++
+            }
+        }
+        val controller = EmbeddedBlockContentController(
+            placeSystemName = "main-screen-top",
+            configTimeout = Milliseconds(30_000L),
+            readyTimeout = Milliseconds(100L),
+            providerFactory = { _, _ -> silentProvider },
+            blocksRegistry = { blocksRegistry },
+        ).apply { onStateChange = { state -> states.add(state) } }
+        controller.start()
+        blocksRegistry.pushContent("main-screen-top", content)
+
+        idleFor(Duration.ofMillis(101L))
+
+        assertEquals(internalError, states.last())
+        assertEquals(1, releases)
+    }
+
+    @Test
     fun `page silence within ready timeout reports Failed`() {
         val silentProvider = object : EmbeddedContentProvider {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null

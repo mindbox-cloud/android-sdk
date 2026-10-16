@@ -59,9 +59,11 @@ import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendBlockFailureWithCont
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
@@ -107,7 +109,7 @@ internal class EmbeddedBlockWebViewHolder(
     override val isAttemptAlive: Boolean
         get() = lastState == EmbeddedBlockState.Loading || lastState == EmbeddedBlockState.Ready
 
-    @Volatile private var lastLoadedContent: WebViewHtmlContent? = null
+    private var lastLoadedContent: WebViewHtmlContent? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -161,7 +163,7 @@ internal class EmbeddedBlockWebViewHolder(
         webViewCachePolicy.isCacheEnabled
     }
 
-    @Volatile private var hasPageAnswered = false
+    private var hasPageAnswered = false
 
     private var confirmedSessionEpoch: SessionEpoch? = null
 
@@ -200,6 +202,8 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var pendingAckJob: Job? = null
 
+    private val pageScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + Mindbox.coroutineExceptionHandler)
+
     override fun start() {
         if (isReleased) return
         presence.value = true
@@ -223,11 +227,13 @@ internal class EmbeddedBlockWebViewHolder(
         presence.value = false
         isReleased = true
         pendingAckJob?.cancel()
+        pageScope.cancel()
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
         }
         heldFailure.set(null)
+        lastLoadedContent = null
         cancelPendingResponses("Embedded block content is released")
         webViewController?.let { controller ->
             controller.setEventListener(null)
@@ -353,7 +359,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
         webViewController = controller
 
-        Mindbox.mindboxScope.launch {
+        pageScope.launch {
             val configuration: Configuration = DbManager.listenConfigurations().first()
             val handlers = createActionHandlers(configuration)
 
@@ -381,7 +387,10 @@ internal class EmbeddedBlockWebViewHolder(
             runCatching {
                 gatewayManager.fetchWebViewContent(contentUrl)
             }.onSuccess { response: String ->
-                onContentPageLoaded(WebViewHtmlContent(baseUrl = layer.baseUrl ?: "", html = response))
+                controller.executeOnViewThread {
+                    if (isReleased) return@executeOnViewThread
+                    onContentPageLoaded(WebViewHtmlContent(baseUrl = layer.baseUrl ?: "", html = response))
+                }
             }.onFailure { error ->
                 if (error is CancellationException) throw error
                 reportLoadFailure("Failed to fetch HTML content for the embedded block", error)
@@ -437,9 +446,9 @@ internal class EmbeddedBlockWebViewHolder(
     private fun createActionHandlers(configuration: Configuration): WebViewActionHandlers {
         return WebViewActionHandlers().apply {
             commonBridgeActions.register(this)
-            registerSuspend(WebViewAction.READY) { handleReadyAction(configuration) }
+            register(WebViewAction.READY) { handleReadyAction(configuration) }
             register(WebViewAction.INIT) {
-                hasPageAnswered = true
+                onPageAnswered()
                 BridgeMessage.SUCCESS_PAYLOAD
             }
             register(WebViewAction.CONTENT_RENDERED, ::handleContentRenderedAction)
@@ -447,9 +456,14 @@ internal class EmbeddedBlockWebViewHolder(
     }
 
     private fun handleReadyAction(configuration: Configuration): String {
-        hasPageAnswered = true
+        onPageAnswered()
         registerForBroadcasts()
         return startPayload(configuration)
+    }
+
+    private fun onPageAnswered() {
+        hasPageAnswered = true
+        lastLoadedContent = null
     }
 
     private fun registerForBroadcasts() {
@@ -495,7 +509,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     @MainThread
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
-        hasPageAnswered = true
+        onPageAnswered()
         if (didReportShownContent) {
             mindboxLogI("[EmbeddedBlock] The page reported itself again with nothing asked of it, ignoring: the block is already shown")
             return BridgeMessage.SUCCESS_PAYLOAD
@@ -598,6 +612,7 @@ internal class EmbeddedBlockWebViewHolder(
         if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
     }
 
+    @MainThread
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
         val controller = webViewController ?: run {
             mindboxLogW("[EmbeddedBlock] WebView controller is null when loading content, skipping")

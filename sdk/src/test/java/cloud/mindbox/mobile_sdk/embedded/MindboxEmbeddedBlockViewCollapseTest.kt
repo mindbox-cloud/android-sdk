@@ -7,6 +7,7 @@ import android.widget.LinearLayout
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -287,6 +288,38 @@ class MindboxEmbeddedBlockViewCollapseTest {
 
         assertEquals(View.GONE, view.visibility)
         assertEquals(listOf("load", "fail:networkError"), listener.events)
+    }
+
+    @Test
+    fun `a released block keeps the host's placeholder in place`() {
+        val view = buildView()
+        val placeholder = View(activity)
+        view.setPlaceholderView(placeholder)
+        attach(view)
+        assertSame(view, placeholder.parent)
+
+        view.release()
+        idle()
+
+        assertSame(view, placeholder.parent)
+        assertEquals(View.VISIBLE, view.visibility)
+    }
+
+    @Test
+    fun `a released block keeps the host's error view in place`() {
+        val view = buildView(provider = { FailingProvider(activity) })
+        val errorView = View(activity)
+        view.setErrorView(errorView)
+        attach(view)
+        blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
+        idle()
+        assertSame(view, errorView.parent)
+
+        view.release()
+        idle()
+
+        assertSame(view, errorView.parent)
+        assertEquals(View.VISIBLE, view.visibility)
     }
 
     @Test

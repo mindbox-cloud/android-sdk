@@ -337,6 +337,18 @@ class MindboxEmbeddedBlockViewRetainTest {
     }
 
     @Test
+    fun `a released block lets go of the content view it showed`() {
+        val home = openHome()
+        deliverContent()
+        val content = providers.single().contentView
+        assertSame(home.block, content.parent)
+
+        home.block.release()
+
+        assertEquals(null, content.parent)
+    }
+
+    @Test
     fun `a fragment popped for good frees its content`() {
         openHome()
         deliverContent()
