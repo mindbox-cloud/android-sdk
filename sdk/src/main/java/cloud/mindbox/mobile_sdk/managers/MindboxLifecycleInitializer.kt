@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import android.content.Context
 import androidx.annotation.RestrictTo
 import androidx.startup.Initializer
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.getCurrentProcessName
 import cloud.mindbox.mobile_sdk.isMainProcess
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
@@ -18,6 +19,7 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 public class MindboxLifecycleInitializer : Initializer<Unit> {
 
     override fun create(context: Context) {
+        Mindbox.pushServiceRegistry.markAppStartupRan()
         val currentProcessName = context.getCurrentProcessName()
         if (!context.isMainProcess(currentProcessName)) return
 

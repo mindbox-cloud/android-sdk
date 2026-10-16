@@ -17,6 +17,10 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
  * Registration only stores the service: nothing is initialized and no token is requested
  * until `Mindbox.init` is called.
  *
+ * If the app disables App Startup altogether (removes or replaces InitializationProvider), these
+ * initializers do not run. The SDK then takes the services from the `cloud.mindbox.push.provider.*`
+ * meta-data of the provider modules and logs a warning.
+ *
  * To opt out, remove the module's initializer in the app manifest, e.g. for Firebase:
  * ```xml
  * <provider

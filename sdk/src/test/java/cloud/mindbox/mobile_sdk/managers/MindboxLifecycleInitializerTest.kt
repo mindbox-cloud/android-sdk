@@ -8,9 +8,11 @@ import android.net.Uri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.getCurrentProcessName
 import cloud.mindbox.mobile_sdk.isMainProcess
 import cloud.mindbox.mobile_sdk.models.LINK
+import cloud.mindbox.mobile_sdk.pushes.PushServiceRegistry
 import io.mockk.*
 import org.junit.After
 import org.junit.Assert.*
@@ -33,7 +35,19 @@ internal class MindboxLifecycleInitializerTest {
     @After
     fun tearDown() {
         LifecycleManager.instance = null
+        Mindbox.pushServiceRegistry = PushServiceRegistry { Mindbox.mindboxScope }
         unmockkAll()
+    }
+
+    @Test
+    fun `marks App Startup as run, so push services are not looked up in the manifest`() {
+        Mindbox.pushServiceRegistry = PushServiceRegistry { Mindbox.mindboxScope }
+        every { any<Context>().getCurrentProcessName() } returns context.packageName
+        every { any<Context>().isMainProcess(context.packageName) } returns true
+
+        MindboxLifecycleInitializer().create(context)
+
+        assertTrue(Mindbox.pushServiceRegistry.isAppStartupRan)
     }
 
     @Test

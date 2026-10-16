@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <application>
-        <!-- Read by the React Native SDK to find push providers; the native SDK uses the initializer below. -->
+        <!-- Read by the React Native SDK, and by the core SDK when App Startup does not run; otherwise the initializer below registers the service. -->
         <meta-data
             android:name="cloud.mindbox.push.provider.huawei"
             android:value="cloud.mindbox.mindbox_huawei.MindboxHuawei" />

@@ -408,6 +408,7 @@ public object Mindbox : MindboxLog {
                 return@loggingRunCatching
             }
 
+            pushServiceRegistry.discoverFromManifestIfNeeded(context)
             if (!pushServiceRegistry.isRegistered(pushService.tag)) {
                 mindboxLogW("Unknown token provider ${pushService.tag}. Skipping token update.")
                 return@loggingRunCatching
@@ -579,6 +580,7 @@ public object Mindbox : MindboxLog {
         // (mirrors the iOS SDK's init-time prewarm; a real show always preempts it).
         MindboxDI.appModule.inAppWebViewPrewarmManager.prewarmOnInit()
         pushServiceRegistry.registerExplicit(pushServices)
+        pushServiceRegistry.discoverFromManifestIfNeeded(context)
         logI(
             "init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
                 "configuration: $configuration, pushServices: " +
@@ -1081,6 +1083,7 @@ public object Mindbox : MindboxLog {
             logI("Cannot handle null message")
             return@loggingRunCatching false
         }
+        pushServiceRegistry.discoverFromManifestIfNeeded(context)
         val pushConverters = pushServiceRegistry.handlers
         if (pushConverters.isEmpty()) {
             logW("No push converters found")

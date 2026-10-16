@@ -9,7 +9,7 @@
             android:enabled="@bool/mindbox_enable_rustore_push_client_init_provider"
             android:exported="false"
             tools:node="mergeOnlyAttributes" />
-        <!-- Read by the React Native SDK to find push providers; the native SDK uses the initializer below. -->
+        <!-- Read by the React Native SDK, and by the core SDK when App Startup does not run; otherwise the initializer below registers the service. -->
         <meta-data
             android:name="cloud.mindbox.push.provider.rustore"
             android:value="cloud.mindbox.mindbox_rustore.MindboxRuStore" />

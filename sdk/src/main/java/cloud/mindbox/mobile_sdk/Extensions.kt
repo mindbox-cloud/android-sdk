@@ -5,8 +5,10 @@ import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.ApplicationInfoFlags
 import android.content.pm.PackageManager.PackageInfoFlags
 import android.content.res.Resources
 import android.os.Build
@@ -198,6 +200,14 @@ internal fun PackageManager.getPackageInfoCompat(context: Context, flags: Int): 
         getPackageInfo(context.packageName, PackageInfoFlags.of(flags.toLong()))
     } else {
         getPackageInfo(context.packageName, flags)
+    }
+}
+
+internal fun PackageManager.getApplicationInfoCompat(context: Context, flags: Int): ApplicationInfo {
+    return if (Build.VERSION_CODES.TIRAMISU <= Build.VERSION.SDK_INT) {
+        getApplicationInfo(context.packageName, ApplicationInfoFlags.of(flags.toLong()))
+    } else {
+        getApplicationInfo(context.packageName, flags)
     }
 }
 
