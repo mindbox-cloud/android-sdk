@@ -244,6 +244,7 @@ internal class WebViewCommonBridgeActions(
             )
         }
         val showableIds = inAppInteractor.filterShowableInAppIds(host.hostInAppId, requestedIds)
+            ?: throw BridgeRefusalException(BridgeErrorCode.INTERNAL_ERROR, "the SDK has no config to answer from")
         mindboxLogI(
             "[WebView] Bridge: filterShowableInapps from ${host.hostInAppId}: ${requestedIds.size} id(s) asked, " +
                 "${showableIds.size} allowed"

@@ -5,21 +5,35 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 internal interface InAppInteractor {
+
+    val sessionEpoch: SessionEpoch
+
+    fun isLiveSession(sessionEpoch: SessionEpoch): Boolean
+
+    fun listenSessionEpoch(): StateFlow<SessionEpoch>
+
+    val returnCheckPending: StateFlow<Boolean>
+
+    suspend fun awaitReturnChecked()
 
     suspend fun listenToTargetingEvents()
 
     /**
-     * Emits after every parsed config update — unlike the raw preference flow, this fires only
-     * when the new config is actually applied, so a re-resolve never reads the previous one.
+     * Emits the version of a config once it is applied — unlike the raw preference flow, this
+     * fires only after the config is readable, so a pass asked on the emission reads that version or a newer one.
+     * A collector that falls behind receives the newest version only.
      */
-    fun listenConfigUpdates(): Flow<Unit>
+    fun listenConfigVersions(): Flow<ConfigVersion>
 
     /**
      * Resolves content for an embedded place. The targeting pass runs first — place filter,
@@ -73,7 +87,7 @@ internal interface InAppInteractor {
      * `host in-app + requested id` pair: a repeated request reports only the new ones. A tap
      * reports nothing here — the in-app is not shown yet.
      */
-    suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>
+    suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>?
 
     suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>>
 
@@ -98,14 +112,17 @@ internal interface InAppInteractor {
         frequency: Frequency,
         timeToDisplay: Milliseconds,
         tags: Map<String, String>?,
-    )
+        sessionEpoch: SessionEpoch,
+    ): Boolean
 
     /** The winner's `delayTime` elapsed on this place: a later resolve this session hands it out with no delay. */
-    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String)
+    fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: SessionEpoch): Boolean
 
-    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded): Boolean
+    fun reservePlaceShow(placeSystemName: PlaceKey, content: InAppType.Embedded, sessionEpoch: SessionEpoch): PlaceShowReservation
 
     fun releasePlaceShow(placeSystemName: PlaceKey)
+
+    fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch): Boolean
 
     fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome
 
@@ -115,12 +132,14 @@ internal interface InAppInteractor {
 
     suspend fun fetchMobileConfig()
 
-    fun resetInAppConfigAndEvents()
+    fun beginNewSession()
 
     fun isTimeDelayInapp(inAppId: String): Boolean
 
     fun saveInAppDismissTime(inApp: InApp, shownAt: Timestamp)
 }
+
+internal enum class PlaceShowReservation { RESERVED, REFUSED, STALE }
 
 internal data class InAppToShow(
     val inApp: InApp,
@@ -130,18 +149,24 @@ internal data class InAppToShow(
 /** What the pass of a place ended with — the registry's input for the delivery to the blocks. */
 internal sealed class EmbeddedResolveOutcome {
 
+    abstract val configVersion: ConfigVersion
+
     /**
      * A resolved place: the content to render and the winner's show delay — the campaign's choice,
      * applied by the registry before the delivery.
      */
-    data class Content(val variant: InAppType.Embedded, val delayTime: Milliseconds?) : EmbeddedResolveOutcome()
+    data class Content(
+        val variant: InAppType.Embedded,
+        val delayTime: Milliseconds?,
+        override val configVersion: ConfigVersion,
+    ) : EmbeddedResolveOutcome()
 
     /** Nothing to show: no campaign for the place, or every candidate was left out. */
-    data object Empty : EmbeddedResolveOutcome()
+    data class Empty(override val configVersion: ConfigVersion) : EmbeddedResolveOutcome()
 
     /**
      * The SDK could not decide: the config fetch failed and nothing is cached, so the place has no
      * answer rather than nothing to show.
      */
-    data object ConfigUnavailable : EmbeddedResolveOutcome()
+    data class ConfigUnavailable(override val configVersion: ConfigVersion) : EmbeddedResolveOutcome()
 }

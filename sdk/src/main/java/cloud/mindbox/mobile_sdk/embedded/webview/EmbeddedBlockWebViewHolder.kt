@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.annotation.MainThread
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.mindboxInject
@@ -49,15 +50,17 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import cloud.mindbox.mobile_sdk.models.getShortUserAgent
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
-import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendFailureWithContext
+import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendBlockFailureWithContext
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -66,6 +69,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
@@ -79,7 +83,7 @@ internal class EmbeddedBlockWebViewHolder(
     private val context: Context,
     @Volatile private var frequency: Frequency,
     @Volatile private var tags: Map<String, String>?,
-    private val selectionTime: Milliseconds,
+    private var selectionTime: Milliseconds,
     private val ackBudget: Milliseconds = Constants.WebView.readyTimeout,
 ) : EmbeddedUpdatableContentProvider, MindboxWebPage {
 
@@ -99,6 +103,9 @@ internal class EmbeddedBlockWebViewHolder(
     @Volatile private var isLoadRequested = false
 
     @Volatile private var lastState: EmbeddedBlockState = EmbeddedBlockState.Loading
+
+    override val isAttemptAlive: Boolean
+        get() = lastState == EmbeddedBlockState.Loading || lastState == EmbeddedBlockState.Ready
 
     @Volatile private var lastLoadedContent: WebViewHtmlContent? = null
 
@@ -156,7 +163,20 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var hasPageAnswered = false
 
-    @Volatile private var didAccountForShow = false
+    private var confirmedSessionEpoch: SessionEpoch? = null
+
+    private var accountedSessionEpoch: SessionEpoch? = null
+
+    private var isSessionRefreshDue = false
+
+    private var isRenderAwaitedForSession = false
+
+    private var isShowWithheld = false
+
+    override var rendersNothing = false
+        private set
+
+    override var onRendersNothing: (() -> Unit)? = null
 
     @Volatile private var didReportShownContent = false
 
@@ -173,7 +193,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var renderedTimeToDisplay: Milliseconds? = null
 
-    private val onScreenTime = EmbeddedBlockStopwatch(now = { timeProvider.monotonicMillis() })
+    private var onScreenTime = EmbeddedBlockStopwatch(now = { timeProvider.monotonicMillis() })
 
     private val currentTimeToDisplay: Milliseconds
         get() = Milliseconds(selectionTime.interval + onScreenTime.elapsed.interval)
@@ -222,14 +242,77 @@ internal class EmbeddedBlockWebViewHolder(
         this.tags = tags
     }
 
-    override fun updateParams(params: Map<String, String>, onResult: (Boolean) -> Unit) {
+    @MainThread
+    override fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds) {
+        if (!isLaterSession(sessionEpoch)) return
+        confirmedSessionEpoch = sessionEpoch
+        restartShowTiming(selectionTime)
+        isSessionRefreshDue = true
+    }
+
+    @MainThread
+    override fun confirmForSession(sessionEpoch: SessionEpoch) {
+        confirmedSessionEpoch = sessionEpoch
+    }
+
+    @MainThread
+    override fun timeToDisplaySoFar(sessionEpoch: SessionEpoch): Milliseconds? =
+        currentTimeToDisplay.takeIf { isConfirmedAndUnaccounted(sessionEpoch) }
+
+    @MainThread
+    override fun withholdShow(isWithheld: Boolean) {
+        if (isShowWithheld == isWithheld) return
+        isShowWithheld = isWithheld
+        if (!isWithheld && lastState == EmbeddedBlockState.Ready && isActive) accountForShow()
+    }
+
+    @MainThread
+    override fun refreshForSession(
+        params: Map<String, String>,
+        sessionEpoch: SessionEpoch,
+        selectionTime: Milliseconds,
+        onResult: (DataPushOutcome) -> Unit,
+    ) {
+        if (webViewController != null) {
+            if (isLaterSession(sessionEpoch)) {
+                confirmedSessionEpoch = sessionEpoch
+                restartShowTiming(selectionTime)
+            }
+            if (isConfirmedAndUnaccounted(sessionEpoch)) {
+                isSessionRefreshDue = false
+                isRenderAwaitedForSession = true
+            }
+        }
+        updateParams(params, onResult)
+    }
+
+    private fun isLaterSession(sessionEpoch: SessionEpoch): Boolean =
+        confirmedSessionEpoch?.let { confirmed -> sessionEpoch > confirmed } ?: true
+
+    private fun isConfirmedAndUnaccounted(sessionEpoch: SessionEpoch): Boolean =
+        sessionEpoch == confirmedSessionEpoch && sessionEpoch != accountedSessionEpoch
+
+    private fun restartShowTiming(selectionTime: Milliseconds) {
+        this.selectionTime = selectionTime
+        renderedTimeToDisplay = null
+        onScreenTime = EmbeddedBlockStopwatch(now = { timeProvider.monotonicMillis() }).also { stopwatch ->
+            if (isActive) stopwatch.resume()
+        }
+    }
+
+    override val isDataPushAbandoned: Boolean
+        get() = pendingAckJob?.isCancelled == true
+
+    override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
+        pendingAckJob?.cancel()
         val controller = webViewController ?: run {
-            onResult(false)
+            pendingAckJob = null
+            onResult(DataPushOutcome.REFUSED)
             return
         }
         layer = layer.copy(params = params)
         didReportShownContent = false
-        pendingAckJob?.cancel()
+        var outcome = DataPushOutcome.REFUSED
         pendingAckJob = Mindbox.mindboxScope.launch {
             val configuration: Configuration = DbManager.listenConfigurations().first()
             val payload = startPayload(configuration)
@@ -245,9 +328,20 @@ internal class EmbeddedBlockWebViewHolder(
                     if (response == null) answer.cancel()
                     response
                 }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
             }.getOrNull() != null
             mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId answered success=$isUpdated")
-            onResult(isUpdated)
+            outcome = if (isUpdated) DataPushOutcome.CONFIRMED else DataPushOutcome.REFUSED
+        }.apply {
+            invokeOnCompletion { cause ->
+                if (cause is CancellationException) {
+                    mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId was abandoned before the page answered it")
+                    onResult(DataPushOutcome.ABANDONED)
+                } else {
+                    onResult(outcome)
+                }
+            }
         }
     }
 
@@ -399,6 +493,7 @@ internal class EmbeddedBlockWebViewHolder(
         operation = null,
     ).get()
 
+    @MainThread
     private fun handleContentRenderedAction(message: BridgeMessage.Request): String {
         hasPageAnswered = true
         if (didReportShownContent) {
@@ -415,11 +510,21 @@ internal class EmbeddedBlockWebViewHolder(
         if (count < 0) throw refusedContentReport("'count' must not be negative, got $count")
         mindboxLogI("[EmbeddedBlock] Page rendered $count content element(s)")
         if (count == 0) {
-            report(EmbeddedBlockState.Empty)
+            if (lastState == EmbeddedBlockState.Ready) {
+                mindboxLogI("[EmbeddedBlock] The shown page has nothing to show any more, its block decides when to collapse")
+                rendersNothing = true
+                onRendersNothing?.invoke()
+            } else {
+                report(EmbeddedBlockState.Empty)
+            }
             return BridgeMessage.SUCCESS_PAYLOAD
         }
+        rendersNothing = false
         didReportShownContent = true
-        renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
+        if (!isSessionRefreshDue) {
+            isRenderAwaitedForSession = false
+            renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
+        }
         report(EmbeddedBlockState.Ready)
         if (isActive) accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
@@ -442,27 +547,55 @@ internal class EmbeddedBlockWebViewHolder(
         report(EmbeddedBlockState.Failed(reason))
     }
 
-    /**
-     * The block drew something the user can see, so its in-app was shown. Reported once per
-     * content instance; the content-change rule lives in the interactor's place slot, where
-     * the session state is. Off screen the show waits — [start] re-asks when the block returns.
-     */
+    @MainThread
     private fun accountForShow() {
-        if (didAccountForShow) return
+        val sessionEpoch = confirmedSessionEpoch ?: return
+        if (!isConfirmedAndUnaccounted(sessionEpoch) || isSessionRefreshDue || isRenderAwaitedForSession) return
+        if (isShowWithheld) {
+            mindboxLogI("[EmbeddedBlock] Its block withholds the show of this content until the place's next content applies")
+            return
+        }
+        if (rendersNothing) {
+            mindboxLogI("[EmbeddedBlock] The page has nothing to show any more, its show waits until it renders content")
+            return
+        }
         if (!isUserPresent) {
             mindboxLogI("[EmbeddedBlock] Content rendered off screen, the show waits for the block to return")
             return
         }
-        didAccountForShow = true
+        val previouslyAccounted = accountedSessionEpoch
+        accountedSessionEpoch = sessionEpoch
         val timeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
         mindboxLogI("[EmbeddedBlock] In-app $inAppId is shown, timeToDisplay=${timeToDisplay.interval} ms")
+        val shownFrequency = frequency
+        val shownTags = gatedTags()
         Mindbox.mindboxScope.launch {
             loggingRunCatchingSuspending {
-                inAppInteractor.recordBlockShow(placeSystemName, inAppId, frequency, timeToDisplay, gatedTags())
+                if (inAppInteractor.returnCheckPending.value) {
+                    inAppInteractor.awaitReturnChecked()
+                    if (!isShowStillDue(sessionEpoch, previouslyAccounted)) return@loggingRunCatchingSuspending
+                }
+                inAppInteractor.recordBlockShow(placeSystemName, inAppId, shownFrequency, timeToDisplay, shownTags, sessionEpoch)
             }
         }.invokeOnCompletion { cause ->
-            if (cause is CancellationException) didAccountForShow = false
+            if (cause !is CancellationException) return@invokeOnCompletion
+            mainHandler.post {
+                rollBackAccounting(sessionEpoch, previouslyAccounted)
+            }
         }
+    }
+
+    private suspend fun isShowStillDue(sessionEpoch: SessionEpoch, previouslyAccounted: SessionEpoch?): Boolean =
+        withContext(Dispatchers.Main) {
+            if (!isShowWithheld && !rendersNothing) return@withContext true
+            mindboxLogI("[EmbeddedBlock] The show of this content was withheld or its page emptied during the session check, the show waits again")
+            rollBackAccounting(sessionEpoch, previouslyAccounted)
+            false
+        }
+
+    @MainThread
+    private fun rollBackAccounting(sessionEpoch: SessionEpoch, previouslyAccounted: SessionEpoch?) {
+        if (accountedSessionEpoch == sessionEpoch) accountedSessionEpoch = previouslyAccounted
     }
 
     private fun onContentPageLoaded(content: WebViewHtmlContent) {
@@ -502,7 +635,7 @@ internal class EmbeddedBlockWebViewHolder(
             if (isActive) flushHeldFailure()
             return
         }
-        inAppFailureTracker.sendFailureWithContext(
+        inAppFailureTracker.sendBlockFailureWithContext(
             inAppId = inAppId,
             failureReason = failureReason,
             errorDescription = errorDescription,
@@ -513,7 +646,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun flushHeldFailure() {
         val held = heldFailure.getAndSet(null) ?: return
-        inAppFailureTracker.sendFailureWithContext(
+        inAppFailureTracker.sendBlockFailureWithContext(
             inAppId = inAppId,
             failureReason = held.failureReason,
             errorDescription = held.errorDescription,
@@ -662,7 +795,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun handleError(message: BridgeMessage.Error) {
         mindboxLogW("[EmbeddedBlock] WebView error message: ${message.payload}")
-        pendingResponsesById.remove(message.id)?.cancel("WebView error: ${message.payload}")
+        pendingResponsesById.remove(message.id)?.completeExceptionally(IllegalStateException("WebView error: ${message.payload}"))
     }
 
     private fun cancelPendingResponses(reason: String) {

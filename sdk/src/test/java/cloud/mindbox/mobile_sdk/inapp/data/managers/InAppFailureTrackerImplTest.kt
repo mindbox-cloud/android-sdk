@@ -319,4 +319,72 @@ internal class InAppFailureTrackerImplTest {
 
         verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
     }
+
+    private fun blockFailureTracker(sessionStorageManager: SessionStorageManager): InAppFailureTrackerImpl =
+        InAppFailureTrackerImpl(
+            timeProvider = timeProvider,
+            inAppRepository = inAppRepository,
+            featureToggleManager = featureToggleManager,
+            sessionStorageManager = sessionStorageManager,
+        )
+
+    @Test
+    fun `a block's failure is sent once a session for each in-app and reason`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val tracker = blockFailureTracker(SessionStorageManager(timeProvider))
+        val sent = mutableListOf<List<InAppShowError>>()
+
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page again")
+        tracker.sendBlockFailure("block-inapp", FailureReason.PRESENTATION_FAILED, "silent page")
+        tracker.sendBlockFailure("another-block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        verify(exactly = 3) { inAppRepository.sendInAppShowErrors(capture(sent)) }
+        assertEquals(
+            listOf(
+                "block-inapp" to FailureReason.UNKNOWN_ERROR,
+                "block-inapp" to FailureReason.PRESENTATION_FAILED,
+                "another-block-inapp" to FailureReason.UNKNOWN_ERROR,
+            ),
+            sent.map { errors -> errors.asFailures().single().let { failure -> failure.inAppId to failure.failureReason } },
+        )
+        assertEquals("no page", sent.first().asFailures().single().errorDetails)
+    }
+
+    @Test
+    fun `a block's failure sent in a session that has ended is sent again in the new one`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val sessions = SessionStorageManager(timeProvider)
+        val tracker = blockFailureTracker(sessions)
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        sessions.clearSessionData()
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        verify(exactly = 2) { inAppRepository.sendInAppShowErrors(any()) }
+    }
+
+    @Test
+    fun `a block's failure not sent while the feature is off is not counted as sent for the session`() {
+        val tracker = blockFailureTracker(SessionStorageManager(timeProvider))
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+        verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
+
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(any()) }
+    }
+
+    @Test
+    fun `an overlay's failure is sent every time it happens`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val tracker = blockFailureTracker(SessionStorageManager(timeProvider))
+
+        tracker.sendFailure("overlay-inapp", FailureReason.PRESENTATION_FAILED, "crashed")
+        tracker.sendFailure("overlay-inapp", FailureReason.PRESENTATION_FAILED, "crashed")
+
+        verify(exactly = 2) { inAppRepository.sendInAppShowErrors(any()) }
+    }
 }

@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import android.os.Looper
@@ -10,11 +11,21 @@ import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
+import cloud.mindbox.mobile_sdk.findActivity
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
+import cloud.mindbox.mobile_sdk.managers.LifecycleManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
+import io.mockk.mockkStatic
+import io.mockk.unmockkAll
+import io.mockk.verify
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -32,19 +43,35 @@ class MindboxEmbeddedBlockViewRetainTest {
     private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
         val handles = mutableListOf<EmbeddedBlockHandle>()
         var droppedCount = 0
+        var appearedCount = 0
 
         override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
             handles.add(handle)
             return Closeable { handles.remove(handle) }
         }
 
-        override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
+        override fun onBlockAppeared(placeSystemName: PlaceKey) {
+            appearedCount++
+        }
 
         override fun onBlockContentDropped(placeSystemName: PlaceKey) {
             droppedCount++
         }
 
         override fun startListening() = Unit
+
+        override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = true
+
+        override fun deferUntilReturnChecked(): Boolean = false
+
+        override fun onAppResumedOn(activity: Activity) = Unit
+
+        override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer) =
+            PlaceShowReservation.RESERVED
+
+        override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch) = Unit
+
+        override fun onReturnCheckOver() = Unit
     }
 
     private class FakeProvider(context: Context) : EmbeddedContentProvider {
@@ -85,12 +112,33 @@ class MindboxEmbeddedBlockViewRetainTest {
         }
     }
 
+    class RootBlockFragment : Fragment() {
+        override fun onCreateView(
+            inflater: LayoutInflater,
+            container: ViewGroup?,
+            savedInstanceState: Bundle?,
+        ): View = BlockFragment.blockFactory(requireContext())
+
+        val block: MindboxEmbeddedBlockView
+            get() = requireView() as MindboxEmbeddedBlockView
+    }
+
     class DetailFragment : Fragment() {
         override fun onCreateView(
             inflater: LayoutInflater,
             container: ViewGroup?,
             savedInstanceState: Bundle?,
         ): View = View(requireContext())
+    }
+
+    class NavigationHostFragment : Fragment() {
+        val childContainerId: Int = View.generateViewId()
+
+        override fun onCreateView(
+            inflater: LayoutInflater,
+            container: ViewGroup?,
+            savedInstanceState: Bundle?,
+        ): View = FragmentContainerView(requireContext()).apply { id = childContainerId }
     }
 
     private val controller: ActivityController<FragmentActivity> =
@@ -103,7 +151,15 @@ class MindboxEmbeddedBlockViewRetainTest {
     private val store = EmbeddedBlockContentStore(maxRetained = 3)
     private val providers = mutableListOf<FakeProvider>()
     private val loads = mutableListOf<MindboxEmbeddedBlockView>()
+    private val empties = mutableListOf<MindboxEmbeddedBlockView>()
+    private val fails = mutableListOf<MindboxEmbeddedBlockView>()
     private var placeName = PLACE
+    private var isAppInForeground = true
+    private var placeRecords = ""
+    private val placeMemory = EmbeddedBlockPlaceMemory(
+        readRecordsJson = { placeRecords },
+        writeRecordsJson = { json -> placeRecords = json },
+    )
 
     private fun newBlock(context: Context): MindboxEmbeddedBlockView =
         MindboxEmbeddedBlockView(
@@ -114,13 +170,24 @@ class MindboxEmbeddedBlockViewRetainTest {
                 placeSystemName = placeName,
                 providerFactory = { _, _ -> FakeProvider(context).also { providers.add(it) } },
                 blocksRegistry = { blocksRegistry },
+                hostActivity = { context.findActivity() },
+                isAppInForeground = { isAppInForeground },
             ),
             contentStore = { store },
+            placeMemory = placeMemory,
         ).apply {
             setListener(
                 object : MindboxEmbeddedBlockListener {
                     override fun onLoad(view: MindboxEmbeddedBlockView) {
                         loads.add(view)
+                    }
+
+                    override fun onEmpty(view: MindboxEmbeddedBlockView) {
+                        empties.add(view)
+                    }
+
+                    override fun onFail(view: MindboxEmbeddedBlockView, reason: MindboxEmbeddedBlockFailReason) {
+                        fails.add(view)
                     }
                 },
             )
@@ -134,6 +201,7 @@ class MindboxEmbeddedBlockViewRetainTest {
     @After
     fun tearDown() {
         BlockFragment.blockFactory = { context -> MindboxEmbeddedBlockView(context) }
+        unmockkAll()
     }
 
     private fun idle() {
@@ -170,6 +238,32 @@ class MindboxEmbeddedBlockViewRetainTest {
         fragmentManager.popBackStackImmediate()
         idle()
     }
+
+    private fun goToBackground(block: MindboxEmbeddedBlockView): EmbeddedBlockHandle {
+        isAppInForeground = false
+        dispatchWindowVisibility(block, View.GONE)
+        idle()
+        val handle = blocksRegistry.handles.single()
+        assertTrue(handle.isPausedForBackground)
+        return handle
+    }
+
+    private fun EmbeddedBlockHandle.refuseInNewSession() {
+        onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        idle()
+    }
+
+    private fun refuseThePlace() {
+        blocksRegistry.handles.single().onContentResolved(null)
+        idle()
+    }
+
+    private fun failThePlace() {
+        blocksRegistry.handles.single().onConfigUnavailable()
+        idle()
+    }
+
+    private fun remembersThePlace(): Boolean = placeMemory.hasShownContent(PlaceKey.of(PLACE))
 
     @Test
     fun `the content stays with the fragment and comes back without a second load`() {
@@ -335,6 +429,286 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         assertEquals(0, store.size)
         assertTrue(blocksRegistry.handles.isEmpty())
+    }
+
+    @Test
+    fun `a block away in background whose fragment is replaced has left its screen and comes back collapsed before its first frame when its place was refused meanwhile`() {
+        val home = openHome()
+        deliverContent()
+        val handle = goToBackground(home.block)
+
+        goForward()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+        assertEquals(1, store.size)
+
+        handle.refuseInNewSession()
+        isAppInForeground = true
+        goBack()
+        val returned = home.block
+        dispatchWindowVisibility(returned, View.VISIBLE)
+
+        assertEquals(View.GONE, returned.visibility)
+        assertEquals(1, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a block away in background whose fragment is hidden has left its screen, stays stopped while hidden and comes back collapsed before its first frame when its place was refused meanwhile`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        val handle = goToBackground(block)
+
+        fragmentManager.beginTransaction().hide(home).commitNow()
+        idle()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+
+        isAppInForeground = true
+        dispatchWindowVisibility(block, View.VISIBLE)
+        idle()
+
+        assertFalse(handle.isActive)
+
+        handle.refuseInNewSession()
+        fragmentManager.beginTransaction().show(home).commitNow()
+
+        assertEquals(View.GONE, block.visibility)
+        assertEquals(1, providers.single().releaseCount)
+    }
+
+    private fun openHomeInsideNavigationHost(): Pair<NavigationHostFragment, BlockFragment> {
+        val host = NavigationHostFragment()
+        fragmentManager.beginTransaction().add(container.id, host).commitNow()
+        val home = BlockFragment()
+        host.childFragmentManager.beginTransaction().add(host.childContainerId, home).setPrimaryNavigationFragment(home).commitNow()
+        idle()
+        show(home.block)
+        return host to home
+    }
+
+    @Test
+    fun `a block away in background whose fragment a nested navigation host replaces has left its screen`() {
+        val (host, home) = openHomeInsideNavigationHost()
+        deliverContent()
+        val handle = goToBackground(home.block)
+
+        host.childFragmentManager.beginTransaction().replace(host.childContainerId, DetailFragment()).addToBackStack(null).commit()
+        host.childFragmentManager.executePendingTransactions()
+        idle()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+    }
+
+    @Test
+    fun `a block away in background whose parent fragment is hidden has left its screen`() {
+        val (host, home) = openHomeInsideNavigationHost()
+        deliverContent()
+        val handle = goToBackground(home.block)
+
+        fragmentManager.beginTransaction().hide(host).commitNow()
+        idle()
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+    }
+
+    @Test
+    fun `a block built with its view's own controller knows its screen, so a pause while another screen of the app stays started is leaving it`() {
+        val otherScreen = Robolectric.buildActivity(Activity::class.java).get()
+        val lifecycle = LifecycleManager(currentActivityName = null, currentIntent = null, isAppInBackground = false)
+        lifecycle.onActivityStarted(activity)
+        lifecycle.onActivityResumed(activity)
+        lifecycle.onActivityStarted(otherScreen)
+        LifecycleManager.instance = lifecycle
+        try {
+            val block = MindboxEmbeddedBlockView(activity, PLACE)
+            activity.setContentView(FrameLayout(activity).apply { addView(block, 500, 300) })
+            show(block)
+            val handle = MindboxEmbeddedBlockView::class.java.getDeclaredField("contentController")
+                .apply { isAccessible = true }
+                .get(block) as EmbeddedBlockHandle
+
+            lifecycle.onActivityPaused(activity)
+            dispatchWindowVisibility(block, View.GONE)
+            idle()
+
+            assertFalse(handle.isActive)
+            assertFalse(handle.isPausedForBackground)
+        } finally {
+            LifecycleManager.instance = null
+        }
+    }
+
+    @Test
+    fun `a block let go by its wrapper while the app is in background leaves its screen once its view is taken out of the window`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        val handle = goToBackground(block)
+        fragmentManager.beginTransaction().setMaxLifecycle(home, Lifecycle.State.STARTED).commitNow()
+        block.releaseOrRetain()
+        assertEquals(1, store.size)
+        assertTrue(handle.isPausedForBackground)
+
+        (home.requireView() as ViewGroup).removeView(block)
+
+        assertFalse(handle.isPausedForBackground)
+        assertTrue(handle.isLeftBehind)
+    }
+
+    @Test
+    fun `an activity recreated for a configuration change while the app is in background does not count as its block leaving the screen`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        blocksRegistry.handles.single().onContentResolved(null)
+        idle()
+        goToBackground(block)
+
+        controller.recreate()
+        idle()
+
+        assertEquals(View.VISIBLE, block.visibility)
+        assertTrue(empties.isEmpty())
+    }
+
+    @Test
+    fun `a block holding the collapse of its refused place tells its host it is empty as the user moves on to another fragment`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        refuseThePlace()
+        assertEquals(View.VISIBLE, block.visibility)
+
+        goForward()
+
+        assertEquals(listOf(block), empties)
+        assertFalse(remembersThePlace())
+    }
+
+    @Test
+    fun `a block holding the collapse of its refused place tells its host it is empty when its wrapper lets it go after it left the window`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        refuseThePlace()
+
+        (home.requireView() as ViewGroup).removeView(block)
+        block.releaseOrRetain()
+        idle()
+
+        assertEquals(listOf(block), empties)
+    }
+
+    @Test
+    fun `a block holding the collapse of its refused place forgets its place when its activity is destroyed in background`() {
+        val block = newBlock(activity)
+        activity.setContentView(FrameLayout(activity).apply { addView(block, 500, 300) })
+        show(block)
+        deliverContent()
+        refuseThePlace()
+        goToBackground(block)
+        assertTrue(remembersThePlace())
+
+        controller.pause().stop().destroy()
+        idle()
+
+        assertFalse(remembersThePlace())
+    }
+
+    @Test
+    fun `a block holding the failure of its place tells its host it failed as the user moves on to another fragment and keeps the place remembered`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        failThePlace()
+        assertEquals(View.VISIBLE, block.visibility)
+
+        goForward()
+
+        assertEquals(listOf(block), fails)
+        assertTrue(remembersThePlace())
+    }
+
+    @Test
+    fun `a block holding the collapse of its refused place collapses as its fragment is hidden in foreground and asks its place again once shown`() {
+        val home = openHome()
+        deliverContent()
+        val block = home.block
+        refuseThePlace()
+        val appearedBeforeHiding = blocksRegistry.appearedCount
+
+        fragmentManager.beginTransaction().hide(home).commitNow()
+        idle()
+
+        assertEquals(View.GONE, block.visibility)
+        assertEquals(listOf(block), empties)
+
+        fragmentManager.beginTransaction().show(home).commitNow()
+        idle()
+
+        assertEquals(appearedBeforeHiding + 1, blocksRegistry.appearedCount)
+    }
+
+    @Test
+    fun `a block that is its fragment's root view collapses its refused place as the fragment is hidden in foreground and asks its place again once shown`() {
+        val home = RootBlockFragment()
+        fragmentManager.beginTransaction().add(container.id, home).commitNow()
+        idle()
+        val block = home.block
+        show(block)
+        deliverContent()
+        refuseThePlace()
+        val appearedBeforeHiding = blocksRegistry.appearedCount
+
+        fragmentManager.beginTransaction().hide(home).commitNow()
+        idle()
+
+        assertEquals(listOf(block), empties)
+
+        fragmentManager.beginTransaction().show(home).commitNow()
+        idle()
+
+        assertEquals(appearedBeforeHiding + 1, blocksRegistry.appearedCount)
+    }
+
+    @Test
+    fun `a block that is the root view of a fragment added hidden starts once the fragment is shown`() {
+        val home = RootBlockFragment()
+        fragmentManager.beginTransaction().add(container.id, home).hide(home).commitNow()
+        idle()
+        val block = home.block
+        show(block)
+
+        assertEquals(0, blocksRegistry.appearedCount)
+
+        fragmentManager.beginTransaction().show(home).commitNow()
+        idle()
+        deliverContent()
+
+        assertEquals(1, blocksRegistry.appearedCount)
+        assertEquals(listOf(block), loads)
+    }
+
+    @Test
+    fun `a block outside any fragment looks for one once as it is attached, not again as its own or its parents' visibility changes`() {
+        mockkStatic(FragmentManager::class)
+        val block = newBlock(activity)
+        val parent = FrameLayout(activity).apply { addView(block, 500, 300) }
+        activity.setContentView(parent)
+        show(block)
+        deliverContent()
+
+        parent.visibility = View.GONE
+        parent.visibility = View.VISIBLE
+        idle()
+
+        assertEquals(View.VISIBLE, block.visibility)
+        verify(exactly = 1) { FragmentManager.findFragment<Fragment>(block) }
     }
 
     private companion object {
