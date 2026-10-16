@@ -207,7 +207,7 @@ public class MindboxEmbeddedBlockView internal constructor(
                 releaseViewOnly()
                 return
             }
-            mindboxLogI("[EmbeddedBlock] Host screen destroyed, freeing content ($retainRefusal)")
+            mindboxLogI("[EmbeddedBlock] Lifecycle owner destroyed, freeing content ($retainRefusal)")
             detachFromHost()
             releaseContent()
         }
@@ -435,14 +435,14 @@ public class MindboxEmbeddedBlockView internal constructor(
         if (isContentStarted) return
         isContentStarted = true
         hasStartedOnce = true
-        mindboxLogI("[EmbeddedBlock] On screen (place='$placeSystemName'), starting content")
+        mindboxLogI("[EmbeddedBlock] Visible in window (place='$placeSystemName'), starting content")
         loggingRunCatching { contentController.start() }
     }
 
     private fun pauseContent() {
         if (!isContentStarted) return
         isContentStarted = false
-        mindboxLogI("[EmbeddedBlock] Off screen, pausing content")
+        mindboxLogI("[EmbeddedBlock] Not visible in window (place='$placeSystemName'), pausing content")
         loggingRunCatching { contentController.pause() }
     }
 
@@ -534,7 +534,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             contentController.onStateChange = null
             clearContent()
             store.retain(owner, PlaceKey.of(place), contentController, activity)
-            mindboxLogI("[EmbeddedBlock] Host view destroyed, keeping the content for the screen (place='$place')")
+            mindboxLogI("[EmbeddedBlock] Keeping the content for the screen (place='$place')")
             null
         }
 
@@ -613,11 +613,19 @@ public class MindboxEmbeddedBlockView internal constructor(
                 contentController.contentView?.let { showContent(it, animated) }
             }
             MindboxEmbeddedBlockAppearance.ERROR -> {
-                mindboxLogI("[EmbeddedBlock] Content failed, showing the host's error view")
+                if (state is EmbeddedBlockState.Loading) {
+                    mindboxLogI("[EmbeddedBlock] Content loading behind the host's error view")
+                } else {
+                    mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': content failed — showing the host's error view")
+                }
                 errorView?.let { showContent(it) }
             }
             MindboxEmbeddedBlockAppearance.COLLAPSED -> {
-                mindboxLogI("[EmbeddedBlock] Nothing to show for this place, collapsing")
+                when (state) {
+                    is EmbeddedBlockState.Loading -> mindboxLogI("[EmbeddedBlock] Content loading, staying hidden")
+                    is EmbeddedBlockState.Failed -> mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': content failed — collapsing")
+                    else -> mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': the place came out empty — collapsing")
+                }
                 clearContent()
             }
         }

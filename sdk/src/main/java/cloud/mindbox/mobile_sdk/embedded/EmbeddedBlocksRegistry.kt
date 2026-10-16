@@ -393,7 +393,7 @@ internal class EmbeddedBlocksRegistryImpl(
             return
         }
         if (handles.none { handle -> handle.isActive }) {
-            mindboxLogI("[EmbeddedBlock] Operation matched paused place '$place', nowhere to display — skipping")
+            mindboxLogI("[EmbeddedBlock] Operation matched place '$place', but it has no active block (off screen or timed out) — skipping")
             return
         }
         resolvePlace(place, ResolvePass(trigger = triggerEvent))
@@ -617,7 +617,7 @@ internal class EmbeddedBlocksRegistryImpl(
                 handles.isEmpty() -> Unit
                 handles.any { handle -> handle.isActive } -> action(place)
                 else ->
-                    mindboxLogI("[EmbeddedBlock] Place '$place' is paused, nowhere to display — skipping ($reason)")
+                    mindboxLogI("[EmbeddedBlock] Place '$place' has no active block (off screen or timed out) — skipping ($reason)")
             }
         }
     }
@@ -748,13 +748,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
         val delivered = when (content?.takeUnless { defersReservation }?.let { winner -> inAppInteractor.reservePlaceShow(place, winner, answer.sessionEpoch) }) {
             PlaceShowReservation.RESERVED -> content
-            PlaceShowReservation.REFUSED -> {
-                mindboxLogI(
-                    "[EmbeddedBlock] In-app ${content?.inAppId} won place '$place' but the show " +
-                        "budgets are spent, the place has nothing to show"
-                )
-                null
-            }
+            PlaceShowReservation.REFUSED -> null
             PlaceShowReservation.STALE -> {
                 dropEndedSessionAnswer(place)
                 return

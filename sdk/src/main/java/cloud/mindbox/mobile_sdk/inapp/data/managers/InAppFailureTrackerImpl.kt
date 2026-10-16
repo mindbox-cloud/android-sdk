@@ -130,7 +130,7 @@ internal class InAppFailureTrackerImpl(
             mindboxLogI("Place '$placeSystemName' already reported its exceeded wait budget this session")
             return
         }
-        mindboxLogI("The SDK stayed silent past the block's budget, sending the place-named failure")
+        mindboxLogI("Inapp.ShowFailure event sent for place '$placeSystemName': no in-app after ${waitedFor.interval.millisToTimeSpan()} (${phase.wireName})")
         val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
             .convertToZonedDateTimeAtUTC()
             .convertToString()

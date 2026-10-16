@@ -386,7 +386,7 @@ internal class InAppInteractorImpl(
             return@withinLiveSession PlaceShowReservation.RESERVED
         }
         if (!isAllowedByFrequency(content.inAppId)) {
-            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked, the place has nothing to show")
+            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked")
             return@withinLiveSession PlaceShowReservation.REFUSED
         }
         val outcome = showBudgetManager.reserve(ShowBudgetOwner.Place(placeSystemName), content.inAppId, content.frequency, content.isPriority)
