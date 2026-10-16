@@ -9,7 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.models.TrackVisitData
+import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.Constants
 import com.google.gson.Gson
@@ -70,12 +70,9 @@ class DataCollectorTest {
         every { permissionManager.getMicrophonePermissionStatus() } returns PermissionStatus.NOT_DETERMINED
         every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.RESTRICTED
         every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.LIMITED
-        sessionStorageManager.lastTrackVisitData = TrackVisitData(
-            ianaTimeZone = "Europe/Moscow",
-            endpointId = "endpoint-id",
+        sessionStorageManager.lastTrackVisitData = TrackVisitOrigin(
             source = "link",
             requestUrl = "https://mindbox.cloud/path",
-            sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
         )
         sessionStorageManager.state.inAppTriggerEvent = InAppEventType.OrdinalEvent(
             eventType = EventType.AsyncOperation("OpenScreen"),
@@ -142,12 +139,9 @@ class DataCollectorTest {
         every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.GRANTED
         sessionStorageManager.state.inAppTriggerEvent = InAppEventType.AppStartup
-        sessionStorageManager.lastTrackVisitData = TrackVisitData(
-            ianaTimeZone = "Europe/Moscow",
-            endpointId = "endpoint-id",
+        sessionStorageManager.lastTrackVisitData = TrackVisitOrigin(
             source = null,
             requestUrl = " ",
-            sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
         )
         val dataCollector = DataCollector(
             appContext = appContext,

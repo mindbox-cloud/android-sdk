@@ -9,7 +9,9 @@ import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.data.validators.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSerializationManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppsSection
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.PageConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
@@ -23,18 +25,22 @@ import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.InappSettingsManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
 import cloud.mindbox.mobile_sdk.monitoring.data.validators.MonitoringValidator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import com.android.volley.VolleyError
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -62,11 +68,25 @@ internal class MobileConfigRepositoryImpl(
 
     private val mutex = Mutex()
 
-    private val configState = MutableStateFlow<ConfigEntry?>(null)
+    private val configState = MutableStateFlow(ConfigState(current = null, lastPublished = null))
 
-    private val configUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val configVersions = MutableSharedFlow<ConfigVersion>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     private var configSubscription: Job? = null
+
+    private sealed interface Publication {
+        object Open : Publication
+
+        object AwaitingDownload : Publication
+
+        object Stored : Publication
+    }
+
+    private val publicationLock = Any()
+
+    private var configGeneration = 0L
+
+    private var publication: Publication = Publication.Open
 
     init {
         startListening()
@@ -83,57 +103,104 @@ internal class MobileConfigRepositoryImpl(
     }
 
     override suspend fun fetchMobileConfig() {
-        val configuration = DbManager.listenConfigurations().first()
-        MindboxPreferences.inAppConfig = gatewayManager.fetchMobileConfig(
-            configuration = configuration
-        )
-        MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
+        val generation = synchronized(publicationLock) { configGeneration }
+        val downloaded = try {
+            gatewayManager.fetchMobileConfig(configuration = DbManager.listenConfigurations().first())
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            concludeDownload(generation) { storeAfterFailedDownload(error) }
+            throw error
+        }
+        concludeDownload(generation) {
+            MindboxPreferences.inAppConfig = downloaded
+            MindboxPreferences.inAppConfigUpdatedTime = System.currentTimeMillis()
+        }
+    }
+
+    private inline fun concludeDownload(generation: Long, store: () -> Unit) = synchronized(publicationLock) {
+        if (generation != configGeneration) {
+            mindboxLogI("A config download that is no longer awaited concluded, dropping its outcome")
+            return@synchronized
+        }
+        if (publication == Publication.AwaitingDownload) {
+            publication = Publication.Stored
+        }
+        store()
+    }
+
+    private fun storeAfterFailedDownload(error: Throwable) {
+        if (error is VolleyError && error.networkResponse?.statusCode == MobileConfigRepository.CONFIG_NOT_FOUND) {
+            MindboxPreferences.inAppConfig = ""
+            return
+        }
+        if (error is VolleyError) sessionStorageManager.state.configFetchingError = true
+        // needed to trigger flow event
+        MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
+    }
+
+    private fun isPublishable(inAppConfigString: String): Boolean = when (publication) {
+        Publication.Open -> true
+        Publication.AwaitingDownload -> false
+        Publication.Stored -> inAppConfigString == MindboxPreferences.inAppConfig
     }
 
     private suspend fun processConfigUpdate(inAppConfigString: String) {
         mutex.withLock {
-            this@MobileConfigRepositoryImpl.mindboxLogD(
-                message = "CachedConfig : $inAppConfigString"
-            )
-            val configBlank =
-                mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
-
-            val filteredConfig = InAppConfigResponse(
-                inApps = runCatching { getInApps(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get inApps $it")
-                },
-                monitoring = runCatching { getMonitoring(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get logs $it")
-                },
-                settings = runCatching { getSettings(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get settings $it")
-                },
-                abtests = runCatching { getABTests(configBlank) }.getOrNull {
-                    mindboxLogW("Unable to get abtests $it")
-                },
-            )
-
-            val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
-            mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
-            mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
-            inappSettingsManager.applySettings(config = filteredConfig)
-            featureToggleManager.applyToggles(config = filteredConfig)
-            persistOperationsDomain(filteredConfig)
-            configState.value = ConfigEntry(
-                config = updatedInAppConfig,
-                isUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError,
-            )
-            configUpdates.tryEmit(Unit)
-            // Prewarm stage 2: warm what the config's webview in-apps will need
-            // (or release the warm instance when the config proves there are none).
-            inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
-            mindboxLogI(message = "Providing config: $updatedInAppConfig")
+            synchronized(publicationLock) {
+                if (!isPublishable(inAppConfigString)) {
+                    mindboxLogI("The config emitted is not the one the current session stored, not publishing it")
+                    return@withLock
+                }
+                applyConfig(inAppConfigString)
+            }
         }
     }
 
-    override fun listenConfigUpdates(): Flow<Unit> = configUpdates
+    private fun applyConfig(inAppConfigString: String) {
+        this@MobileConfigRepositoryImpl.mindboxLogD(
+            message = "CachedConfig : $inAppConfigString"
+        )
+        val configBlank =
+            mobileConfigSerializationManager.deserializeToConfigDtoBlank(inAppConfigString)
 
-    override fun hasConfig(): Boolean = configState.value != null
+        val filteredConfig = InAppConfigResponse(
+            inApps = runCatching { getInApps(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get inApps $it")
+            },
+            monitoring = runCatching { getMonitoring(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get logs $it")
+            },
+            settings = runCatching { getSettings(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get settings $it")
+            },
+            abtests = runCatching { getABTests(configBlank) }.getOrNull {
+                mindboxLogW("Unable to get abtests $it")
+            },
+        )
+
+        val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
+        mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
+        mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
+        inappSettingsManager.applySettings(config = filteredConfig)
+        featureToggleManager.applyToggles(config = filteredConfig)
+        persistOperationsDomain(filteredConfig)
+        val entry = ConfigEntry(
+            config = updatedInAppConfig,
+            isUnavailable = inAppConfigString.isBlank() && sessionStorageManager.state.configFetchingError,
+            version = configState.value.lastPublished?.version?.next() ?: ConfigVersion.FIRST,
+        )
+        configState.value = ConfigState(current = entry, lastPublished = entry)
+        configVersions.tryEmit(entry.version)
+        // Prewarm stage 2: warm what the config's webview in-apps will need
+        // (or release the warm instance when the config proves there are none).
+        inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
+        mindboxLogI(message = "Providing config: $updatedInAppConfig")
+    }
+
+    override fun listenConfigVersions(): Flow<ConfigVersion> = configVersions
+
+    override fun hasConfig(): Boolean = configState.value.current != null
 
     override suspend fun getMonitoringSection() = getConfig().monitoring
 
@@ -141,16 +208,36 @@ internal class MobileConfigRepositoryImpl(
 
     override suspend fun getInAppsSection() = getConfig().inApps
 
-    override suspend fun getInAppsSectionIfAvailable(): List<InApp>? =
-        awaitConfigEntry().takeUnless { entry -> entry.isUnavailable }?.config?.inApps
+    override suspend fun getInAppsSectionIfAvailable(): InAppsSection {
+        val entry = awaitConfigEntry()
+        return InAppsSection(inApps = entry.config.inApps.takeUnless { entry.isUnavailable }, configVersion = entry.version)
+    }
+
+    override suspend fun getConfigForPageIfAvailable(): PageConfig? {
+        val state = configState.value
+        val entry = state.current ?: state.lastPublished ?: return null
+        if (entry.isUnavailable) return null
+        return PageConfig(entry.config, isOfEndedSession = state.current == null)
+    }
 
     override fun findInAppInCurrentConfig(id: String): InApp? =
-        configState.value?.config?.inApps?.firstOrNull { inApp -> inApp.id == id }
+        configState.value.current?.config?.inApps?.firstOrNull { inApp -> inApp.id == id }
 
     override suspend fun getABTests() = getConfig().abtests
 
     override fun resetCurrentConfig() {
-        configState.value = null
+        synchronized(publicationLock) {
+            configGeneration++
+            publication = Publication.AwaitingDownload
+            configState.value = ConfigState(current = null, lastPublished = configState.value.lastPublished)
+        }
+    }
+
+    override fun abandonAwaitedDownload(): Boolean = synchronized(publicationLock) {
+        if (publication != Publication.AwaitingDownload) return@synchronized false
+        configGeneration++
+        mindboxLogI("The awaited config download was abandoned, its outcome will be dropped")
+        true
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
@@ -336,7 +423,9 @@ internal class MobileConfigRepositoryImpl(
 
     private suspend fun getConfig(): InAppConfig = awaitConfigEntry().config
 
-    private suspend fun awaitConfigEntry(): ConfigEntry = configState.filterNotNull().first()
+    private suspend fun awaitConfigEntry(): ConfigEntry = configState.mapNotNull { state -> state.current }.first()
 
-    private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean)
+    private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean, val version: ConfigVersion)
+
+    private class ConfigState(val current: ConfigEntry?, val lastPublished: ConfigEntry?)
 }

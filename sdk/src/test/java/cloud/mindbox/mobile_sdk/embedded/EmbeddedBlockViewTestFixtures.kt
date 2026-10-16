@@ -5,25 +5,54 @@ import android.os.Looper
 import android.view.View
 import android.widget.LinearLayout
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
 import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
 
-internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?) =
-    onContentResolved(content, Milliseconds(0L))
+internal fun placeAnswer(
+    sessionEpoch: SessionEpoch = SessionEpoch(0L),
+    isByOperation: Boolean = false,
+    selectionTime: Milliseconds = Milliseconds(0L),
+): EmbeddedPlaceAnswer = EmbeddedPlaceAnswer(sessionEpoch, isByOperation, selectionTime)
+
+internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?) = onContentResolved(content, placeAnswer())
+
+internal fun EmbeddedBlockHandle.onContentResolved(content: InAppType.Embedded?, selectionTime: Milliseconds) =
+    onContentResolved(content, placeAnswer(selectionTime = selectionTime))
+
+internal fun EmbeddedBlockHandle.onConfigUnavailable() = onConfigUnavailable(placeAnswer())
 
 internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
     var lastHandle: EmbeddedBlockHandle? = null
 
     override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
+    override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = true
+
+    override fun deferUntilReturnChecked(): Boolean = false
+
+    override fun onAppResumedOn(activity: Activity) = Unit
+
+    override fun reserveShow(placeSystemName: PlaceKey, content: InAppType.Embedded, answer: EmbeddedPlaceAnswer) =
+        PlaceShowReservation.RESERVED
+
+    override fun giveBackParkedShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch) = Unit
+
+    override fun onReturnCheckOver() = Unit
+
     override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
         lastHandle = handle
         return Closeable { lastHandle = null }
     }
 
-    override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
+    var appearedCount = 0
+
+    override fun onBlockAppeared(placeSystemName: PlaceKey) {
+        appearedCount++
+    }
 
     override fun startListening() = Unit
 }

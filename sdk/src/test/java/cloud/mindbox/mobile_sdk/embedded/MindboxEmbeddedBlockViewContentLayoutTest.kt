@@ -8,32 +8,15 @@ import android.view.View.MeasureSpec
 import android.widget.FrameLayout
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.models.InAppStub
-import cloud.mindbox.mobile_sdk.models.PlaceKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import java.io.Closeable
 
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewContentLayoutTest {
-
-    private class FakeBlocksRegistry : EmbeddedBlocksRegistry {
-        var lastHandle: EmbeddedBlockHandle? = null
-
-        override fun register(placeSystemName: PlaceKey, handle: EmbeddedBlockHandle): Closeable {
-            lastHandle = handle
-            return Closeable { lastHandle = null }
-        }
-
-        override fun onBlockAppeared(placeSystemName: PlaceKey) = Unit
-
-        override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
-
-        override fun startListening() = Unit
-    }
 
     /**
      * A host that answers a layout request the way Compose interop can: `AndroidViewsHandler`
@@ -75,7 +58,7 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
     }
 
     private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
-    private val blocksRegistry = FakeBlocksRegistry()
+    private val blocksRegistry = RecordingBlocksRegistry()
     private var lastProvider: EmbeddedContentProvider? = null
 
     private fun buildView(
@@ -85,6 +68,7 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
             activity,
             null,
             "main-screen-top",
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
             contentController = EmbeddedBlockContentController(
                 placeSystemName = "main-screen-top",
                 providerFactory = { _, _ -> provider().also { lastProvider = it } },

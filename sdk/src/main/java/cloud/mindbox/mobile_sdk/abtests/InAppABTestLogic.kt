@@ -19,8 +19,9 @@ internal class InAppABTestLogic(
     @Volatile
     private var cachedPool: Pair<PoolKey, Set<String>>? = null
 
-    suspend fun getInAppsPool(allInApps: List<String>): Set<String> {
-        val abtests = repository.getABTests()
+    suspend fun getInAppsPool(allInApps: List<String>): Set<String> = getInAppsPool(allInApps, repository.getABTests())
+
+    fun getInAppsPool(allInApps: List<String>, abtests: List<ABTest>): Set<String> {
         val uuid = MindboxPreferences.deviceUuid
         val key = PoolKey(abtests, uuid, allInApps)
         cachedPool?.let { (cachedKey, pool) ->

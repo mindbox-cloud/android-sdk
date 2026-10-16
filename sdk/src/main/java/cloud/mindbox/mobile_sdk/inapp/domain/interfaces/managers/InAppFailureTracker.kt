@@ -13,6 +13,13 @@ internal interface InAppFailureTracker {
         tags: Map<String, String>? = null
     )
 
+    fun sendBlockFailure(
+        inAppId: String,
+        failureReason: FailureReason,
+        errorDetails: String?,
+        tags: Map<String, String>? = null
+    )
+
     fun collectFailure(
         inAppId: String,
         failureReason: FailureReason,
