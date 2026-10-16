@@ -24,6 +24,8 @@ internal class FirebaseServiceHandler(
 
     override val notificationProvider: String = MindboxFirebase.tag
 
+    override val trackingIdType: String? = MindboxFirebase.trackingIdType
+
     override suspend fun initService(context: Context) {
         FirebaseApp.initializeApp(context)
         createNamedAppIfConfigured(context)
@@ -91,7 +93,7 @@ internal class FirebaseServiceHandler(
 
     override fun getAdsId(context: Context): Pair<String?, Boolean> {
         val advertisingIdInfo = AdvertisingIdClient.getAdvertisingIdInfo(context)
-        val id = advertisingIdInfo.id
+        val id: String? = advertisingIdInfo.id
         val isLimitAdTrackingEnabled = advertisingIdInfo.isLimitAdTrackingEnabled
         return id to isLimitAdTrackingEnabled
     }

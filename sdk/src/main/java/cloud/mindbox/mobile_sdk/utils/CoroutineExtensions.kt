@@ -9,13 +9,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal suspend fun <T> Collection<Deferred<T>>.awaitAllWithTimeout(timeMillis: Long): List<T> =
-    withTimeoutOrNull(timeMillis) {
+    withTimeoutOrNull(timeMillis.milliseconds) {
         awaitAll()
     } ?: filter { it.isCompleted && !it.isCancelled }
         .map { it.getCompleted() }
+        .also {
+            forEach { deferred ->
+                if (!deferred.isCompleted) {
+                    deferred.cancel()
+                }
+            }
+        }
 
 internal inline fun CoroutineScope.launchWithLock(
     mutex: Mutex,
