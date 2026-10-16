@@ -59,9 +59,11 @@ import cloud.mindbox.mobile_sdk.inapp.domain.extensions.sendBlockFailureWithCont
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
@@ -107,7 +109,7 @@ internal class EmbeddedBlockWebViewHolder(
     override val isAttemptAlive: Boolean
         get() = lastState == EmbeddedBlockState.Loading || lastState == EmbeddedBlockState.Ready
 
-    @Volatile private var lastLoadedContent: WebViewHtmlContent? = null
+    private var lastLoadedContent: WebViewHtmlContent? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -161,7 +163,7 @@ internal class EmbeddedBlockWebViewHolder(
         webViewCachePolicy.isCacheEnabled
     }
 
-    @Volatile private var hasPageAnswered = false
+    private var hasPageAnswered = false
 
     private var confirmedSessionEpoch: SessionEpoch? = null
 
@@ -200,7 +202,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     @Volatile private var pendingAckJob: Job? = null
 
-    @Volatile private var loadJob: Job? = null
+    private val pageScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + Mindbox.coroutineExceptionHandler)
 
     override fun start() {
         if (isReleased) return
@@ -225,7 +227,7 @@ internal class EmbeddedBlockWebViewHolder(
         presence.value = false
         isReleased = true
         pendingAckJob?.cancel()
-        loadJob?.cancel()
+        pageScope.cancel()
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()
@@ -357,7 +359,7 @@ internal class EmbeddedBlockWebViewHolder(
         }
         webViewController = controller
 
-        loadJob = Mindbox.mindboxScope.launch {
+        pageScope.launch {
             val configuration: Configuration = DbManager.listenConfigurations().first()
             val handlers = createActionHandlers(configuration)
 
@@ -444,7 +446,7 @@ internal class EmbeddedBlockWebViewHolder(
     private fun createActionHandlers(configuration: Configuration): WebViewActionHandlers {
         return WebViewActionHandlers().apply {
             commonBridgeActions.register(this)
-            registerSuspend(WebViewAction.READY) { handleReadyAction(configuration) }
+            register(WebViewAction.READY) { handleReadyAction(configuration) }
             register(WebViewAction.INIT) {
                 onPageAnswered()
                 BridgeMessage.SUCCESS_PAYLOAD

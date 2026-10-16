@@ -1,5 +1,12 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
+import cloud.mindbox.mobile_sdk.utils.setMindboxScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import cloud.mindbox.mobile_sdk.Mindbox
 import android.app.Application
 import android.os.Looper
 import android.view.ViewGroup
@@ -121,6 +128,32 @@ class WebViewInAppViewHolderTest {
         field.isAccessible = true
         webView = (field.get(holder) as WebViewController).view as WebView
         await { shadowOf(webView).lastLoadDataWithBaseURL != null }
+    }
+
+    @Test
+    fun `a soft re-initialization of the SDK does not cancel an in-app's page load`() {
+        val page = CompletableDeferred<String>()
+        var isFetching = false
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers {
+            isFetching = true
+            page.await()
+        }
+        holder.show(object : MindboxView {
+            override val container: ViewGroup = FrameLayout(application)
+            override val backPressRegistrar: BackPressRegistrar = this@WebViewInAppViewHolderTest.backPressRegistrar
+
+            override fun requestPermission() = Unit
+        })
+        await { isFetching }
+
+        Mindbox.mindboxScope.cancel()
+        setMindboxScope(CoroutineScope(Dispatchers.Default + SupervisorJob() + Mindbox.coroutineExceptionHandler))
+        page.complete("<html>inapp</html>")
+
+        val field = WebViewInAppViewHolder::class.java.getDeclaredField("webViewController")
+        field.isAccessible = true
+        val shownWebView = (field.get(holder) as WebViewController).view as WebView
+        await { shadowOf(shownWebView).lastLoadDataWithBaseURL != null }
     }
 
     private fun await(timeoutMs: Long = 5_000L, condition: () -> Boolean) {

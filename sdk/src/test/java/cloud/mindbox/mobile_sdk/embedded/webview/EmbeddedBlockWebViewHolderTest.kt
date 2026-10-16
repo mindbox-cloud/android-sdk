@@ -1,5 +1,7 @@
 package cloud.mindbox.mobile_sdk.embedded.webview
 
+import cloud.mindbox.mobile_sdk.utils.setMindboxScope
+import kotlinx.coroutines.SupervisorJob
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -40,7 +42,6 @@ import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.utils.Constants
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
-import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import com.google.gson.JsonObject
 import cloud.mindbox.mobile_sdk.inapp.presentation.OnShowInAppOutcome
 import cloud.mindbox.mobile_sdk.inapp.presentation.ShowInAppOutcome
@@ -1460,6 +1461,24 @@ class EmbeddedBlockWebViewHolderTest {
         holder.release()
 
         await { wasCancelled }
+    }
+
+    @Test
+    fun `a soft re-initialization of the SDK does not cancel a block's page load`() {
+        val page = CompletableDeferred<String>()
+        var isFetching = false
+        coEvery { gatewayManager.fetchWebViewContent(any()) } coAnswers {
+            isFetching = true
+            page.await()
+        }
+        holder.start()
+        await { isFetching }
+
+        Mindbox.mindboxScope.cancel()
+        setMindboxScope(CoroutineScope(Dispatchers.Default + SupervisorJob() + Mindbox.coroutineExceptionHandler))
+        page.complete("<html>block</html>")
+
+        await { shadowOf(webView).lastLoadDataWithBaseURL != null }
     }
 
     @Test

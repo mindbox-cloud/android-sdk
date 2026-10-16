@@ -43,6 +43,9 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -69,6 +72,7 @@ internal class WebViewInAppViewHolder(
 
     private var webViewController: WebViewController? = null
     private val mainHandler: Handler = Handler(Looper.getMainLooper())
+    private val pageScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + Mindbox.coroutineExceptionHandler)
 
     @Volatile private var isClosed = false
 
@@ -574,7 +578,7 @@ internal class WebViewInAppViewHolder(
             val controller: WebViewController = createWebViewController(layer)
             webViewController = controller
 
-            Mindbox.mindboxScope.launch {
+            pageScope.launch {
                 val configuration: Configuration = DbManager.listenConfigurations().first()
                 val handlers: WebViewActionHandlers = createWebViewActionHandlers(controller, layer, configuration)
 
@@ -752,6 +756,7 @@ internal class WebViewInAppViewHolder(
 
     override fun onClose() {
         isClosed = true
+        pageScope.cancel()
         stopTimer()
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {

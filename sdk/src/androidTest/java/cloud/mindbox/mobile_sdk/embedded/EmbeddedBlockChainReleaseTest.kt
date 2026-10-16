@@ -28,6 +28,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlinx.coroutines.Job
 import java.io.Closeable
 import java.lang.ref.WeakReference
 import java.net.InetAddress
@@ -131,9 +132,9 @@ class EmbeddedBlockChainReleaseTest {
         awaitLoads(1)
 
         leave()
+        assertRegistriesEmpty()
 
         assertReleased(chain)
-        assertRegistriesEmpty()
     }
 
     @Test
@@ -143,9 +144,9 @@ class EmbeddedBlockChainReleaseTest {
         sleepOffMain(300)
 
         leave()
+        assertRegistriesEmpty()
 
         assertReleased(chain, withinMs = 4_000)
-        assertRegistriesEmpty()
     }
 
     @Test
@@ -155,9 +156,9 @@ class EmbeddedBlockChainReleaseTest {
         sleepOffMain(500)
 
         leave()
+        assertRegistriesEmpty()
 
         assertReleased(chain)
-        assertRegistriesEmpty()
     }
 
     @Test
@@ -167,9 +168,9 @@ class EmbeddedBlockChainReleaseTest {
         awaitLoads(1)
 
         leave()
+        assertRegistriesEmpty()
 
         chains.forEach { chain -> assertReleased(chain) }
-        assertRegistriesEmpty()
     }
 
     @Test
@@ -180,9 +181,9 @@ class EmbeddedBlockChainReleaseTest {
         awaitAlive(chain, VIEW_LINKS)
 
         leave()
+        assertRegistriesEmpty()
 
         assertReleased(chain)
-        assertRegistriesEmpty()
     }
 
     @Test
@@ -192,27 +193,29 @@ class EmbeddedBlockChainReleaseTest {
         awaitLoads(1)
 
         onMain { checkNotNull(block.get()).release() }
+        assertRegistriesEmpty()
         awaitAlive(chain, VIEW_LINKS)
 
         leave()
+        assertRegistriesEmpty()
 
         assertReleased(chain)
-        assertRegistriesEmpty()
     }
 
     @Test
     fun leavingWhileADataPushWaitsForItsAckFreesTheChain() {
         val block = attachBlock()
         val page = server.page(count = 1, ackDelayMs = 3_000)
-        val chain = deliver(block, page, params = mapOf("v" to "1"))
+        val chain = deliver(block, page, params = mapOf("v" to "1"), inAppId = "chain-data-push")
         awaitLoads(1)
-        deliver(block, page, params = mapOf("v" to "2"))
+        deliver(block, page, params = mapOf("v" to "2"), inAppId = "chain-data-push")
         sleepOffMain(300)
+        assertTrue("the data push is not waiting for its ack", pendingAckOf(block)?.isActive == true)
 
         leave()
+        assertRegistriesEmpty()
 
         assertReleased(chain)
-        assertRegistriesEmpty()
     }
 
     @Test
@@ -228,9 +231,9 @@ class EmbeddedBlockChainReleaseTest {
         assertEquals(1, loads.get())
 
         leave()
+        assertRegistriesEmpty()
 
         assertReleased(chain)
-        assertRegistriesEmpty()
     }
 
     @Test
@@ -240,9 +243,9 @@ class EmbeddedBlockChainReleaseTest {
         awaitLoads(20, timeoutMs = 30_000)
 
         leave()
+        assertRegistriesEmpty()
 
         chains.forEach { chain -> assertReleased(chain) }
-        assertRegistriesEmpty()
     }
 
     // --- the block under test -------------------------------------------------------------
@@ -312,9 +315,10 @@ class EmbeddedBlockChainReleaseTest {
         blockReference: WeakReference<MindboxEmbeddedBlockView>,
         contentUrl: String,
         params: Map<String, String> = emptyMap(),
+        inAppId: String = "chain-${nextInAppId++}",
     ): Chain {
         val content = InAppType.Embedded(
-            inAppId = "chain-${nextInAppId++}",
+            inAppId = inAppId,
             placeSystemName = PlaceKey.of(PLACE),
             layers = listOf(
                 Layer.WebViewLayer(baseUrl = server.base, contentUrl = contentUrl, type = "webview", params = params),
@@ -334,6 +338,15 @@ class EmbeddedBlockChainReleaseTest {
         }
         instrumentation.waitForIdleSync()
         return chain
+    }
+
+    private fun pendingAckOf(blockReference: WeakReference<MindboxEmbeddedBlockView>): Job? {
+        var job: Job? = null
+        onMain {
+            val holder = checkNotNull(blockReference.get()).field("contentController")?.field("provider")
+            job = holder?.field("pendingAckJob") as? Job
+        }
+        return job
     }
 
     private fun awaitLoads(expected: Int, timeoutMs: Long = 15_000) {
@@ -383,6 +396,7 @@ class EmbeddedBlockChainReleaseTest {
         assertEquals("still reachable after ${withinMs}ms", emptyList<String>(), chain.alive())
     }
 
+    /** Checked before any collection: a holder that forgot to unregister is still reachable here. */
     private fun assertRegistriesEmpty() {
         val appModule = MindboxDI.appModule
         val pages = appModule.webPageRegistry.field("pages") as List<*>
