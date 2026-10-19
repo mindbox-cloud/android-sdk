@@ -267,7 +267,7 @@ internal class EmbeddedBlockContentController(
             if (isActive) {
                 mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' waits for the session check of the app's return")
             } else {
-                mindboxLogI("[EmbeddedBlock] Content for '$placeSystemName' arrived while paused, deferring it")
+                mindboxLogI("[EmbeddedBlock] The answer for '$placeSystemName' arrived off screen, deferring it")
             }
             val earlierOfSameInApp = parkedAnswer?.takeIf { parked -> content != null && parked.selectedInAppId == content.inAppId }
             parkedAnswer = ParkedAnswer.Resolved(content, keepingFirstSelectionOfNewSession(answer, earlierOfSameInApp?.answer))
@@ -342,7 +342,6 @@ internal class EmbeddedBlockContentController(
 
     override fun onSessionRenewed() {
         if (isStarted || isReleased || isAwayInBackground || !holdsLiveContent) return
-        mindboxLogI("[EmbeddedBlock] A new session began while block '$placeSystemName' was off screen, its place is asked again and the answer waits for its return")
         leftBehind = true
     }
 
@@ -412,10 +411,7 @@ internal class EmbeddedBlockContentController(
         }
         when (blocksRegistry()?.reserveShow(place, toReserve, answer) ?: PlaceShowReservation.RESERVED) {
             PlaceShowReservation.RESERVED -> applyResolved(content, answer, mayHold)
-            PlaceShowReservation.REFUSED -> {
-                mindboxLogI("[EmbeddedBlock] In-app ${toReserve.inAppId} is back on screen at '$place' but the show budgets are spent, the place has nothing to show")
-                applyResolved(null, answer, mayHold)
-            }
+            PlaceShowReservation.REFUSED -> applyResolved(null, answer, mayHold)
             PlaceShowReservation.STALE -> {
                 dropAnswerOfEndedSession()
                 return false
@@ -537,7 +533,6 @@ internal class EmbeddedBlockContentController(
 
     private fun applyResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer, mayHold: Boolean) {
         if (content == null) {
-            mindboxLogI("[EmbeddedBlock] Nothing to show for place '$placeSystemName'")
             collapseOrHold(EmbeddedBlockState.Empty, answer, mayHold)
             return
         }
@@ -605,7 +600,7 @@ internal class EmbeddedBlockContentController(
             current.scheduleSessionRefresh(due.sessionEpoch, due.selectionTime)
             return
         }
-        mindboxLogI("[EmbeddedBlock] A new session picked ${content.inAppId} for '$placeSystemName' again, refreshing the page in place")
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': same in-app — updating the page in place")
         pushPageData(current, layer, content, answer)
     }
 
@@ -666,7 +661,7 @@ internal class EmbeddedBlockContentController(
                             "keeping it until the new session answers"
                     )
                     else -> {
-                        mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed, recreating the content")
+                        mindboxLogW("[EmbeddedBlock] Block '$placeSystemName': the page never confirmed the data push — rebuilding it")
                         recreateProvider(content, layer, answerForRebuild(current, answer, isNewSession))
                     }
                 }
@@ -855,7 +850,7 @@ internal class EmbeddedBlockContentController(
         if (isReleased || hasEverResolved()) return
         mindboxLogW(
             "[EmbeddedBlock] No answer within ${configWaitDuration.interval}ms of waiting for " +
-                "'$placeSystemName', collapsing; a later answer is dropped, the next appearance " +
+                "'$placeSystemName', failing; a later answer is dropped, the next appearance " +
                 "on screen asks afresh"
         )
         hasGivenUp = true
@@ -872,15 +867,11 @@ internal class EmbeddedBlockContentController(
 
     private fun onReadyTimeout() {
         if (!isStarted || provider == null) return
-        mindboxLogW(
-            "[EmbeddedBlock] Page for '$placeSystemName' stayed silent for " +
-                "${readyTimeout.interval}ms of waiting, reporting failure",
-        )
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': reporting presentation_failed for in-app ${appliedContent?.inAppId}")
         sendFailure(
             content = appliedContent,
             code = FailureReason.PRESENTATION_FAILED,
-            description = "The embedded block page stayed silent for " +
-                "${readyTimeout.interval}ms after the content was handed to it",
+            description = "Page did not send contentRendered within ${readyTimeout.interval / 1_000}s",
         )
         hasGivenUp = true
         dropProvider()

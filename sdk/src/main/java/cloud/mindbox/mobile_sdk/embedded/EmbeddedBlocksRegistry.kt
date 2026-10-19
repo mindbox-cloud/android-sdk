@@ -393,7 +393,7 @@ internal class EmbeddedBlocksRegistryImpl(
             return
         }
         if (handles.none { handle -> handle.isActive }) {
-            mindboxLogI("[EmbeddedBlock] Operation matched paused place '$place', nowhere to display — skipping")
+            mindboxLogI("[EmbeddedBlock] Operation matched place '$place', but it has no active block (off screen or timed out) — skipping")
             return
         }
         resolvePlace(place, ResolvePass(trigger = triggerEvent))
@@ -598,7 +598,7 @@ internal class EmbeddedBlocksRegistryImpl(
         when {
             inFlight != null -> {
                 inFlight.isConfigAnnouncedMidResolve = true
-                mindboxLogI("[EmbeddedBlock] Place '$place': config ${version.number} arrived while its pass is in flight — that pass answers from it or is asked again when it lands")
+                mindboxLogI("[EmbeddedBlock] Place '$place': config ${version.number} arrived mid-resolve")
             }
             answeredFrom != null && answeredFrom >= version ->
                 mindboxLogI("[EmbeddedBlock] Place '$place': already answered from config ${version.number} — not asking again")
@@ -617,7 +617,7 @@ internal class EmbeddedBlocksRegistryImpl(
                 handles.isEmpty() -> Unit
                 handles.any { handle -> handle.isActive } -> action(place)
                 else ->
-                    mindboxLogI("[EmbeddedBlock] Place '$place' is paused, nowhere to display — skipping ($reason)")
+                    mindboxLogI("[EmbeddedBlock] Place '$place' has no active block (off screen or timed out) — skipping ($reason)")
             }
         }
     }
@@ -722,7 +722,6 @@ internal class EmbeddedBlocksRegistryImpl(
             mindboxLogW("[EmbeddedBlock] No block is registered for place '$place', dropping the answer")
             return
         }
-        mindboxLogW("[EmbeddedBlock] The SDK has no config to answer for place '$place', telling its blocks")
         handles.forEach { handle ->
             loggingRunCatching { handle.onConfigUnavailable(answer) }
         }
@@ -748,13 +747,7 @@ internal class EmbeddedBlocksRegistryImpl(
         }
         val delivered = when (content?.takeUnless { defersReservation }?.let { winner -> inAppInteractor.reservePlaceShow(place, winner, answer.sessionEpoch) }) {
             PlaceShowReservation.RESERVED -> content
-            PlaceShowReservation.REFUSED -> {
-                mindboxLogI(
-                    "[EmbeddedBlock] In-app ${content?.inAppId} won place '$place' but the show " +
-                        "budgets are spent, the place has nothing to show"
-                )
-                null
-            }
+            PlaceShowReservation.REFUSED -> null
             PlaceShowReservation.STALE -> {
                 dropEndedSessionAnswer(place)
                 return

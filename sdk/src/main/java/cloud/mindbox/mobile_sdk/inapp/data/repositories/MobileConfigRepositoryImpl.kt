@@ -26,6 +26,7 @@ import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.InappSettingsManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
 import cloud.mindbox.mobile_sdk.models.ConfigVersion
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.operation.response.*
@@ -195,7 +196,7 @@ internal class MobileConfigRepositoryImpl(
         // Prewarm stage 2: warm what the config's webview in-apps will need
         // (or release the warm instance when the config proves there are none).
         inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
-        mindboxLogI(message = "Providing config: $updatedInAppConfig")
+        mindboxLogI(message = "Config ${entry.version.number} is ready: $updatedInAppConfig")
         return filteredConfig
     }
 
@@ -209,8 +210,8 @@ internal class MobileConfigRepositoryImpl(
 
     override suspend fun getInAppsSection() = getConfig().inApps
 
-    override suspend fun getInAppsSectionIfAvailable(): InAppsSection {
-        val entry = awaitConfigEntry()
+    override suspend fun getInAppsSectionIfAvailable(placeSystemName: PlaceKey?): InAppsSection {
+        val entry = awaitConfigEntry(placeSystemName)
         return InAppsSection(inApps = entry.config.inApps.takeUnless { entry.isUnavailable }, configVersion = entry.version)
     }
 
@@ -424,7 +425,12 @@ internal class MobileConfigRepositoryImpl(
 
     private suspend fun getConfig(): InAppConfig = awaitConfigEntry().config
 
-    private suspend fun awaitConfigEntry(): ConfigEntry = configState.mapNotNull { state -> state.current }.first()
+    private suspend fun awaitConfigEntry(placeSystemName: PlaceKey? = null): ConfigEntry {
+        if (configState.value.current == null) {
+            mindboxLogI(placeSystemName?.let { "No config of this session yet, place '$it' waits for it" } ?: "No config of this session yet, waiting for it")
+        }
+        return configState.mapNotNull { state -> state.current }.first()
+    }
 
     private class ConfigEntry(val config: InAppConfig, val isUnavailable: Boolean, val version: ConfigVersion)
 

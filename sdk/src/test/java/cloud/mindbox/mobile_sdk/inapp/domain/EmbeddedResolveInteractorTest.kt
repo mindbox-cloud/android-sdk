@@ -177,7 +177,7 @@ class EmbeddedResolveInteractorTest {
 
     private fun givenConfig(vararg inApps: InApp) {
         coEvery { mobileConfigRepository.getInAppsSection() } returns inApps.toList()
-        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns InAppsSection(inApps.toList(), configVersion)
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable(any()) } returns InAppsSection(inApps.toList(), configVersion)
         coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(configOf(*inApps), isOfEndedSession = false)
     }
 
@@ -1099,7 +1099,7 @@ class EmbeddedResolveInteractorTest {
 
     @Test
     fun `selectInAppForPlace has no answer when the config could not be fetched and nothing is cached`() = runTest {
-        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns InAppsSection(inApps = null, configVersion = configVersion)
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable(any()) } returns InAppsSection(inApps = null, configVersion = configVersion)
 
         val outcome = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
 
@@ -1168,7 +1168,7 @@ class EmbeddedResolveInteractorTest {
         val config = listOf(embeddedInApp())
         givenConfig(*config.toTypedArray())
         val newSessionsConfig = configVersion.next()
-        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable() } returns
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable(any()) } returns
             InAppsSection(config, configVersion) andThen InAppsSection(config, newSessionsConfig)
         var prefetches = 0
         coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {

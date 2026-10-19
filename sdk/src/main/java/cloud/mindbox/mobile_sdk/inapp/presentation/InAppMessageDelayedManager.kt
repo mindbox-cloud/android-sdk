@@ -79,8 +79,8 @@ internal class InAppMessageDelayedManager(private val timeProvider: TimeProvider
                 _inAppToShowFlow.emit(showCandidate.inApp to showCandidate.preparedTimeMs)
 
                 do {
-                    val inApp = pendingInApps.pollIf { it.showTimeMillis <= now }.also { discarded ->
-                        mindboxLogI("Discarding other ready In-App: ${discarded?.inApp?.id}")
+                    val inApp = pendingInApps.pollIf { it.showTimeMillis <= now }?.also { discarded ->
+                        mindboxLogI("Discarding other ready In-App: ${discarded.inApp.id}")
                     }
                 } while (inApp != null)
             }

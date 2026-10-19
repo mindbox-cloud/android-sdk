@@ -54,6 +54,7 @@ internal object MindboxPreferences {
         userVisitCount = 0
         requestPermissionCount = 0
         shownInApps = ""
+        lastInappChangeStateTime = Timestamp.ZERO
         inAppConfigUpdatedTime = 0
     }
 
