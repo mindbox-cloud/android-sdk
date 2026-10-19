@@ -13,7 +13,6 @@ import ru.rustore.sdk.core.util.RuStoreUtils
 import ru.rustore.sdk.pushclient.RuStorePushClient
 import ru.rustore.sdk.pushclient.common.logger.DefaultLogger
 import ru.rustore.sdk.pushclient.messaging.model.RemoteMessage
-import java.util.UUID
 import kotlin.coroutines.resumeWithException
 
 internal class RuStoreServiceHandler(
@@ -52,8 +51,7 @@ internal class RuStoreServiceHandler(
             }
         }
 
-    override fun getAdsId(context: Context): Pair<String?, Boolean> =
-        UUID.randomUUID().toString() to false
+    override fun getAdsId(context: Context): Pair<String?, Boolean> = null to false
 
     override fun isAvailable(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < RU_STORE_MIN_API_VERSION) {

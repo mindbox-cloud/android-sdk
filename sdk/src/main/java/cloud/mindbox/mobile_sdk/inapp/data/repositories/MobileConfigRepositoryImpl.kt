@@ -148,17 +148,18 @@ internal class MobileConfigRepositoryImpl(
 
     private suspend fun processConfigUpdate(inAppConfigString: String) {
         mutex.withLock {
-            synchronized(publicationLock) {
+            val appliedConfig = synchronized(publicationLock) {
                 if (!isPublishable(inAppConfigString)) {
                     mindboxLogI("The config emitted is not the one the current session stored, not publishing it")
                     return@withLock
                 }
                 applyConfig(inAppConfigString)
             }
+            mobileConfigSettingsManager.checkPushTokenKeepalive(config = appliedConfig)
         }
     }
 
-    private fun applyConfig(inAppConfigString: String) {
+    private fun applyConfig(inAppConfigString: String): InAppConfigResponse {
         this@MobileConfigRepositoryImpl.mindboxLogD(
             message = "CachedConfig : $inAppConfigString"
         )
@@ -182,7 +183,6 @@ internal class MobileConfigRepositoryImpl(
 
         val updatedInAppConfig = inAppMapper.mapToInAppConfig(filteredConfig)
         mobileConfigSettingsManager.saveSessionTime(config = filteredConfig)
-        mobileConfigSettingsManager.checkPushTokenKeepalive(config = filteredConfig)
         inappSettingsManager.applySettings(config = filteredConfig)
         featureToggleManager.applyToggles(config = filteredConfig)
         persistOperationsDomain(filteredConfig)
@@ -197,6 +197,7 @@ internal class MobileConfigRepositoryImpl(
         // (or release the warm instance when the config proves there are none).
         inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
         mindboxLogI(message = "Config ${entry.version.number} is ready: $updatedInAppConfig")
+        return filteredConfig
     }
 
     override fun listenConfigVersions(): Flow<ConfigVersion> = configVersions

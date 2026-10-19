@@ -102,7 +102,9 @@ internal class MindboxNotificationWorker(
             ?.deserialize<Map<String, String>>()
             ?.mapNotNull { (key, value) ->
                 LoggingExceptionHandler.runCatching(defaultValue = null) {
-                    @Suppress("UNCHECKED_CAST")
+                    // Integrator's Activity: launchable only if declared in the manifest, and AGP keeps
+                    // every manifest-declared class by name, so R8 can't rename or drop it.
+                    @Suppress("UNCHECKED_CAST", "UnjustifiedReflection")
                     key to Class.forName(value) as Class<out Activity>
                 }
             }
@@ -110,7 +112,8 @@ internal class MindboxNotificationWorker(
 
         val defaultActivity = inputData.getString(KEY_ACTIVITY_DEFAULT)?.let {
             LoggingExceptionHandler.runCatching(defaultValue = null) {
-                @Suppress("UNCHECKED_CAST")
+                // Same as above: a manifest-declared integrator Activity, kept by AGP.
+                @Suppress("UNCHECKED_CAST", "UnjustifiedReflection")
                 Class.forName(it) as Class<out Activity>
             }
         }
