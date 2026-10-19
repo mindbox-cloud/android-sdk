@@ -413,6 +413,9 @@ public object Mindbox : MindboxLog {
                 mindboxLogW("Unknown token provider ${pushService.tag}. Skipping token update.")
                 return@loggingRunCatching
             }
+            // A token proves the service works even if it was unavailable when checked, e.g. while
+            // Google Play services were updating.
+            pushServiceRegistry.markAvailable(pushService.tag)
 
             mindboxScope.launch {
                 updateAppInfo(context, PushToken(pushService.tag, token))

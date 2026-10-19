@@ -48,8 +48,9 @@ internal class PushServiceRegistry(
         @Volatile
         var isInitialized: Boolean = false
 
+        /** null until checked. */
         @Volatile
-        var isAvailabilityChecked: Boolean = false
+        var isAvailable: Boolean? = null
     }
 
     private val lock = Any()
@@ -162,8 +163,10 @@ internal class PushServiceRegistry(
         }
 
     /**
-     * Initializes the services in use that have not been initialized yet and are available now.
-     * A service unavailable now is checked again on the next call.
+     * Initializes the services in use that have not been initialized yet and are available.
+     * Availability is checked once per process, as checking HMS availability on a device without HMS
+     * takes tens of milliseconds of CPU; a service found unavailable is used again only after
+     * [markAvailable].
      *
      * @return true if at least one service was initialized by this call.
      */
@@ -187,9 +190,16 @@ internal class PushServiceRegistry(
         true
     }
 
+    /**
+     * Treats the service as available, e.g. because it has just delivered a token although it was
+     * unavailable when checked. It is initialized on the next [initializeAvailable].
+     */
+    fun markAvailable(tag: String) {
+        active.firstOrNull { it.service.tag == tag }?.isAvailable = true
+    }
+
     private fun Entry.checkAvailability(context: Context): Boolean =
-        handler.isServiceAvailable(context, logUnavailable = !isAvailabilityChecked)
-            .also { isAvailabilityChecked = true }
+        isAvailable ?: handler.isServiceAvailable(context).also { isAvailable = it }
 
     private fun entryFor(service: MindboxPushService): Entry {
         val existing = entries[service.tag]

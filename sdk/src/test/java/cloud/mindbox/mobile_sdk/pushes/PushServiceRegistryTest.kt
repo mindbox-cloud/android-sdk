@@ -9,7 +9,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import io.mockk.verifyOrder
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,7 +37,7 @@ class PushServiceRegistryTest {
 
         val handler: PushServiceHandler = mockk {
             every { notificationProvider } returns tag
-            every { isServiceAvailable(any(), any()) } answers { isAvailable }
+            every { isServiceAvailable(any()) } answers { isAvailable }
             coEvery { initService(any()) } just runs
         }
 
@@ -176,12 +176,25 @@ class PushServiceRegistryTest {
     }
 
     @Test
-    fun `a service unavailable at first is initialized once it becomes available`() = runTest {
+    fun `an unavailable service is not checked again`() = runTest {
         firebase.isAvailable = false
         registry.registerExplicit(listOf(firebase))
+
+        registry.initializeAvailable(context)
+        firebase.isAvailable = true
         assertFalse(registry.initializeAvailable(context))
 
-        firebase.isAvailable = true
+        verify(exactly = 1) { firebase.handler.isServiceAvailable(any()) }
+        assertEquals(emptyList<String>(), registry.initializedTags)
+    }
+
+    @Test
+    fun `an unavailable service is initialized after its token marks it available`() = runTest {
+        firebase.isAvailable = false
+        registry.registerExplicit(listOf(firebase))
+        registry.initializeAvailable(context)
+
+        registry.markAvailable("FCM")
 
         assertTrue(registry.initializeAvailable(context))
         assertEquals(listOf("FCM"), registry.initializedTags)
@@ -217,20 +230,6 @@ class PushServiceRegistryTest {
         registry.initializeAvailable(context)
 
         assertEquals(listOf("FCM"), registry.initializedTags)
-    }
-
-    @Test
-    fun `unavailability is logged only on the first check`() = runTest {
-        firebase.isAvailable = false
-        registry.registerExplicit(listOf(firebase))
-
-        registry.initializeAvailable(context)
-        registry.initializeAvailable(context)
-
-        verifyOrder {
-            firebase.handler.isServiceAvailable(context, logUnavailable = true)
-            firebase.handler.isServiceAvailable(context, logUnavailable = false)
-        }
     }
 
     @Test

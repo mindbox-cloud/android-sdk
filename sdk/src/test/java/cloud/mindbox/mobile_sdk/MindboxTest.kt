@@ -41,14 +41,14 @@ class MindboxTest {
     private val firstProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "FCM"
         coEvery { registerToken(any(), any()) } returns "tokenFCM"
-        every { isServiceAvailable(any(), any()) } returns true
+        every { isServiceAvailable(any()) } returns true
         coEvery { initService(any()) } just runs
     }
 
     private val secondProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "HMS"
         coEvery { registerToken(any(), any()) } returns "tokenHMS"
-        every { isServiceAvailable(any(), any()) } returns true
+        every { isServiceAvailable(any()) } returns true
         coEvery { initService(any()) } just runs
     }
 
@@ -57,7 +57,7 @@ class MindboxTest {
     private val thirdProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "RuStore"
         coEvery { registerToken(any(), any()) } returns "tokenRuStore"
-        every { isServiceAvailable(any(), any()) } returns true
+        every { isServiceAvailable(any()) } returns true
         coEvery { initService(any()) } just runs
     }
 

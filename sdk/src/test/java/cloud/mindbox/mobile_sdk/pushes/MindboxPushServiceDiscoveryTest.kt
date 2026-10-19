@@ -42,7 +42,7 @@ class MindboxPushServiceDiscoveryTest {
     private val firebaseHandler = mockk<PushServiceHandler> {
         every { notificationProvider } returns "FCM"
         every { convertToRemoteMessage(any()) } answers { mindboxMessage.takeIf { firstArg<Any>() === firebaseMessage } }
-        every { isServiceAvailable(any(), any()) } answers { isFirebaseAvailable }
+        every { isServiceAvailable(any()) } answers { isFirebaseAvailable }
         coEvery { initService(any()) } just runs
         coEvery { registerToken(any(), any()) } returns "tokenFCM"
     }
@@ -113,11 +113,11 @@ class MindboxPushServiceDiscoveryTest {
     }
 
     @Test
-    fun `push token is requested from a service that became available after startup`() = runTest {
+    fun `push token is requested from a service that delivered a token after being unavailable`() = runTest {
         isFirebaseAvailable = false
         MindboxPushServiceDiscovery.register(firebase)
         Mindbox.pushServiceRegistry.initializeAvailable(context)
-        isFirebaseAvailable = true
+        Mindbox.pushServiceRegistry.markAvailable("FCM")
 
         val tokens = getPushTokens(context, emptyMap())
 

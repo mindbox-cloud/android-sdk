@@ -39,7 +39,8 @@ internal fun String?.toTokensMap(): PrefPushTokenMap =
 
 internal suspend fun getPushTokens(context: Context, previousToken: PushTokenMap): PushTokenMap =
     withContext(Mindbox.mindboxScope.coroutineContext) {
-        // A service unavailable at startup, e.g. while Google Play services were updating, may be available now.
+        // Initializes services not initialized yet: in a process started by a push init may not have run,
+        // and a service may have been marked available by its token.
         Mindbox.pushServiceRegistry.initializeAvailable(context)
         val handlers = Mindbox.pushServiceHandlers
         if (handlers.isEmpty()) {

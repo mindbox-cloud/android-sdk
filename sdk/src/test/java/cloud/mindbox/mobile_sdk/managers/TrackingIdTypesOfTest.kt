@@ -25,7 +25,7 @@ class TrackingIdTypesOfTest {
         mockk {
             every { notificationProvider } returns tag
             every { this@mockk.trackingIdType } returns trackingIdType
-            every { isServiceAvailable(any(), any()) } returns isAvailable
+            every { isServiceAvailable(any()) } returns isAvailable
             coEvery { initService(any()) } just runs
         }
 
