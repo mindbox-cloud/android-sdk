@@ -337,7 +337,7 @@ internal class EmbeddedBlockWebViewHolder(
             }.onFailure { error ->
                 if (error is CancellationException) throw error
             }.getOrNull() != null
-            mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId answered success=$isUpdated")
+            if (isUpdated) mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': the page took the new data — waiting for contentRendered")
             outcome = if (isUpdated) DataPushOutcome.CONFIRMED else DataPushOutcome.REFUSED
         }.apply {
             invokeOnCompletion { cause ->
@@ -393,7 +393,7 @@ internal class EmbeddedBlockWebViewHolder(
                 }
             }.onFailure { error ->
                 if (error is CancellationException) throw error
-                reportLoadFailure("Failed to fetch HTML content for the embedded block", error)
+                reportLoadFailure("Failed to fetch page HTML", error)
             }
         }
     }
@@ -427,8 +427,7 @@ internal class EmbeddedBlockWebViewHolder(
                 if (error.isForMainFrame == true) {
                     fail(
                         FailureReason.WEBVIEW_LOAD_FAILED,
-                        "Embedded block WebView error: code=${error.code}, " +
-                            "description=${error.description}, url=${error.url}",
+                        "Page failed to load: ${error.code} ${error.description}",
                     )
                 }
             }
@@ -552,7 +551,7 @@ internal class EmbeddedBlockWebViewHolder(
 
     private fun refusedContentReport(reason: String): Throwable {
         mindboxLogE("[EmbeddedBlock] contentRendered refused: $reason")
-        fail(FailureReason.PRESENTATION_FAILED, "The embedded block page reported contentRendered with an unusable payload: $reason")
+        fail(FailureReason.PRESENTATION_FAILED, "Page sent contentRendered with an invalid count")
         return BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, reason)
     }
 
@@ -580,7 +579,7 @@ internal class EmbeddedBlockWebViewHolder(
         val previouslyAccounted = accountedSessionEpoch
         accountedSessionEpoch = sessionEpoch
         val timeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
-        mindboxLogI("[EmbeddedBlock] In-app $inAppId is shown, timeToDisplay=${timeToDisplay.interval} ms")
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': in-app $inAppId is shown in session ${sessionEpoch.number}, timeToDisplay=${timeToDisplay.interval} ms")
         val shownFrequency = frequency
         val shownTags = gatedTags()
         Mindbox.mindboxScope.launch {

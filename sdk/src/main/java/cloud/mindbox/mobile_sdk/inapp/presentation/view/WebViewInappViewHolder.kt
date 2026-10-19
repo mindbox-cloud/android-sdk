@@ -53,6 +53,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.DurationUnit
 
 @OptIn(InternalMindboxApi::class)
 internal class WebViewInAppViewHolder(
@@ -62,6 +63,16 @@ internal class WebViewInAppViewHolder(
 ) : AbstractInAppViewHolder<InAppType.WebView>(wrapper, controller, inAppCallback), MindboxWebPage {
 
     companion object {
+        /** The same texts as on iOS, so one search finds the failure on both platforms. */
+        internal fun initTimeoutDescription(isBridgeMissing: Boolean): String {
+            val seconds = Constants.WebView.readyTimeout.interval / 1_000
+            return if (isBridgeMissing) {
+                "JS bridge not found on the loaded page within ${seconds}s."
+            } else {
+                "Page did not send init within ${seconds}s."
+            }
+        }
+
         private const val TIMER = "CLOSE_INAPP_TIMER"
         private const val JS_RETURN = "true"
         private const val JS_BRIDGE_CLASS = "window.bridgeMessagesHandlers"
@@ -262,7 +273,7 @@ internal class WebViewInAppViewHolder(
     private fun handleInitAction(controller: WebViewController): String {
         val mindboxView = checkNotNull(currentMindboxView) { "MindboxView is null when activating WebView In-App" }
         hasInitialized = true
-        stopTimer()
+        stopTimer()?.let { waited -> mindboxLogI("[WebView] In-app ${wrapper.inAppType.inAppId}: init received after $waited") }
         if (noCacheRetryPolicy.hasRetried) {
             controller.setCacheBypass(false)
         }
@@ -343,7 +354,7 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                        errorDescription = "WebView error: code=${error.code}, description=${error.description}, url=${error.url}",
+                        errorDescription = "Page failed to load: ${error.code} ${error.description}",
                         tags = wrapper.tags
                     )
                     inAppController.close()
@@ -476,11 +487,12 @@ internal class WebViewInAppViewHolder(
             expectedResult = JS_RETURN,
             onReady = { mindboxLogD("JS ready check passed for $url") },
             onGiveUp = { lastFailure ->
+                mindboxLogI("[WebView] JS ready check gave up for URL $url: $lastFailure")
                 if (hasInitialized) {
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                        errorDescription = "JS ready check gave up after init for $url: $lastFailure",
+                        errorDescription = "JS bridge lost after the page was shown",
                         tags = wrapper.tags
                     )
                     inAppController.close()
@@ -629,7 +641,7 @@ internal class WebViewInAppViewHolder(
                             inAppFailureTracker.sendFailureWithContext(
                                 inAppId = wrapper.inAppType.inAppId,
                                 failureReason = FailureReason.WEBVIEW_LOAD_FAILED,
-                                errorDescription = "Failed to fetch HTML content for In-App",
+                                errorDescription = "Failed to fetch page HTML",
                                 throwable = e,
                                 tags = wrapper.tags
                             )
@@ -681,6 +693,7 @@ internal class WebViewInAppViewHolder(
             controller.loadContent(content)
             startTimer {
                 initTimeout = null
+                Stopwatch.stop(TIMER)
                 val readyCheckFailure = pendingReadyCheckFailure
                 val httpErrorSuffix = noCacheRetryPolicy.lastHttpErrorDetail?.let { detail ->
                     " Last script HTTP error: $detail; no-cache retry attempted: ${noCacheRetryPolicy.hasRetried}."
@@ -692,11 +705,7 @@ internal class WebViewInAppViewHolder(
                     } else {
                         FailureReason.WEBVIEW_LOAD_FAILED
                     },
-                    errorDescription = if (readyCheckFailure != null) {
-                        "JS ready check never passed before init timeout: $readyCheckFailure$httpErrorSuffix"
-                    } else {
-                        "WebView initialization timed out after ${Stopwatch.stop(TIMER)}.$httpErrorSuffix"
-                    },
+                    errorDescription = initTimeoutDescription(isBridgeMissing = readyCheckFailure != null) + httpErrorSuffix,
                     tags = wrapper.tags
                 )
                 inAppController.close()
@@ -706,12 +715,12 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    private fun stopTimer() {
-        initTimeout?.let { timeout ->
-            mindboxLogI("WebView initialization completed " + Stopwatch.stop(TIMER))
-            mainHandler.removeCallbacks(timeout)
-        }
+    /** Returns how long the page has been waited for, or null when no wait is running. */
+    private fun stopTimer(): String? {
+        val timeout = initTimeout ?: return null
+        mainHandler.removeCallbacks(timeout)
         initTimeout = null
+        return Stopwatch.stop(TIMER)?.toString(DurationUnit.SECONDS, 2)
     }
 
     private fun startTimer(onTimeOut: () -> Unit) {
@@ -732,7 +741,7 @@ internal class WebViewInAppViewHolder(
                 else -> mindboxLogW("Layer is not supported")
             }
         }
-        mindboxLogI("Show In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
+        mindboxLogI("Loading In-App ${wrapper.inAppType.inAppId} in holder ${this.hashCode()}")
     }
 
     override fun reattach(currentRoot: MindboxView) {
@@ -757,7 +766,7 @@ internal class WebViewInAppViewHolder(
     override fun onClose() {
         isClosed = true
         pageScope.cancel()
-        stopTimer()
+        stopTimer()?.let { waited -> mindboxLogI("[WebView] In-app ${wrapper.inAppType.inAppId}: closed before init after $waited") }
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()

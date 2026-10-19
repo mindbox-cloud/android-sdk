@@ -31,14 +31,14 @@ internal class EmbeddedBlockPlaceMemory(
         val record = EmbeddedBlockPlaceRecord(rememberedAt = now().convertToIso8601String())
         if (!write(records + (place.value to record))) {
             mindboxLogE(
-                "[EmbeddedBlock] Place '$place': could not write its record — the next launch " +
-                    "starts it hidden again",
+                "[EmbeddedBlock] Place '$place': could not write its record — new automatic " +
+                    "blocks here start hidden",
             )
             return
         }
         mindboxLogI(
-            "[EmbeddedBlock] Place '$place' showed content — remembered, the next launch starts " +
-                "it with a placeholder",
+            "[EmbeddedBlock] Place '$place' showed content — remembered, new automatic blocks here " +
+                "start with a placeholder",
         )
     }
 
@@ -48,8 +48,8 @@ internal class EmbeddedBlockPlaceMemory(
 
         if (!write(records - place.value)) return
         mindboxLogI(
-            "[EmbeddedBlock] Place '$place' has nothing to show — forgotten, the next launch " +
-                "starts it hidden",
+            "[EmbeddedBlock] Place '$place' came out empty — forgotten, new automatic blocks " +
+                "here start hidden",
         )
     }
 
