@@ -23,7 +23,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class MindboxPushServiceInitializerTest {
+class MindboxPushServiceDiscoveryTest {
 
     private val context = mockk<Context>()
     private val firebaseMessage = Any()
@@ -53,8 +53,6 @@ class MindboxPushServiceInitializerTest {
         override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler) = firebaseHandler
     }
 
-    private val firebaseInitializer = object : MindboxPushServiceInitializer(firebase) {}
-
     @Before
     fun setUp() {
         Mindbox.pushServiceRegistry = PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
@@ -69,7 +67,7 @@ class MindboxPushServiceInitializerTest {
 
     @Test
     fun `a push service registered by its module is in use without a list in init`() {
-        firebaseInitializer.create(context)
+        MindboxPushServiceDiscovery.register(firebase)
 
         assertTrue(Mindbox.pushServiceRegistry.isRegistered("FCM"))
     }
@@ -80,17 +78,12 @@ class MindboxPushServiceInitializerTest {
             every { registerDiscovered(any()) } throws IllegalStateException("registry is broken")
         }
 
-        firebaseInitializer.create(context)
-    }
-
-    @Test
-    fun `no other initializer has to run first`() {
-        assertEquals(emptyList<Any>(), firebaseInitializer.dependencies())
+        MindboxPushServiceDiscovery.register(firebase)
     }
 
     @Test
     fun `a push of a discovered service is shown before Mindbox init is called`() {
-        firebaseInitializer.create(context)
+        MindboxPushServiceDiscovery.register(firebase)
         coEvery {
             PushNotificationManager.handleRemoteMessage(any(), any(), any(), any(), any(), any(), any(), any())
         } returns true
@@ -122,7 +115,7 @@ class MindboxPushServiceInitializerTest {
     @Test
     fun `push token is requested from a service that became available after startup`() = runTest {
         isFirebaseAvailable = false
-        firebaseInitializer.create(context)
+        MindboxPushServiceDiscovery.register(firebase)
         Mindbox.pushServiceRegistry.initializeAvailable(context)
         isFirebaseAvailable = true
 
