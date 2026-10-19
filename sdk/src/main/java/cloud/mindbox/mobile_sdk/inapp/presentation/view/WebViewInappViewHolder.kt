@@ -64,10 +64,10 @@ internal class WebViewInAppViewHolder(
 
     companion object {
         /** The same texts as on iOS, so one search finds the failure on both platforms. */
-        internal fun initTimeoutDescription(isBridgeMissing: Boolean): String {
+        internal fun initTimeoutDescription(readyCheckFailure: String?): String {
             val seconds = Constants.WebView.readyTimeout.interval / 1_000
-            return if (isBridgeMissing) {
-                "JS bridge not found on the loaded page within ${seconds}s."
+            return if (readyCheckFailure != null) {
+                "JS bridge not found on the loaded page within ${seconds}s: $readyCheckFailure."
             } else {
                 "Page did not send init within ${seconds}s."
             }
@@ -508,7 +508,7 @@ internal class WebViewInAppViewHolder(
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
                         failureReason = FailureReason.WEBVIEW_PRESENTATION_FAILED,
-                        errorDescription = "JS bridge lost after the page was shown",
+                        errorDescription = "JS bridge lost after the page was shown: $lastFailure",
                         tags = wrapper.tags
                     )
                     inAppController.close()
@@ -721,7 +721,7 @@ internal class WebViewInAppViewHolder(
                     } else {
                         FailureReason.WEBVIEW_LOAD_FAILED
                     },
-                    errorDescription = initTimeoutDescription(isBridgeMissing = readyCheckFailure != null) + httpErrorSuffix,
+                    errorDescription = initTimeoutDescription(readyCheckFailure) + httpErrorSuffix,
                     tags = wrapper.tags
                 )
                 inAppController.close()
