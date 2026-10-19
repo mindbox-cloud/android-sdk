@@ -21,10 +21,10 @@ import kotlinx.coroutines.sync.withLock
  *
  * Services come from two sources. Provider modules register themselves at app startup
  * ([registerDiscovered]); the integrator may pass a list to `Mindbox.init` or
- * `Mindbox.initPushServices` ([registerExplicit]). Once a non-empty list is passed, it alone
- * decides which services are used and in what order, and lists from several calls are merged.
- * An empty list changes nothing. If App Startup did not run at all, the services are taken from
- * the manifest meta-data instead ([discoverFromManifestIfNeeded]).
+ * `Mindbox.initPushServices` ([registerExplicit]). Once a list is passed, it alone decides which
+ * services are used and in what order, and lists from several calls are merged. An empty list means
+ * no push services, unless a non-empty list was passed too. If no list was passed and App Startup
+ * did not run at all, the services are taken from the manifest meta-data ([discoverFromManifestIfNeeded]).
  *
  * Registration is synchronous and cheap. Services are initialized later, by [initializeAvailable].
  */
@@ -93,14 +93,19 @@ internal class PushServiceRegistry(
 
     fun registerExplicit(services: List<MindboxPushService>) {
         val tags = services.map { it.tag }.distinct()
-        if (tags.isEmpty()) {
-            // Flutter and React Native always pass an empty list to init, meaning "no list here".
-            mindboxLogI("Push services list is empty, keeping the services in use")
-            return
-        }
         synchronized(lock) {
             val current = explicitTags
-            if (current != null && current.toSet() != tags.toSet()) {
+            if (tags.isEmpty()) {
+                // After initPushServices with a list, the Flutter and React Native plugins call init with an
+                // empty one: like before discovery existed, it must not drop the services already passed.
+                if (current == null) {
+                    mindboxLogI("Push services list is empty: no push services are used")
+                    explicitTags = emptyList()
+                    updateActive()
+                }
+                return
+            }
+            if (!current.isNullOrEmpty() && current.toSet() != tags.toSet()) {
                 mindboxLogW("Different push services lists passed: $current and $tags. All of them are used")
             }
             if (current == null && discoveredTags.isNotEmpty() && discoveredTags.toSet() != tags.toSet()) {

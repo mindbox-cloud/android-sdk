@@ -87,12 +87,14 @@ class PushServiceManifestFallbackTest {
     }
 
     @Test
-    fun `the fallback works after the empty list that Flutter and React Native pass to init`() {
+    fun `an empty list means no push services, so the manifest is not read`() {
+        val packageManager = packageManagerWith(firebaseMetaData)
         registry.registerExplicit(emptyList())
 
-        registry.discoverFromManifestIfNeeded(contextWithMetaData(firebaseMetaData))
+        registry.discoverFromManifestIfNeeded(contextWith(packageManager))
 
-        assertEquals(listOf("FCM"), registry.tags)
+        assertEquals(emptyList<String>(), registry.tags)
+        verify(exactly = 0) { packageManager.getApplicationInfo(any<String>(), any<Int>()) }
     }
 
     @Test

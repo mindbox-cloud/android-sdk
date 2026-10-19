@@ -505,12 +505,11 @@ public object Mindbox : MindboxLog {
      *
      * This method must be called synchronously in onCreate on an application class
      *
-     * Without [pushServices], or with an empty list, the push services of the provider modules
-     * added to the app (`mindbox-firebase`, `mindbox-huawei`, `mindbox-rustore`) are used, in the
-     * order FCM, HCM, RuStore. To have no push services, do not add provider modules.
-     * A non-empty list decides which push services are used and in what order: services of
-     * provider modules missing from it are not used. Lists passed here and to [initPushServices]
-     * are merged.
+     * Without [pushServices], the push services of the provider modules added to the app
+     * (`mindbox-firebase`, `mindbox-huawei`, `mindbox-rustore`) are used, in the order FCM, HCM, RuStore.
+     * A list decides which push services are used and in what order: services of provider modules
+     * missing from it are not used, and an empty list means no push services. Lists passed here and
+     * to [initPushServices] are merged.
      *
      * @param application used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
@@ -518,13 +517,14 @@ public object Mindbox : MindboxLog {
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
+     * `null`, the default, means the list is not given.
      */
     @MainThread
     @JvmOverloads
     public fun init(
         application: Application,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService> = emptyList(),
+        pushServices: List<MindboxPushService>? = null,
     ) {
         logI("Initialization with application started")
         initialize(application, configuration, pushServices)
@@ -536,13 +536,13 @@ public object Mindbox : MindboxLog {
      * This method should be called in
      * [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in [Application.onCreate] on an application class
      *
-     * Without [pushServices], or with an empty list, the push services of the provider modules
-     * added to the app (`mindbox-firebase`, `mindbox-huawei`, `mindbox-rustore`) are used, in the
-     * order FCM, HCM, RuStore. They register at app startup, so pushes are shown even when the app
-     * is started by a push and this method is not called.
-     * A non-empty list decides which push services are used and in what order. To keep that choice
-     * when the app is started by a push, pass the same list to [Mindbox.initPushServices] in
-     * [Application.onCreate].
+     * Without [pushServices], the push services of the provider modules added to the app
+     * (`mindbox-firebase`, `mindbox-huawei`, `mindbox-rustore`) are used, in the order FCM, HCM, RuStore.
+     * They register at app startup, so pushes are shown even when the app is started by a push and
+     * this method is not called.
+     * A list decides which push services are used and in what order, and an empty list means no push
+     * services. To keep that choice when the app is started by a push, pass the same list to
+     * [Mindbox.initPushServices] in [Application.onCreate].
      *
      * @param activity used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
@@ -550,13 +550,14 @@ public object Mindbox : MindboxLog {
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
+     * `null`, the default, means the list is not given.
      */
     @MainThread
     @JvmOverloads
     public fun init(
         activity: Activity,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService> = emptyList(),
+        pushServices: List<MindboxPushService>? = null,
     ) {
         logI("Initialization with activity started")
         initialize(activity, configuration, pushServices)
@@ -565,7 +566,7 @@ public object Mindbox : MindboxLog {
     private fun initialize(
         context: Context,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
+        pushServices: List<MindboxPushService>?,
     ): Unit = loggingRunCatching {
         verifyThreadExecution(methodName = "init")
         val currentProcessName = context.getCurrentProcessName()
@@ -579,12 +580,12 @@ public object Mindbox : MindboxLog {
         // Prewarm stage 1: head start for webview in-apps from the cached config
         // (mirrors the iOS SDK's init-time prewarm; a real show always preempts it).
         MindboxDI.appModule.inAppWebViewPrewarmManager.prewarmOnInit()
-        pushServiceRegistry.registerExplicit(pushServices)
+        pushServices?.let(pushServiceRegistry::registerExplicit)
         pushServiceRegistry.discoverFromManifestIfNeeded(context)
         logI(
             "init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
                 "configuration: $configuration, pushServices: " +
-                pushServices.joinToString(", ") { it.javaClass.simpleName } +
+                pushServices?.joinToString(", ") { it.javaClass.simpleName } +
                 ", push services in use: " +
                 pushServiceRegistry.handlers.joinToString(", ") { it.notificationProvider } +
                 ", SdkVersion:${getSdkVersion()}, CommonSdkVersion:${MindboxCommon.VERSION_NAME}",
@@ -810,13 +811,13 @@ public object Mindbox : MindboxLog {
      * Method to initialise push services
      *
      * Call this method in onCreate in your Application class if you call [Mindbox.init] not there
-     * and want to choose the push services yourself. Unless a non-empty list is passed here or to
+     * and want to choose the push services yourself. Unless a list is passed here or to
      * [Mindbox.init], the services of the provider modules added to the app are used, in the order
      * FCM, HCM, RuStore.
      *
-     * A non-empty [pushServices] decides which push services are used and in what order. Lists
-     * passed here and to [Mindbox.init] are merged, so calling this method more than once is safe.
-     * An empty list changes nothing.
+     * [pushServices] decides which push services are used and in what order, and an empty list means
+     * no push services. Lists passed here and to [Mindbox.init] are merged, so calling this method
+     * more than once is safe: an empty list does not drop the services of a non-empty one.
      *
      * @param context used to initialize the main tools
      * @param pushServices list, containing [MindboxPushService]s, i.e.

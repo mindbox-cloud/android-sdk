@@ -118,23 +118,23 @@ class PushServiceRegistryTest {
     }
 
     @Test
-    fun `empty list keeps discovered services, as Flutter and React Native init passes one`() {
+    fun `empty list means no push services even when some were discovered`() {
         registry.registerDiscovered(firebase)
         registry.registerDiscovered(huawei)
 
         registry.registerExplicit(emptyList())
 
-        assertEquals(listOf("FCM", "HCM"), registry.tags)
-        assertTrue(registry.isRegistered("HCM"))
+        assertEquals(emptyList<String>(), registry.tags)
+        assertFalse(registry.isRegistered("FCM"))
     }
 
     @Test
-    fun `empty list passed before discovery does not block it`() {
+    fun `empty list passed before discovery keeps no push services`() {
         registry.registerExplicit(emptyList())
 
         registry.registerDiscovered(firebase)
 
-        assertEquals(listOf("FCM"), registry.tags)
+        assertEquals(emptyList<String>(), registry.tags)
     }
 
     @Test
@@ -148,7 +148,7 @@ class PushServiceRegistryTest {
     }
 
     @Test
-    fun `empty explicit list after a non-empty one keeps the services`() {
+    fun `empty list after a non-empty one keeps the services, as in the Flutter and React Native flow`() {
         registry.registerExplicit(listOf(firebase))
         registry.registerExplicit(emptyList())
 
