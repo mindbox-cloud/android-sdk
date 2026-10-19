@@ -337,11 +337,7 @@ internal class EmbeddedBlockWebViewHolder(
             }.onFailure { error ->
                 if (error is CancellationException) throw error
             }.getOrNull() != null
-            if (isUpdated) {
-                mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': the page took the new data — waiting for contentRendered")
-            } else {
-                mindboxLogI("[EmbeddedBlock] initDataUpdated for $inAppId answered success=false")
-            }
+            if (isUpdated) mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': the page took the new data — waiting for contentRendered")
             outcome = if (isUpdated) DataPushOutcome.CONFIRMED else DataPushOutcome.REFUSED
         }.apply {
             invokeOnCompletion { cause ->
@@ -543,7 +539,7 @@ internal class EmbeddedBlockWebViewHolder(
             renderedTimeToDisplay = renderedTimeToDisplay ?: currentTimeToDisplay
         }
         report(EmbeddedBlockState.Ready)
-        if (isActive) accountForShow() else mindboxLogI("[EmbeddedBlock] Rendered off screen, shown when back on screen")
+        if (isActive) accountForShow()
         return BridgeMessage.SUCCESS_PAYLOAD
     }
 

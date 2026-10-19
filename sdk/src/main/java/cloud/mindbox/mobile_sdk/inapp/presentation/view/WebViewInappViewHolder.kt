@@ -273,7 +273,7 @@ internal class WebViewInAppViewHolder(
     private fun handleInitAction(controller: WebViewController): String {
         val mindboxView = checkNotNull(currentMindboxView) { "MindboxView is null when activating WebView In-App" }
         hasInitialized = true
-        stopTimer()?.let { waited -> mindboxLogI("[WebView] Init received after $waited") }
+        stopTimer()?.let { waited -> mindboxLogI("[WebView] In-app ${wrapper.inAppType.inAppId}: init received after $waited") }
         if (noCacheRetryPolicy.hasRetried) {
             controller.setCacheBypass(false)
         }
@@ -487,6 +487,7 @@ internal class WebViewInAppViewHolder(
             expectedResult = JS_RETURN,
             onReady = { mindboxLogD("JS ready check passed for $url") },
             onGiveUp = { lastFailure ->
+                mindboxLogI("[WebView] JS ready check gave up for URL $url: $lastFailure")
                 if (hasInitialized) {
                     inAppFailureTracker.sendFailureWithContext(
                         inAppId = wrapper.inAppType.inAppId,
@@ -765,7 +766,7 @@ internal class WebViewInAppViewHolder(
     override fun onClose() {
         isClosed = true
         pageScope.cancel()
-        stopTimer()?.let { waited -> mindboxLogI("[WebView] Closed before init after $waited") }
+        stopTimer()?.let { waited -> mindboxLogI("[WebView] In-app ${wrapper.inAppType.inAppId}: closed before init after $waited") }
         unregisterFromBroadcasts()
         if (commonBridgeActionsLazy.isInitialized()) {
             commonBridgeActions.tearDown()

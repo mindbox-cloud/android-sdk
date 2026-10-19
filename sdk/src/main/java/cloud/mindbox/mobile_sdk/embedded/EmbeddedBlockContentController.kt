@@ -661,7 +661,7 @@ internal class EmbeddedBlockContentController(
                             "keeping it until the new session answers"
                     )
                     else -> {
-                        mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed, recreating the content")
+                        mindboxLogW("[EmbeddedBlock] Block '$placeSystemName': the page never confirmed the data push — rebuilding it")
                         recreateProvider(content, layer, answerForRebuild(current, answer, isNewSession))
                     }
                 }
@@ -867,6 +867,7 @@ internal class EmbeddedBlockContentController(
 
     private fun onReadyTimeout() {
         if (!isStarted || provider == null) return
+        mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': reporting presentation_failed for in-app ${appliedContent?.inAppId}")
         sendFailure(
             content = appliedContent,
             code = FailureReason.PRESENTATION_FAILED,

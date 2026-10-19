@@ -298,7 +298,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     public fun setErrorView(view: View?) {
         errorView = view
         if (shownAppearance == MindboxEmbeddedBlockAppearance.ERROR) {
-            applyState(state)
+            mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': the host replaced the error view")
+            applyState(state, isErrorViewSwap = true)
         }
     }
 
@@ -442,7 +443,11 @@ public class MindboxEmbeddedBlockView internal constructor(
     private fun pauseContent() {
         if (!isContentStarted) return
         isContentStarted = false
-        mindboxLogI("[EmbeddedBlock] Not visible in window (place='$placeSystemName'), pausing content")
+        if (isReleased) {
+            mindboxLogI("[EmbeddedBlock] Block '$placeSystemName' was released by the host, stopping content")
+        } else {
+            mindboxLogI("[EmbeddedBlock] Not visible in window (place='$placeSystemName'), pausing content")
+        }
         loggingRunCatching { contentController.pause() }
     }
 
@@ -584,7 +589,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         return super.dispatchTouchEvent(ev)
     }
 
-    private fun applyState(state: EmbeddedBlockState) {
+    private fun applyState(state: EmbeddedBlockState, isErrorViewSwap: Boolean = false) {
         val previous = shownAppearance
         val appearance = appearanceFor(state)
         shownAppearance = appearance
@@ -614,15 +619,15 @@ public class MindboxEmbeddedBlockView internal constructor(
             }
             MindboxEmbeddedBlockAppearance.ERROR -> {
                 if (state is EmbeddedBlockState.Loading) {
-                    mindboxLogI("[EmbeddedBlock] Content loading behind the host's error view")
-                } else {
+                    mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': content loading behind the host's error view")
+                } else if (!isErrorViewSwap) {
                     mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': content failed — showing the host's error view")
                 }
                 errorView?.let { showContent(it) }
             }
             MindboxEmbeddedBlockAppearance.COLLAPSED -> {
                 when (state) {
-                    is EmbeddedBlockState.Loading -> mindboxLogI("[EmbeddedBlock] Content loading, staying hidden")
+                    is EmbeddedBlockState.Loading -> mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': content loading, staying hidden")
                     is EmbeddedBlockState.Failed -> mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': content failed — collapsing")
                     else -> mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': the place came out empty — collapsing")
                 }

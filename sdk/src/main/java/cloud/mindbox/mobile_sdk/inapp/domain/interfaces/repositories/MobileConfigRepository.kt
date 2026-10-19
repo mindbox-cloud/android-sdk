@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationName
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationSystemName
 import cloud.mindbox.mobile_sdk.models.ConfigVersion
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 import kotlinx.coroutines.flow.Flow
 
@@ -24,7 +25,7 @@ internal interface MobileConfigRepository {
 
     suspend fun getInAppsSection(): List<InApp>
 
-    suspend fun getInAppsSectionIfAvailable(): InAppsSection
+    suspend fun getInAppsSectionIfAvailable(placeSystemName: PlaceKey? = null): InAppsSection
 
     suspend fun getConfigForPageIfAvailable(): PageConfig?
 
