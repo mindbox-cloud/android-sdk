@@ -726,6 +726,7 @@ public object Mindbox : MindboxLog {
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
+     * `null` means the list is not given.
      * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
      */
     @Deprecated(
@@ -734,7 +735,9 @@ public object Mindbox : MindboxLog {
     public fun init(
         context: Context,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
+        // Nullable like in the Application and Activity overloads: with a non-null type here, a call with
+        // a List argument matches this overload more precisely and becomes ambiguous for Kotlin callers.
+        pushServices: List<MindboxPushService>?,
     ) {
         logW("Use either Mindbox.init with application parameter or Mindbox.init with activity parameter")
         initialize(context = context, configuration = configuration, pushServices = pushServices)
