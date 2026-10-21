@@ -38,7 +38,8 @@ import kotlin.math.abs
  * The host names a place with [placeSystemName] and gives the block an explicit height; the SDK
  * decides what the place shows. Content starts when the block enters the window, pauses when it
  * leaves, and is kept for a screen that goes to the back stack. With nothing to show the block
- * becomes `GONE`.
+ * becomes `GONE`. Keep the block in the layout rather than removing it in `onEmpty`: a collapsed
+ * block still shows content the place gets later.
  *
  * ```xml
  * <cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
@@ -230,7 +231,7 @@ public class MindboxEmbeddedBlockView internal constructor(
      * Replaces the SDK's shimmer with [view] while the content is loading; `null` restores the
      * shimmer. The view fills the block. To only recolor the shimmer, override the
      * `mindbox_embedded_block_shimmer_rest` and `mindbox_embedded_block_shimmer_highlight` color
-     * resources.
+     * resources, in `values-night` too.
      */
     public fun setPlaceholderView(view: View?) {
         placeholderView = view
@@ -241,8 +242,9 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     /**
      * Shows [view] instead of collapsing the block when it fails; `null` restores the collapse.
-     * The view fills the block. Applies to failures only, and only once the block has taken its
-     * space: a block that waits hidden stays hidden.
+     * The view fills the block. Applies to failures only. Set it before the block fails: a view set
+     * after the block has collapsed, for example in `onFail`, does not expand it. A block that waits
+     * hidden shows no error view.
      */
     public fun setErrorView(view: View?) {
         errorView = view

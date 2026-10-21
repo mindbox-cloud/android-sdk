@@ -295,7 +295,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `targeting catch-up never covers directCall in-apps, their targeting ships once with the explicit show`() = runTest {
+    fun `targeting catch-up never covers directCall in-apps`() = runTest {
         val directCall = modalInApp(id = "direct-call").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         val ordinary = modalInApp(id = "ordinary")
         givenConfig(directCall, ordinary)

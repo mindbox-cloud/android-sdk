@@ -1002,7 +1002,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `crash in the host state listener is logged, never rethrown`() {
+    fun `crash in the host state listener stays contained`() {
         val controller = controller()
         controller.onStateChange = { error("host listener boom") }
 

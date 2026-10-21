@@ -825,6 +825,17 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `openLink with an unusable payload is refused`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "openLink", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "openLink" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
+    }
+
+    @Test
     fun `haptic with an unusable payload is swallowed with an empty answer`() {
         startAndAwaitPageLoad()
 
@@ -843,6 +854,17 @@ class EmbeddedBlockWebViewHolderTest {
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("gestures_unavailable", lastOutgoingPayload()!!.get("error").asString)
+    }
+
+    @Test
+    fun `motion stop is always acknowledged`() {
+        startAndAwaitPageLoad()
+
+        postFromPage(request(action = "motion.stop", payload = "{}"))
+        await { lastOutgoingMessage()?.get("action")?.asString == "motion.stop" }
+
+        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
+        assertTrue(lastOutgoingPayload()!!.get("success").asBoolean)
     }
 
     @Test
