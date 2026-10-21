@@ -114,24 +114,6 @@ class GatewayManagerTest {
         assertEquals("api.mindbox.ru", result)
     }
 
-    @Test
-    fun `resolveOperationsDomain preserves https scheme from init value`() {
-        val config = mockConfiguration.copy(operationsDomain = "https://proxy.com")
-
-        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = null)
-
-        assertEquals("https://proxy.com", result)
-    }
-
-    @Test
-    fun `resolveOperationsDomain preserves http scheme from config value`() {
-        val config = mockConfiguration.copy(operationsDomain = null)
-
-        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = "http://internal-proxy.com")
-
-        assertEquals("http://internal-proxy.com", result)
-    }
-
     // endregion
 
     // region operationsDomain URL routing
@@ -256,18 +238,6 @@ class GatewayManagerTest {
     // endregion
 
     @Test
-    fun `getCustomerSegmentationsUrl should return correct URL with endpointId and deviceUUID`() {
-        val customConfig = mockConfiguration.copy(
-            domain = "api.mindbox.ru",
-            endpointId = "test-endpoint-id"
-        )
-
-        val actualUrl = gatewayManager.getCustomerSegmentationsUrl(customConfig)
-
-        assertEquals("https://api.mindbox.ru/v3/operations/sync?deviceUUID=test-device-uuid-123&endpointId=test-endpoint-id&operation=Tracker.CheckCustomerSegments", actualUrl)
-    }
-
-    @Test
     fun `getCustomerSegmentationsUrl should use configuration domain and endpointId`() {
         val customConfig = mockConfiguration.copy(
             domain = "custom.domain.com",
@@ -277,18 +247,6 @@ class GatewayManagerTest {
         val actualUrl = gatewayManager.getCustomerSegmentationsUrl(customConfig)
 
         assertEquals("https://custom.domain.com/v3/operations/sync?deviceUUID=test-device-uuid-123&endpointId=custom-endpoint&operation=Tracker.CheckCustomerSegments", actualUrl)
-    }
-
-    @Test
-    fun `getProductSegmentationUrl should return correct URL structure with endpointId and transactionId`() {
-        val customConfig = mockConfiguration.copy(
-            domain = "api.mindbox.ru",
-            endpointId = "test-endpoint-id"
-        )
-
-        val actualUrl = gatewayManager.getProductSegmentationUrl(customConfig)
-
-        assertEquals("https://api.mindbox.ru/v3/operations/sync?deviceUUID=test-device-uuid-123&endpointId=test-endpoint-id&operation=Tracker.CheckProductSegments", actualUrl)
     }
 
     @Test

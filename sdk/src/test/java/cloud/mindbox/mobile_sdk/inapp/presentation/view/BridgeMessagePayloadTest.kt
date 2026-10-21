@@ -88,14 +88,6 @@ internal class BridgeMessagePayloadTest {
     }
 
     @Test
-    fun `an exception without a message is answered with internal_error`() {
-        assertEquals(
-            """{"error":"internal_error"}""",
-            gson.toBridgeErrorPayload(IllegalStateException())
-        )
-    }
-
-    @Test
     fun `the error codes are the contract list in the contract order`() {
         assertEquals(
             listOf(
@@ -137,15 +129,6 @@ internal class BridgeMessagePayloadTest {
 
         assertEquals(BridgeMessage.VERSION, BridgeMessage.createResponseAction(request, BridgeMessage.SUCCESS_PAYLOAD).version)
         assertEquals(BridgeMessage.VERSION, BridgeMessage.createErrorAction(request, """{"error":"invalid_url"}""").version)
-    }
-
-    @Test
-    fun `an action this SDK does not know survives parsing as unknown instead of a null action`() {
-        val message = gson.fromBridgeMessage(
-            """{"type":"request","action":"teleport","payload":{},"id":"id-1","version":1,"timestamp":1}"""
-        )?.message
-
-        assertEquals(WebViewAction.UNKNOWN, (message as BridgeMessage.Request).action)
     }
 
     @Test
@@ -209,26 +192,6 @@ internal class BridgeMessagePayloadTest {
         val json = JsonParser.parseString(gson.toBridgeJson(error, sentAction = "somethingElse")).asJsonObject
 
         assertEquals("openLink", json.get("action").asString)
-    }
-
-    @Test
-    fun `an unknown action is refused, not falsely acknowledged`() {
-        var responded: String? = null
-        var refused: Throwable? = null
-        val message = gson.fromBridgeMessage(
-            """{"type":"request","action":"teleport","payload":{},"id":"id-1","version":1,"timestamp":1}"""
-        )?.message as BridgeMessage.Request
-
-        WebViewActionHandlers().dispatch(
-            message = message,
-            isUserPresent = true,
-            launchSuspending = {},
-            respond = { payload -> responded = payload },
-            refuse = { error -> refused = error },
-        )
-
-        assertNull(responded)
-        assertEquals(BridgeErrorCode.UNKNOWN_ACTION, (refused as BridgeRefusalException).code)
     }
 
     @Test

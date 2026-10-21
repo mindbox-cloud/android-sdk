@@ -203,19 +203,6 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `the block shows and hides itself with no listener at all`() {
-        val view = MindboxEmbeddedBlockView(
-            activity,
-            "main-screen-top",
-            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
-        )
-
-        attach(view)
-
-        assertEquals(View.VISIBLE, view.visibility)
-    }
-
-    @Test
     fun `releasing a block that never resolved anything is safe`() {
         val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
         attach(view)

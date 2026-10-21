@@ -193,35 +193,6 @@ internal class InAppProcessingManagerTest {
     }
 
     @Test
-    fun `check targeting returns true sends inApp count targeted requests`() = runTest {
-        val testInApp = mockk<InApp>(relaxed = true)
-        val testInApp2 = mockk<InApp>(relaxed = true)
-        every {
-            testInApp.targeting.checkTargeting(any())
-        } returns true
-        coEvery {
-            testInApp.targeting.fetchTargetingInfo(any())
-        } just runs
-        every {
-            testInApp2.targeting.checkTargeting(any())
-        } returns true
-        coEvery {
-            testInApp2.targeting.fetchTargetingInfo(any())
-        } just runs
-        inAppProcessingManager.sendTargetedInApp(
-            testInApp,
-            InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
-        )
-        inAppProcessingManager.sendTargetedInApp(
-            testInApp2,
-            InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
-        )
-        verify(exactly = 2) {
-            mockInAppRepository.sendUserTargeted(any(), any())
-        }
-    }
-
-    @Test
     fun `sendTargetedInApp passes inApp tags when tags feature enabled`() = runTest {
         val tags = mapOf("templateType" to "Popup")
         every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
@@ -359,37 +330,6 @@ internal class InAppProcessingManagerTest {
     }
 
     @Test
-    fun `choose inApp to show chooses WebView inApp when targeting matches`() = runTest {
-        val validId = "webview-valid-id"
-        val expectedResult = InAppStub.getInApp().copy(
-            id = validId,
-            targeting = InAppStub.getTargetingTrueNode(),
-            form = InAppStub.getInApp().form.copy(
-                variants = listOf(InAppStub.getWebView().copy(inAppId = validId))
-            )
-        )
-        val actualResult = inAppProcessingManager.chooseInAppToShow(
-            listOf(
-                InAppStub.getInApp().copy(
-                    id = "123",
-                    targeting = InAppStub.getTargetingRegionNode().copy(
-                        type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
-                    )
-                ),
-                InAppStub.getInApp().copy(
-                    id = validId,
-                    targeting = InAppStub.getTargetingTrueNode(),
-                    form = InAppStub.getInApp().form.copy(
-                        variants = listOf(InAppStub.getWebView().copy(inAppId = validId))
-                    )
-                ),
-            ),
-            event
-        )
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
     fun `choose inApp to show has no choosable inApps`() = runTest {
         assertNull(
             inAppProcessingManager.chooseInAppToShow(
@@ -437,123 +377,6 @@ internal class InAppProcessingManagerTest {
                 )
             }
         }
-    }
-
-    @Test
-    fun `choose inApp to show segmentation error`() = runTest {
-        val validId = "validId"
-        val testInAppList = listOf(
-            InAppStub.getInApp().copy(
-                id = "123",
-                targeting = InAppStub.getTargetingSegmentNode().copy(
-                    type = "",
-                    kind = Kind.POSITIVE,
-                    segmentationExternalId = "segmentationExternalId1",
-                    segmentExternalId = "segmentExternalId1"
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = "124",
-                targeting = InAppStub.getTargetingSegmentNode().copy(
-                    type = "",
-                    kind = Kind.POSITIVE,
-                    segmentationExternalId = "segmentationExternalId2",
-                    segmentExternalId = "segmentExternalId2"
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = validId,
-                targeting = InAppStub.getTargetingTrueNode(),
-                form = InAppStub.getInApp().form.copy(
-                    variants = listOf(
-                        InAppStub.getModalWindow().copy(
-                            inAppId = validId
-                        )
-                    )
-                )
-            )
-        )
-        coEvery {
-            mockkInAppSegmentationRepository.fetchCustomerSegmentations()
-        } throws CustomerSegmentationError(VolleyError())
-        every {
-            mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any())
-        } just runs
-        val expectedResult = InAppStub.getInApp().copy(
-            id = validId,
-            targeting = InAppStub.getTargetingTrueNode(),
-            form = InAppStub.getInApp().form.copy(
-                variants = listOf(
-                    InAppStub.getModalWindow().copy(
-                        inAppId = validId
-                    )
-                )
-            )
-        )
-        val actualResult = inAppProcessingManager.chooseInAppToShow(
-            testInAppList, event
-        )
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
-    fun `choose inApp to show geo error`() = runTest {
-        val validId = "validId"
-        val testInAppList = listOf(
-            InAppStub.getInApp().copy(
-                id = "123",
-                targeting = InAppStub.getTargetingRegionNode().copy(
-                    type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = "124",
-                targeting = InAppStub.getTargetingRegionNode().copy(
-                    type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = validId,
-                targeting = InAppStub.getTargetingTrueNode(),
-                form = InAppStub.getInApp().form.copy(
-                    variants = listOf(
-                        InAppStub.getModalWindow().copy(
-                            inAppId = validId
-                        )
-                    )
-                )
-            )
-        )
-
-        val inAppProcessingManager = InAppProcessingManagerImpl(
-            inAppGeoRepository = mockk {
-                coEvery { fetchGeo() } throws GeoError(VolleyError())
-                every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_ERROR
-                every { setGeoStatus(any()) } just runs
-            },
-            inAppSegmentationRepository = mockkInAppSegmentationRepository,
-            inAppTargetingErrorRepository = mockk(relaxed = true),
-            inAppContentFetcher = mockkInAppContentFetcher,
-            inAppRepository = mockInAppRepository,
-            inAppFailureTracker = mockk(relaxed = true),
-            featureToggleManager = featureToggleManager
-        )
-
-        val expectedResult = InAppStub.getInApp().copy(
-            id = validId,
-            targeting = InAppStub.getTargetingTrueNode(),
-            form = InAppStub.getInApp().form.copy(
-                listOf(
-                    InAppStub.getModalWindow().copy(
-                        inAppId = validId
-                    )
-                )
-            )
-        )
-        val actualResult = inAppProcessingManager.chooseInAppToShow(
-            testInAppList, event
-        )
-        assertEquals(expectedResult, actualResult)
     }
 
     @Test

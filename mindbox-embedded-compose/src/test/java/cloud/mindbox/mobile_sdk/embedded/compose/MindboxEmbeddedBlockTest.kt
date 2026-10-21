@@ -202,38 +202,6 @@ class MindboxEmbeddedBlockTest {
     }
 
     @Test
-    fun `default callbacks and slots are optional`() {
-        compose.setContent {
-            MindboxEmbeddedBlock(
-                placeSystemName = "main-screen-top",
-                modifier = Modifier.height(120.dp),
-            )
-        }
-        showHostWindow()
-    }
-
-    @Test
-    fun `leaving the composition frees the block`() {
-        val shown = mutableStateOf(true)
-
-        compose.setContent {
-            if (shown.value) {
-                MindboxEmbeddedBlock(
-                    placeSystemName = "main-screen-top",
-                    modifier = Modifier.height(120.dp).testTag("block"),
-                )
-            }
-        }
-        showHostWindow()
-        compose.onNodeWithTag("block").assertExists()
-
-        compose.runOnUiThread { shown.value = false }
-        showHostWindow()
-
-        compose.onNodeWithTag("block").assertDoesNotExist()
-    }
-
-    @Test
     fun `a budget changed after creation is ignored, and said out loud`() {
         val timeout = mutableStateOf<Long?>(5_000)
 

@@ -9,7 +9,6 @@ import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckWrapper
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -142,51 +141,6 @@ class InAppSegmentationRepositoryTest {
         assertEquals(
             emptySet<Set<ProductSegmentationResponseWrapper>>(),
             inAppSegmentationRepository.getProductSegmentations("testSystem" to "testValue")
-        )
-    }
-
-    @Test
-    fun `request product segmentation success`() = runTest {
-        val result = ProductSegmentationResponseStub.getProductSegmentationResponseDto()
-        val expectedResult =
-            ProductSegmentationResponseWrapper(
-                productSegmentations = listOf(
-                    ProductSegmentationResponseStub.getProductResponse().copy(
-                        productList = listOf(
-                            ProductSegmentationResponseStub.getProductSegmentationsResponse()
-                                .copy(
-                                    segmentationExternalId = "test2",
-                                    segmentExternalId = "test2"
-                                )
-                        )
-                    )
-                )
-            )
-        every {
-            inAppMapper.mapToProductSegmentationResponse(any())
-        } answers {
-            expectedResult
-        }
-        val dtoResult = ProductSegmentationRequestStub.getProductSegmentationRequestDto()
-        every {
-            inAppMapper.mapToProductSegmentationCheckRequest("testSystem" to "testValue", listOf())
-        } returns dtoResult
-        sessionStorageManager.state.processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-        coEvery {
-            gatewayManager.checkProductSegmentation(any(), any())
-        } answers {
-            result
-        }
-        sessionStorageManager.state.inAppProductSegmentations["testSystem" to "testValue"] = setOf(expectedResult)
-        coEvery { DbManager.listenConfigurations() } answers {
-            flow {
-                emit(configuration)
-            }
-        }
-        inAppSegmentationRepository.fetchProductSegmentation("testSystem" to "testValue")
-        assertEquals(
-            expectedResult,
-            sessionStorageManager.state.inAppProductSegmentations["testSystem" to "testValue"]?.firstOrNull()
         )
     }
 

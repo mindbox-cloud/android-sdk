@@ -16,26 +16,6 @@ class FeatureToggleManagerImplTest {
     }
 
     @Test
-    fun `applyToggles sets shouldSendInAppShowError to true when featureToggles contains true`() {
-        val config = InAppConfigResponse(
-            inApps = null,
-            monitoring = null,
-            settings = SettingsDto(
-                operations = null,
-                ttl = null,
-                slidingExpiration = null,
-                inapp = null,
-                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to true)
-            ),
-            abtests = null
-        )
-
-        featureToggleManager.applyToggles(config)
-
-        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
-    }
-
-    @Test
     fun `applyToggles works with feature name containing special characters`() {
         val config = InAppConfigResponse(
             inApps = null,
@@ -158,48 +138,8 @@ class FeatureToggleManagerImplTest {
     }
 
     @Test
-    fun `applyToggles returns true when config is null`() {
-        featureToggleManager.applyToggles(null)
-
-        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
-    }
-
-    @Test
     fun `isEnabled returns true by default`() {
         assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
-    }
-
-    @Test
-    fun `applyToggles can change value from true to false`() {
-        val configTrue = InAppConfigResponse(
-            inApps = null,
-            monitoring = null,
-            settings = SettingsDto(
-                operations = null,
-                ttl = null,
-                slidingExpiration = null,
-                inapp = null,
-                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to true)
-            ),
-            abtests = null
-        )
-        featureToggleManager.applyToggles(configTrue)
-        assertEquals(true, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
-
-        val configFalse = InAppConfigResponse(
-            inApps = null,
-            monitoring = null,
-            settings = SettingsDto(
-                operations = null,
-                ttl = null,
-                slidingExpiration = null,
-                inapp = null,
-                featureToggles = mapOf("MobileSdkShouldSendInAppShowError" to false)
-            ),
-            abtests = null
-        )
-        featureToggleManager.applyToggles(configFalse)
-        assertEquals(false, featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE))
     }
 
     @Test

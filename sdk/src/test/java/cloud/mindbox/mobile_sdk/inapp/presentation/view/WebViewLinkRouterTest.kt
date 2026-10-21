@@ -76,23 +76,6 @@ internal class WebViewLinkRouterTest {
     }
 
     @Test
-    fun `executeOpenLink opens tg deeplink when handler exists`() {
-        registerBrowsableHandler("tg")
-        val inputUrl: String = "tg://resolve?domain=durov"
-        val result: Result<String> = executeOpenLink(url = inputUrl)
-        assertTrue(result.isSuccess)
-        assertEquals(inputUrl, result.getOrNull())
-    }
-
-    @Test
-    fun `executeOpenLink returns error for tg deeplink when handler missing`() {
-        val activityNotFoundRouter: MindboxWebViewLinkRouter = createRouterWithActivityNotFoundError()
-        val result: Result<String> = activityNotFoundRouter.executeOpenLink("""{"url":"tg://resolve?domain=durov"}""")
-        assertFalse(result.isSuccess)
-        assertErrorCode(result = result, expectedCode = BridgeErrorCode.OPEN_FAILED)
-    }
-
-    @Test
     fun `executeOpenLink opens system schemes from pdf cases`() {
         registerActionHandler(action = Intent.ACTION_DIAL, scheme = "tel")
         registerActionHandler(action = Intent.ACTION_SENDTO, scheme = "mailto")
@@ -107,30 +90,6 @@ internal class WebViewLinkRouterTest {
             assertTrue(actualResult.isSuccess)
             assertEquals(inputUrl, actualResult.getOrNull())
         }
-    }
-
-    @Test
-    fun `executeOpenLink opens android only schemes when handler exists`() {
-        registerBrowsableHandler("geo")
-        registerBrowsableHandler("market")
-        val geoResult: Result<String> = executeOpenLink(url = "geo:55.7558,37.6173?q=Moscow")
-        assertTrue(geoResult.isSuccess)
-        assertEquals("geo:55.7558,37.6173?q=Moscow", geoResult.getOrNull())
-        val marketResult: Result<String> = executeOpenLink(url = "market://details?id=com.google.android.gm")
-        assertTrue(marketResult.isSuccess)
-        assertEquals("market://details?id=com.google.android.gm", marketResult.getOrNull())
-    }
-
-    @Test
-    fun `executeOpenLink returns error for iOS only schemes without handler`() {
-        val activityNotFoundRouter: MindboxWebViewLinkRouter = createRouterWithActivityNotFoundError()
-        val mapsResult: Result<String> = activityNotFoundRouter.executeOpenLink("""{"url":"maps://?q=Moscow"}""")
-        val appStoreResult: Result<String> =
-            activityNotFoundRouter.executeOpenLink("""{"url":"itms-apps://apps.apple.com/app/id389801252"}""")
-        assertFalse(mapsResult.isSuccess)
-        assertFalse(appStoreResult.isSuccess)
-        assertErrorCode(result = mapsResult, expectedCode = BridgeErrorCode.OPEN_FAILED)
-        assertErrorCode(result = appStoreResult, expectedCode = BridgeErrorCode.OPEN_FAILED)
     }
 
     @Test

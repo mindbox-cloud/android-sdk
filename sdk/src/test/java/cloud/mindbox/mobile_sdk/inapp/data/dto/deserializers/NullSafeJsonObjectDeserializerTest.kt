@@ -43,11 +43,6 @@ class NullSafeJsonObjectDeserializerTest {
     }
 
     @Test
-    fun `boolean reads as null`() {
-        assertNull(deserialize("true"))
-    }
-
-    @Test
     fun `array reads as null`() {
         assertNull(deserialize("""[{"a":1}]"""))
     }

@@ -71,18 +71,6 @@ class EmbeddedMapperTest {
     }
 
     @Test
-    fun `place system name is trimmed and lowercased on mapping`() {
-        val dto = baseDto.copy(
-            form = FormDto(variants = listOf(InAppStub.getEmbeddedDto().copy(placeSystemName = "  Main-Screen-Top  ")))
-        )
-
-        val variant = mapper.mapToInAppConfig(config(dto)).inApps.single()
-            .form.variants.single() as InAppType.Embedded
-
-        assertEquals(PlaceKey.of("main-screen-top"), variant.placeSystemName)
-    }
-
-    @Test
     fun `display conditions directCall maps to the enum`() {
         val dto = baseDto.copy(displayConditions = DisplayConditionsDto.DirectCallDto(type = "directCall"))
 

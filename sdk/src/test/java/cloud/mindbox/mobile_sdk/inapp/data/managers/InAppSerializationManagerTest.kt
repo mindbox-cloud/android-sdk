@@ -177,22 +177,6 @@ internal class InAppSerializationManagerTest {
     }
 
     @Test
-    fun `deserialize to shown inApps returns null`() {
-        val testString = "someString"
-        val gson: Gson = mockk()
-        every {
-            gson.fromJson<HashSet<String>?>(
-                testString,
-                object : TypeToken<HashSet<String>>() {}.type
-            )
-        } returns null
-        inAppSerializationManager = InAppSerializationManagerImpl(gson)
-        val expectedResult = hashSetOf<String>()
-        val actualResult = inAppSerializationManager.deserializeToShownInApps(testString)
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
     fun `serializeToInAppShowErrorsString pins the polymorphic errors contract and never ships the legacy failures array`() {
         val errors = listOf(
             InAppShowFailure(

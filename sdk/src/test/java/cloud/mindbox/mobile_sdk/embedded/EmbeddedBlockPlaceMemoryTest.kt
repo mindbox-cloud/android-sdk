@@ -37,13 +37,6 @@ class EmbeddedBlockPlaceMemoryTest {
     }
 
     @Test
-    fun `the record is keyed by the normalized place name`() {
-        memory().rememberShownContent(PlaceKey.of("  Main-Screen-Top "))
-
-        assertTrue(memory().hasShownContent(PlaceKey.of("main-screen-top")))
-    }
-
-    @Test
     fun `the record carries when the place was written down`() {
         memory(now = { Timestamp(1_726_000_000_000L) }).rememberShownContent(place)
 

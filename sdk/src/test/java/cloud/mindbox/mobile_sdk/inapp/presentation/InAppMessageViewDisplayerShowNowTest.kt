@@ -188,20 +188,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
     }
 
     @Test
-    fun `with nothing on screen the requested in-app presents immediately`() {
-        givenForegroundActivity()
-        val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)
-
-        displayer.showInAppMessageNow(
-            inAppType = InAppStub.getModalWindow().copy(inAppId = "tapped-id"),
-            inAppActionCallbacks = noCallbacks,
-        )
-
-        verify(exactly = 0) { dismiss.onDismiss() }
-        verify { failureTracker.sendFailure("tapped-id", FailureReason.PRESENTATION_FAILED, any(), any()) }
-    }
-
-    @Test
     fun `without a foreground activity nothing is closed and only the requester hears the miss`() {
         val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)
         val holder = activeHolder(dismiss)

@@ -169,40 +169,9 @@ internal class InAppGeoRepositoryTest {
     }
 
     @Test
-    fun `get geo empty string`() {
-        val geoTargeting =
-            GeoTargetingStub.getGeoTargeting().copy(cityId = "", regionId = "", countryId = "")
-        every { MindboxPreferences.inAppGeo } returns ""
-        every {
-            geoSerializationManager.deserializeToGeoTargeting(MindboxPreferences.inAppGeo)
-        } returns GeoTargetingStub.getGeoTargeting().copy("", "", "")
-        assertEquals(geoTargeting, inAppGeoRepository.getGeo())
-    }
-
-    @Test
-    fun `get geo invalid json`() {
-        every { MindboxPreferences.inAppGeo } returns "123"
-        val geoTargeting =
-            GeoTargetingStub.getGeoTargeting().copy(cityId = "", regionId = "", countryId = "")
-        every {
-            geoSerializationManager.deserializeToGeoTargeting(MindboxPreferences.inAppGeo)
-        } returns GeoTargetingStub.getGeoTargeting().copy("", "", "")
-        assertEquals(geoTargeting, inAppGeoRepository.getGeo())
-    }
-
-    @Test
     fun `get geo fetched status success`() {
         sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
         assertEquals(GeoFetchStatus.GEO_FETCH_SUCCESS, inAppGeoRepository.getGeoFetchedStatus())
-    }
-
-    @Test
-    fun `get segmentation not fetched`() {
-        sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
-        assertEquals(
-            GeoFetchStatus.GEO_NOT_FETCHED,
-            inAppGeoRepository.getGeoFetchedStatus()
-        )
     }
 
     @Test

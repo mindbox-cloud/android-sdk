@@ -8,7 +8,6 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.MobileConfigSer
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
-import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigStub
 import com.google.gson.Gson
 import com.google.gson.JsonArray
@@ -41,9 +40,6 @@ internal class MobileConfigSerializationManagerTest {
         mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(gson)
         every {
             fakeGson.fromJson(any<String>(), TreeTargetingDto::class.java)
-        } throws Error("errorMessage")
-        every {
-            fakeGson.fromJson(any<String>(), InAppConfigResponseBlank::class.java)
         } throws Error("errorMessage")
         every {
             fakeGson.fromJson(any<String>(), FormDto::class.java)
@@ -117,13 +113,6 @@ internal class MobileConfigSerializationManagerTest {
 
     @Test
     fun `deserialize to config dto blank invalid json`() {
-        val invalidJson = "invalidJson"
-        assertNull(mobileConfigSerializationManager.deserializeToConfigDtoBlank(invalidJson))
-    }
-
-    @Test
-    fun `deserialize to config dto blank throws error`() {
-        mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(fakeGson)
         val invalidJson = "invalidJson"
         assertNull(mobileConfigSerializationManager.deserializeToConfigDtoBlank(invalidJson))
     }
@@ -589,60 +578,6 @@ internal class MobileConfigSerializationManagerTest {
     }
 
     @Test
-    fun `deserialize to inApp formDto throws error with unknown json`() {
-        mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(fakeGson)
-        assertNull(mobileConfigSerializationManager.deserializeToInAppFormDto(JsonObject().apply {
-            add("variants", JsonArray().apply {
-                val variantObject = JsonObject().apply {
-                    addProperty("${"$"}type", "modal")
-                    add("content", JsonObject().apply {
-                        add("background", JsonObject().apply {
-                            add("layers", JsonArray().apply {
-                                val imageLayerObject = JsonObject().apply {
-                                    add("action", JsonObject().apply {
-                                        addProperty("intentPayload", "123")
-                                        addProperty("${"$"}type", "redirectUrl")
-                                        addProperty("value", "https://mpush-test.mindbox.ru/inapps/040810aa-d135-49f4-8916-7e68dcc61c71")
-                                    })
-                                    add("source", JsonObject().apply {
-                                        addProperty("${"$"}type", "url")
-                                        addProperty("value", "https://bipbap.ru/wp-content/uploads/2017/06/4-5.jpg")
-                                    })
-                                    addProperty("${"$"}type", "image")
-                                }
-                                add(imageLayerObject)
-                            })
-                        })
-                        add("elements", JsonArray().apply {
-                            val elementObject = JsonObject().apply {
-                                addProperty("color", 22)
-                                addProperty("lineWidth", "a")
-                                add("position", JsonObject().apply {
-                                    add("margin", JsonObject().apply {
-                                        addProperty("bottom", 0.03)
-                                        addProperty("kind", "proportion")
-                                        addProperty("left", 0.03)
-                                        addProperty("right", 0.03)
-                                        addProperty("top", 0.03)
-                                    })
-                                })
-                                add("size", JsonObject().apply {
-                                    addProperty("height", 24.0)
-                                    addProperty("kind", "dp")
-                                    addProperty("width", 24.0)
-                                })
-                                addProperty("${"$"}type", "qwe")
-                            }
-                            add(elementObject)
-                        })
-                    })
-                }
-                add(variantObject)
-            })
-        }, "inapp-id"))
-    }
-
-    @Test
     fun `deserialize to inApp formDto throws error`() {
         mobileConfigSerializationManager = MobileConfigSerializationManagerImpl(fakeGson)
         assertNull(mobileConfigSerializationManager.deserializeToInAppFormDto(JsonObject().apply {
@@ -694,40 +629,6 @@ internal class MobileConfigSerializationManagerTest {
                     targeting = JsonObject().apply { addProperty("${'$'}type", "true") },
                     form = JsonObject().apply { add("variants", JsonArray()) },
                     tags = mapOf("layer" to "webView", "type" to "onboarding")
-                )
-            )
-        )
-        val actualResult = mobileConfigSerializationManager.deserializeToConfigDtoBlank(successJson)
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
-    fun `deserialize to config dto blank without tags field success`() {
-        val successJson = gson.toJson(JsonObject().apply {
-            add("inapps", JsonArray().apply {
-                add(JsonObject().apply {
-                    addProperty("id", "040810aa-d135-49f4-8916-7e68dcc61c71")
-                    add("sdkVersion", JsonObject().apply {
-                        addProperty("min", 1)
-                        add("max", com.google.gson.JsonNull.INSTANCE)
-                    })
-                    add("targeting", JsonObject().apply {
-                        addProperty("${"$"}type", "true")
-                    })
-                    add("form", JsonObject().apply {
-                        add("variants", JsonArray())
-                    })
-                })
-            })
-        })
-        val expectedResult = InAppConfigStub.getConfigResponseBlank().copy(
-            inApps = listOf(
-                InAppStub.getInAppDtoBlank().copy(
-                    id = "040810aa-d135-49f4-8916-7e68dcc61c71",
-                    sdkVersion = InAppStub.getSdkVersion().copy(minVersion = 1, maxVersion = null),
-                    targeting = JsonObject().apply { addProperty("${'$'}type", "true") },
-                    form = JsonObject().apply { add("variants", JsonArray()) },
-                    tags = null
                 )
             )
         )

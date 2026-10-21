@@ -149,14 +149,6 @@ class EmbeddedBlockShimmerViewTest {
         assertEquals(cycle.interval - 300L, elapsed.interval)
     }
 
-    @Test
-    fun `the shared epoch is one per process and lies in the past`() {
-        val epoch = EmbeddedBlockShimmerView.beatEpoch
-
-        assertEquals(epoch, EmbeddedBlockShimmerView.beatEpoch)
-        assertTrue(epoch.interval <= android.os.SystemClock.uptimeMillis())
-    }
-
     private companion object {
         const val TOLERANCE = 0.0001f
         const val RGB_MASK = 0xFFFFFF

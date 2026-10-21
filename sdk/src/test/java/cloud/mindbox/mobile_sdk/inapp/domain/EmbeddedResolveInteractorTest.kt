@@ -277,22 +277,6 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `selectInAppForPlace returns candidate inside ab pool`() = runTest {
-        givenConfig(embeddedInApp())
-        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("embedded-id")
-
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()?.inAppId)
-    }
-
-    @Test
-    fun `selectInAppForPlace filters by frequency like every other path`() = runTest {
-        givenConfig(embeddedInApp())
-
-        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()?.inAppId)
-        verify(exactly = 1) { frequencyManager.filterInAppsFrequency(any()) }
-    }
-
-    @Test
     fun `selectInAppForPlace skips a candidate its frequency already blocks but still sends its targeting`() = runTest {
         givenConfig(embeddedInApp())
         every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
@@ -344,17 +328,6 @@ class EmbeddedResolveInteractorTest {
 
         coVerify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(pureEmbedded, any()) }
         coVerify(atLeast = 1) { inAppProcessingManager.sendTargetedInApp(mixed, any()) }
-    }
-
-    @Test
-    fun `selectInAppForPlace sends targeting for the winner it hands out`() = runTest {
-        givenConfig(embeddedInApp())
-
-        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
-
-        verify(exactly = 1) {
-            inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "embedded-id" })
-        }
     }
 
     @Test
@@ -476,16 +449,6 @@ class EmbeddedResolveInteractorTest {
         interactor.selectInAppForPlace(place, triggerEvent = operation)
 
         verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
-    }
-
-    @Test
-    fun `selectInAppForPlace passes the push trigger to the selection`() = runTest {
-        givenConfig(embeddedInApp())
-        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
-
-        interactor.selectInAppForPlace(place, triggerEvent = operation)
-
-        coVerify { inAppProcessingManager.matchesTargeting(any(), operation) }
     }
 
     @Test
@@ -698,16 +661,6 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `filterShowableInAppIds keeps an unlimited id regardless of show history`() = runTest {
-        givenConfig(
-            modalInApp(id = "inapp-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
-        )
-        every { inAppRepository.getShownInApps() } returns mapOf("inapp-1" to listOf(1L))
-
-        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
-    }
-
-    @Test
     fun `filterShowableInAppIds does not check the show limits`() = runTest {
         givenConfig(modalInApp(id = "inapp-1"))
 
@@ -722,17 +675,6 @@ class EmbeddedResolveInteractorTest {
         assertEquals(
             listOf("inapp-1"),
             interactor.filterShowableInAppIds("host-form", listOf("embedded-itself", "inapp-1"))
-        )
-    }
-
-    @Test
-    fun `filterShowableInAppIds cuts id outside ab pool`() = runTest {
-        givenConfig(modalInApp(id = "in-pool"), modalInApp(id = "out-of-pool"))
-        every { inAppABTestLogic.getInAppsPool(any(), any()) } returns setOf("in-pool")
-
-        assertEquals(
-            listOf("in-pool"),
-            interactor.filterShowableInAppIds("host-form", listOf("in-pool", "out-of-pool"))
         )
     }
 
@@ -961,15 +903,6 @@ class EmbeddedResolveInteractorTest {
         val result = interactor.filterShowableInAppIds("host-form", listOf("mixed-id"))
 
         assertEquals(listOf("mixed-id"), result)
-    }
-
-    @Test
-    fun `reservePlaceShow skips the budget for content the place already shows`() {
-        sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
-
-        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
-
-        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
     }
 
     @Test

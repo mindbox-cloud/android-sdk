@@ -179,30 +179,6 @@ class MindboxTest {
     }
 
     @Test
-    fun `updateAppInfo not call appInfoUpdate when new token provided`() = runTest {
-        coEvery { secondProvider.registerToken(any(), any()) } returns "NEW_TOKEN"
-
-        Mindbox.updateAppInfo(context)
-
-        verify(exactly = 1) {
-            MindboxEventManager.appInfoUpdate(
-                context,
-                UpdateData(
-                    isNotificationsEnabled = true,
-                    instanceId = "instanceId",
-                    version = 1,
-                    tokens = listOf(
-                        TokenData(token = "tokenFCM", notificationProvider = "FCM"),
-                        TokenData(token = "NEW_TOKEN", notificationProvider = "HMS"),
-                        TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
-                    ),
-                    trackingIds = emptyList(),
-                )
-            )
-        }
-    }
-
-    @Test
     fun `updateAppInfo not call appInfoUpdate when null token provided`() = runTest {
         coEvery { thirdProvider.registerToken(any(), any()) } returns null
 

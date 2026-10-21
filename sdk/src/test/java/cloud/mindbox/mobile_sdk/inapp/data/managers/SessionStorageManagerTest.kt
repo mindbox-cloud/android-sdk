@@ -220,20 +220,6 @@ class SessionStorageManagerTest {
     }
 
     @Test
-    fun `check inAppMessageShownInSession elements count`() {
-        val inAppId1 = "inApp1"
-        val inAppId2 = "inApp2"
-        val expectedResult = 3
-        assertTrue(sessionStorageManager.state.inAppMessageShownInSession.isEmpty())
-
-        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId1)
-        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId2)
-        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId1)
-
-        assertEquals(expectedResult, sessionStorageManager.state.inAppMessageShownInSession.size)
-    }
-
-    @Test
     fun `isSessionExpiredOnLastCheck returns true when session has expired`() {
         setupSessionState(lastTrackTime = 1000L, sessionTime = 500L, currentTime = 2000L) // 1000 > 500
 

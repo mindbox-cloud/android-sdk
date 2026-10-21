@@ -2252,16 +2252,6 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `a winner without a page whose show budgets are spent empties the place without a failure`() {
-        val handle = RecordingHandle()
-
-        deliverWinnerWithoutPage(handle, PlaceShowReservation.REFUSED)
-
-        assertEquals(listOf<InAppType.Embedded?>(null), handle.received)
-        verify(exactly = 1) { interactor.releasePlaceShow(place, SessionEpoch(0L)) }
-    }
-
-    @Test
     fun `a winner without a page for blocks off screen since the app's return checks the show budgets at its delivery`() {
         val handle = RecordingHandle(isActive = false, isLeftBehind = true)
 

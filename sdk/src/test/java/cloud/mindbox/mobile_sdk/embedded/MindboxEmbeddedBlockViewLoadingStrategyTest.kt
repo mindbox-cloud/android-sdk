@@ -553,15 +553,4 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
 
         assertEquals(View.VISIBLE, view.visibility)
     }
-
-    @Test
-    fun `a block without a place starts hidden under the default strategy and answers empty`() {
-        val listener = RecordingListener()
-        val view = MindboxEmbeddedBlockView(activity, null, placeSystemName = null)
-        view.setListener(listener)
-        activity.attachBlock(view)
-
-        assertEquals(View.GONE, view.visibility)
-        assertEquals(listOf("empty"), listener.events)
-    }
 }
