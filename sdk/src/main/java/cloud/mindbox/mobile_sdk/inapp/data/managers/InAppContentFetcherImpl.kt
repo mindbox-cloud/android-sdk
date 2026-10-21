@@ -21,7 +21,6 @@ internal class InAppContentFetcherImpl(
             }
 
             is InAppType.Embedded -> {
-                // Nothing to prefetch: the page pulls its own content, like InAppType.WebView.
             }
 
             is InAppType.ModalWindow -> {

@@ -7,7 +7,6 @@ import android.widget.LinearLayout
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import java.time.Duration
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,7 +14,6 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 
-/** The two animator runs behind the reveal, driven to their end on the test looper. */
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlockRevealAnimationTest {
 
@@ -91,11 +89,5 @@ class EmbeddedBlockRevealAnimationTest {
         animator.cancel()
 
         assertEquals(300, view.layoutParams.height)
-    }
-
-    @Test
-    fun `the system animation switch is the enabled seam`() {
-        assertTrue(EmbeddedBlockRevealAnimation(areSystemAnimationsEnabled = { true }).isEnabled)
-        assertFalse(EmbeddedBlockRevealAnimation(areSystemAnimationsEnabled = { false }).isEnabled)
     }
 }

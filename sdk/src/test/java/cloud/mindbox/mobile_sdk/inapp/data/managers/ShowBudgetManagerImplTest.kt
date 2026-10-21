@@ -90,7 +90,6 @@ internal class ShowBudgetManagerImplTest {
             inAppRepository.saveShownInApp("block", now.ms)
             inAppRepository.saveInAppStateChangeTime(now)
         }
-        // The counter now stands where the hold stood (the repository writes it): still one, still spent.
         sessionStorageManager.state.inAppMessageShownInSession.add("block")
         assertEquals(ShowReservationOutcome.REFUSED, manager.reserve(overlay, "modal-1", counting, isPriority = false))
     }
@@ -109,10 +108,9 @@ internal class ShowBudgetManagerImplTest {
     }
 
     @Test
-    fun `re-reserving the same in-app for the same owner keeps the one hold`() {
+    fun `re-reserving the same in-app for the same owner keeps the one hold, the second asker owns nothing`() {
         assertEquals(ShowReservationOutcome.GRANTED, manager.reserve(place, "block", counting, isPriority = false))
 
-        // The second asker owns nothing: it must not give the first one's hold back.
         assertEquals(ShowReservationOutcome.ALREADY_HELD, manager.reserve(place, "block", counting, isPriority = false))
 
         assertEquals(1, sessionStorageManager.state.showReservations.size)
@@ -177,7 +175,6 @@ internal class ShowBudgetManagerImplTest {
         sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(minIntervalBetweenShows = Milliseconds(60_000L))
         manager.reserve(place, "block", counting, isPriority = false)
 
-        // A hold taken just now is as good as a show for the pause: the overlay waits.
         assertEquals(ShowReservationOutcome.REFUSED, manager.reserve(overlay, "modal-1", counting, isPriority = false))
 
         every { timeProvider.currentTimestamp() } returns Timestamp(now.ms + 61_000L)
@@ -227,8 +224,6 @@ internal class ShowBudgetManagerImplTest {
 
     @Test
     fun `a reserve that blocks mid-read keeps the second asker out until it decides`() {
-        // Deterministic version of the race: the first asker is held inside the critical section
-        // (on the daily read), the second must wait for it and then find the budget taken.
         sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1, maxInappsPerDay = 5)
         val entered = CountDownLatch(1)
         val proceed = CountDownLatch(1)
@@ -245,7 +240,6 @@ internal class ShowBudgetManagerImplTest {
         val second = workers.submit<ShowReservationOutcome> {
             manager.reserve(overlay, "modal-1", counting, isPriority = false)
         }
-        // While the first asker holds the lock, the second cannot answer at all.
         assertFalse(second.isDone)
         Thread.sleep(150)
         assertFalse(second.isDone)
@@ -259,8 +253,6 @@ internal class ShowBudgetManagerImplTest {
 
     @Test
     fun `a session reset waits for a reserve in flight and leaves no hold behind`() {
-        // The reset used to wipe the holds outside the manager's lock: a reserve that had already
-        // passed its check would then put its hold into the fresh session.
         sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(maxInappsPerSession = 1, maxInappsPerDay = 5)
         val entered = CountDownLatch(1)
         val proceed = CountDownLatch(1)
@@ -288,8 +280,6 @@ internal class ShowBudgetManagerImplTest {
 
     @Test
     fun `commit leaves no window in which the budget reads as free`() {
-        // The repository really writes the session counter here, and blocks right after the
-        // reservation was removed — a concurrent reserve must still see the budget taken.
         val counting = this.counting
         val blockingRepository = object : InAppRepository by inAppRepository {
             override fun setInAppShown(inAppId: String) {

@@ -113,7 +113,6 @@ internal class MindboxWebPageRegistryTest {
         assertEquals(1, survivor.received.size)
     }
 
-    /** Entries are weak; give the collector a bounded number of chances to prove it. */
     private fun awaitCollected(ref: WeakReference<*>) {
         repeat(20) {
             System.gc()

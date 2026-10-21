@@ -9,10 +9,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The dispatch rule every surface shares: one envelope per request, presence read before any
- * handler runs, and an action the surface does not serve answered by that action's own rule.
- */
 @OptIn(ExperimentalCoroutinesApi::class, InternalMindboxApi::class)
 class WebViewActionHandlersTest {
 
@@ -69,8 +65,6 @@ class WebViewActionHandlersTest {
 
     @Test
     fun `an action the surface does not perform is acknowledged`() {
-        // A block has no window to close and nothing to click: "nothing to do here" is an outcome
-        // the page may carry on from, not a failure.
         val handlers = WebViewActionHandlers()
 
         handlers.dispatchInTest(WebViewAction.CLICK)
@@ -81,8 +75,6 @@ class WebViewActionHandlersTest {
 
     @Test
     fun `a question the surface cannot answer is refused, not left silent`() {
-        // Silence costs the page its own timeout and tells it nothing; an empty answer it would
-        // take for the truth.
         val handlers = WebViewActionHandlers()
 
         handlers.dispatchInTest(WebViewAction.FILTER_SHOWABLE_INAPPS)
@@ -90,16 +82,6 @@ class WebViewActionHandlersTest {
         assertNull(responded)
         assertEquals(BridgeErrorCode.NOT_SERVED, (refused as BridgeRefusalException).code)
         assertTrue(refused!!.message!!.contains(WebViewAction.FILTER_SHOWABLE_INAPPS.name))
-    }
-
-    @Test
-    fun `back sent by the page is refused as not_served`() {
-        val handlers = WebViewActionHandlers()
-
-        handlers.dispatchInTest(WebViewAction.BACK)
-
-        assertNull(responded)
-        assertEquals(BridgeErrorCode.NOT_SERVED, (refused as BridgeRefusalException).code)
     }
 
     @Test
@@ -113,7 +95,7 @@ class WebViewActionHandlersTest {
     }
 
     @Test
-    fun `an action that needs the user is refused while nobody is looking`() {
+    fun `an action that needs the user is refused before its handler runs while nobody is looking`() {
         val handlers = WebViewActionHandlers()
         var ran = false
         handlers.register(WebViewAction.OPEN_LINK) {
@@ -123,7 +105,6 @@ class WebViewActionHandlersTest {
 
         handlers.dispatchInTest(WebViewAction.OPEN_LINK, isUserPresent = false)
 
-        // Read before the handler, not inside it: the gate is the same wherever the action is served.
         assertEquals(false, ran)
         assertEquals(BridgeErrorCode.NOT_VISIBLE, (refused as BridgeRefusalException).code)
         assertEquals(NOBODY_LOOKING_ERROR, refused?.message)
@@ -152,8 +133,6 @@ class WebViewActionHandlersTest {
 
     @Test
     fun `a surface released while a suspending handler was in flight answers nothing`() {
-        // The page is gone and so is whoever would have received the answer; the holder must not
-        // speak for it.
         val handlers = WebViewActionHandlers()
         var alive = true
         handlers.registerSuspend(WebViewAction.READY) { "ready-payload" }

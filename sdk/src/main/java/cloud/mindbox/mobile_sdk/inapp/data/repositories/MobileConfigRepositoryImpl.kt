@@ -136,7 +136,6 @@ internal class MobileConfigRepositoryImpl(
             return
         }
         if (error is VolleyError) sessionStorageManager.state.configFetchingError = true
-        // needed to trigger flow event
         MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
     }
 
@@ -193,8 +192,6 @@ internal class MobileConfigRepositoryImpl(
         )
         configState.value = ConfigState(current = entry, lastPublished = entry)
         configVersions.tryEmit(entry.version)
-        // Prewarm stage 2: warm what the config's webview in-apps will need
-        // (or release the warm instance when the config proves there are none).
         inAppWebViewPrewarmManager.prewarmResources(updatedInAppConfig)
         mindboxLogI(message = "Config ${entry.version.number} is ready: $updatedInAppConfig")
         return filteredConfig

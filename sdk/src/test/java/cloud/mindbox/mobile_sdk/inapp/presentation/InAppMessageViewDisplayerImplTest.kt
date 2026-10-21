@@ -151,8 +151,6 @@ internal class InAppMessageViewDisplayerImplTest {
         return method.invoke(this, arg)
     }
 
-    // ---- a candidate that will never be presented says so, so its hold in the show budgets can go back ----
-
     private class CountingCallbacks : InAppActionCallbacks {
         var notShown = 0
         override val onInAppClick = OnInAppClick {}
@@ -163,7 +161,6 @@ internal class InAppMessageViewDisplayerImplTest {
 
     @Test
     fun `a duplicate of a queued candidate is told it will not be shown`() {
-        // No activity: the first candidate waits in the queue, the second is the same in-app.
         val first = CountingCallbacks()
         val duplicate = CountingCallbacks()
         val inApp = InAppStub.getInApp().form.variants.first()
@@ -189,8 +186,6 @@ internal class InAppMessageViewDisplayerImplTest {
 
     @Test
     fun `closing a presented in-app before it was shown tells it it will not be shown`() {
-        // The holder's own failure paths (image, HTML fetch, WebView init timeout) end in
-        // InAppController.close(); the hold in the show budgets must go back through that door.
         val callbacks = CountingCallbacks()
         val holder = mockk<InAppViewHolder<*>>(relaxed = true)
         every { holder.wrapper } returns InAppTypeWrapper(
@@ -218,7 +213,6 @@ internal class InAppMessageViewDisplayerImplTest {
             inAppActionCallbacks = callbacks,
             onRenderStart = {},
         )
-        // pausedHolder present, no activity -> root is null -> the reattach failure branch
         displayer.setPrivateField("pausedHolder", restoredHolder)
 
         displayer.invokePrivateWithString("tryReattachRestoredInApp", "restored")

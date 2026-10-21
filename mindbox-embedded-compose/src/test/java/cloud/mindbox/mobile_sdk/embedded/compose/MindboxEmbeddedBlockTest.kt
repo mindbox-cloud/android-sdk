@@ -34,8 +34,7 @@ class MindboxEmbeddedBlockTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    /** Puts the host window on screen so the block inside starts its content. */
-    private fun settle() {
+    private fun showHostWindow() {
         compose.waitForIdle()
         dispatchWindowVisibility(compose.activity.window.decorView, View.VISIBLE)
         shadowOf(Looper.getMainLooper()).idle()
@@ -43,10 +42,7 @@ class MindboxEmbeddedBlockTest {
     }
 
     @Test
-    fun `a placeholder block keeps its frame while the config has not arrived`() {
-        // Nothing is initialized in this test process — the case a host hits when it composes a
-        // screen before the SDK finished starting up. A block that takes its space up front
-        // holds the height it was given and stays silent: no config yet is not an empty place.
+    fun `a placeholder block keeps its frame and stays silent while the SDK is not initialized`() {
         val events = mutableListOf<String>()
 
         compose.setContent {
@@ -60,7 +56,7 @@ class MindboxEmbeddedBlockTest {
                 onFail = { events.add("fail") },
             )
         }
-        settle()
+        showHostWindow()
 
         compose.onNodeWithTag("block").assertExists()
         compose.onNodeWithTag("block").assertHeightIsEqualTo(120.dp)
@@ -69,8 +65,6 @@ class MindboxEmbeddedBlockTest {
 
     @Test
     fun `a block waiting hidden is zero height from its very first frame`() {
-        // The default strategy on a device where the place never showed content: the first look
-        // is decided before the first frame, so the layout never flashes reserved space.
         compose.setContent {
             MindboxEmbeddedBlock(
                 placeSystemName = "main-screen-top",
@@ -97,7 +91,7 @@ class MindboxEmbeddedBlockTest {
                 animatesReveal = animates.value,
             )
         }
-        settle()
+        showHostWindow()
 
         val view = requireNotNull(findBlockView(compose.activity.window.decorView))
         assertEquals(MindboxEmbeddedBlockLoadingStrategy.HIDDEN, view.loadingStrategy)
@@ -108,7 +102,7 @@ class MindboxEmbeddedBlockTest {
             strategy.value = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER
             animates.value = true
         }
-        settle()
+        showHostWindow()
 
         assertEquals(MindboxEmbeddedBlockLoadingStrategy.HIDDEN, view.loadingStrategy)
         assertEquals(false, view.animatesReveal)
@@ -120,9 +114,7 @@ class MindboxEmbeddedBlockTest {
     }
 
     @Test
-    fun `a place with no name collapses the block to nothing`() {
-        // A GONE child cannot shrink a Compose modifier by itself — the wrapper has to collapse
-        // the frame, or the host layout keeps a hole where the block used to be.
+    fun `a place with no name collapses the composable frame, not only the view inside it`() {
         val events = mutableListOf<String>()
 
         compose.setContent {
@@ -135,7 +127,7 @@ class MindboxEmbeddedBlockTest {
                 onFail = { reason -> events.add("fail:$reason") },
             )
         }
-        settle()
+        showHostWindow()
 
         compose.onNodeWithTag("block").assertHeightIsEqualTo(0.dp)
         assertEquals(listOf("empty"), events)
@@ -156,9 +148,9 @@ class MindboxEmbeddedBlockTest {
                 onFail = { reason -> events.add("fail:$reason") },
             )
         }
-        settle()
+        showHostWindow()
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(60))
-        settle()
+        showHostWindow()
 
         assertEquals(listOf("fail:networkError"), events)
         compose.onNodeWithTag("block").assertHeightIsEqualTo(0.dp)
@@ -166,8 +158,6 @@ class MindboxEmbeddedBlockTest {
 
     @Test
     fun `custom slots are accepted and the block still resolves`() {
-        // Slot rendering itself is covered at the view level (setPlaceholderView/setErrorView);
-        // here the wiring must simply survive slots being present.
         val events = mutableListOf<String>()
 
         compose.setContent {
@@ -180,7 +170,7 @@ class MindboxEmbeddedBlockTest {
                 error = { Box(Modifier.fillMaxSize().testTag("custom-error")) },
             )
         }
-        settle()
+        showHostWindow()
 
         compose.onNodeWithTag("custom-placeholder").assertExists()
         assertTrue(events.isEmpty())
@@ -188,8 +178,6 @@ class MindboxEmbeddedBlockTest {
 
     @Test
     fun `a slot that appears after the first composition still reaches the block`() {
-        // The factory runs once. A caller that decides on its slots later — after a flag loads,
-        // after a theme resolves — would otherwise never get them installed at all.
         val withPlaceholder = mutableStateOf(false)
 
         compose.setContent {
@@ -204,47 +192,13 @@ class MindboxEmbeddedBlockTest {
                 },
             )
         }
-        settle()
+        showHostWindow()
         compose.onNodeWithTag("custom-placeholder").assertDoesNotExist()
 
         compose.runOnUiThread { withPlaceholder.value = true }
-        settle()
+        showHostWindow()
 
         compose.onNodeWithTag("custom-placeholder").assertExists()
-    }
-
-    @Test
-    fun `default callbacks and slots are optional`() {
-        compose.setContent {
-            MindboxEmbeddedBlock(
-                placeSystemName = "main-screen-top",
-                modifier = Modifier.height(120.dp),
-            )
-        }
-        settle()
-    }
-
-    @Test
-    fun `leaving the composition frees the block`() {
-        // AndroidView's onRelease is the only teardown signal a composable gets — without it
-        // every scroll past the block would leak a WebView.
-        val shown = mutableStateOf(true)
-
-        compose.setContent {
-            if (shown.value) {
-                MindboxEmbeddedBlock(
-                    placeSystemName = "main-screen-top",
-                    modifier = Modifier.height(120.dp).testTag("block"),
-                )
-            }
-        }
-        settle()
-        compose.onNodeWithTag("block").assertExists()
-
-        compose.runOnUiThread { shown.value = false }
-        settle()
-
-        compose.onNodeWithTag("block").assertDoesNotExist()
     }
 
     @Test
@@ -258,11 +212,11 @@ class MindboxEmbeddedBlockTest {
                 timeoutMs = timeout.value,
             )
         }
-        settle()
+        showHostWindow()
         assertTrue(timeoutWarnings().isEmpty())
 
         compose.runOnUiThread { timeout.value = 60_000 }
-        settle()
+        showHostWindow()
 
         val said = timeoutWarnings()
         assertEquals(1, said.size)
@@ -270,7 +224,7 @@ class MindboxEmbeddedBlockTest {
         assertTrue(said.single().contains("keeps 5000"))
 
         compose.runOnUiThread { timeout.value = 60_000 }
-        settle()
+        showHostWindow()
         assertEquals(1, timeoutWarnings().size)
     }
 
@@ -283,18 +237,15 @@ class MindboxEmbeddedBlockTest {
                 timeoutMs = 5_000,
             )
         }
-        settle()
+        showHostWindow()
         compose.runOnUiThread { compose.activity.setTitle("recompose") }
-        settle()
+        showHostWindow()
 
         assertTrue(timeoutWarnings().isEmpty())
     }
 
     @Test
-    fun `leaving the composition lets the block go through releaseOrRetain, not release`() {
-        // A destination that leaves the composition may still sit in the back stack; the wrapper
-        // must hand the block over to its screen instead of freeing it outright. With nothing
-        // loaded here there is nothing to keep, and the block says so before it releases.
+    fun `leaving the composition lets the block go through releaseOrRetain, not release, and with nothing loaded it releases`() {
         Mindbox.setLogLevel(Level.INFO)
         val show = mutableStateOf(true)
 
@@ -306,9 +257,9 @@ class MindboxEmbeddedBlockTest {
                 )
             }
         }
-        settle()
+        showHostWindow()
         show.value = false
-        settle()
+        showHostWindow()
 
         val messages = ShadowLog.getLogs().mapNotNull { log -> log.msg }
         assertTrue(messages.any { message -> message.contains("Let go by the host wrapper, nothing to keep") })

@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.presentation.view
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** iOS sends the same texts, so one search finds the failure on both platforms. */
 internal class WebViewInitTimeoutDescriptionTest {
 
     @Test

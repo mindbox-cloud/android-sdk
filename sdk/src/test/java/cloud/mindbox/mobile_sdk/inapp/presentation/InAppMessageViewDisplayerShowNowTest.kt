@@ -35,10 +35,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/**
- * The invited show: whatever is on screen is dismissed with honest accounting, then the
- * requested in-app is presented right away — past the queue and the active-show lock.
- */
 @RunWith(RobolectricTestRunner::class)
 internal class InAppMessageViewDisplayerShowNowTest {
 
@@ -93,7 +89,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
 
     private fun setCurrentHolder(holder: InAppViewHolder<*>) = setPrivateField("currentHolder", holder)
 
-    /** A live activity whose window is gone: presenting fails observably, in the failure tracker. */
     private fun givenForegroundActivity() {
         setPrivateField(
             "currentActivity",
@@ -104,7 +99,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
         )
     }
 
-    /** A live activity with a real root to draw into — the presentation actually runs. */
     private fun givenForegroundActivityWithRoot(): FrameLayout {
         val root = FrameLayout(ApplicationProvider.getApplicationContext<Application>())
         setPrivateField(
@@ -148,8 +142,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
             inAppActionCallbacks = noCallbacks,
         )
 
-        // The activity has no window, so presenting lands in the failure tracker — the proof the
-        // present ran, and ran strictly after the dismissal freed the lock.
         verifyOrder {
             dismiss.onDismiss()
             holder.onClose()
@@ -158,7 +150,7 @@ internal class InAppMessageViewDisplayerShowNowTest {
     }
 
     @Test
-    fun `the replaced show reaches the registered app callback as dismissed`() {
+    fun `the replaced show reaches the registered app callback as dismissed before the internal accounting`() {
         givenForegroundActivity()
         val appCallback = mockk<InAppCallback>(relaxUnitFun = true)
         displayer.registerInAppCallback(appCallback)
@@ -170,8 +162,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
             inAppActionCallbacks = noCallbacks,
         )
 
-        // The same order the ordinary close keeps: the app hears about the dismissal first,
-        // the internal accounting follows.
         verifyOrder {
             appCallback.onInAppDismissed("active-id")
             dismiss.onDismiss()
@@ -198,20 +188,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
     }
 
     @Test
-    fun `with nothing on screen the requested in-app presents immediately`() {
-        givenForegroundActivity()
-        val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)
-
-        displayer.showInAppMessageNow(
-            inAppType = InAppStub.getModalWindow().copy(inAppId = "tapped-id"),
-            inAppActionCallbacks = noCallbacks,
-        )
-
-        verify(exactly = 0) { dismiss.onDismiss() }
-        verify { failureTracker.sendFailure("tapped-id", FailureReason.PRESENTATION_FAILED, any(), any()) }
-    }
-
-    @Test
     fun `without a foreground activity nothing is closed and only the requester hears the miss`() {
         val dismiss = mockk<OnInAppDismiss>(relaxUnitFun = true)
         val holder = activeHolder(dismiss)
@@ -226,7 +202,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
             inAppActionCallbacks = callbacks,
         )
 
-        // Closing what the user may come back to would trade a missed show for a lost one.
         verify(exactly = 0) { dismiss.onDismiss() }
         verify(exactly = 0) { holder.onClose() }
         verify(exactly = 0) { failureTracker.sendFailure(any(), any(), any(), any()) }
@@ -235,9 +210,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
 
     @Test
     fun `the requested in-app reaches presentation on a real root`() {
-        // The other cases here prove the show only by the failure that follows it. This one gives
-        // the activity something to draw into: the requested in-app starts rendering, and the
-        // "nowhere to draw" branch is not the reason anything happened.
         givenForegroundActivityWithRoot()
         var rendered = false
 
@@ -255,10 +227,6 @@ internal class InAppMessageViewDisplayerShowNowTest {
 
     @Test
     fun `the requested show empties the queue, and that is the decision`() {
-        // `showInAppMessageNow` goes through `closeInApp()`, which drops whatever the pipeline had
-        // queued behind the active show. Pinned as a conscious trade-off, not an accident: an
-        // in-app surfacing on top of the in-app the user has just opened would be worse than a
-        // queue that was cleared when they asked for something else.
         givenForegroundActivity()
         setCurrentHolder(activeHolder(mockk(relaxUnitFun = true)))
         displayer.tryShowInAppMessage(

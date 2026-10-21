@@ -174,11 +174,6 @@ internal class InAppMessageManagerImpl(
         }
     }
 
-    /**
-     * The one set of show/dismiss callbacks both overlay paths share: the queue and the page's
-     * tap must never drift apart in what a show writes down. The tap path carries no processing
-     * delay, so it passes a zero [preparedTime].
-     */
     private inner class ShowCallbacks(
         inApp: InApp,
         private val variant: InAppType,

@@ -320,10 +320,7 @@ class InAppRepositoryTest {
     }
 
     @Test
-    fun `concurrent saveShownInApp does not lose a write`() {
-        // Embedded blocks count shows concurrently (one per place). saveShownInApp is a
-        // read-modify-write over one preference: without synchronization the last writer
-        // erases the other block's entry — caught live on the emulator (14.08).
+    fun `concurrent saveShownInApp from two places does not lose a write`() {
         val currentTime = System.currentTimeMillis()
         var stored = ""
         val gson = com.google.gson.Gson()

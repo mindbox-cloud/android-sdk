@@ -38,9 +38,6 @@ internal data class EmbeddedPlaceAnswer(
 internal val InAppType.Embedded.pageLayer: Layer.WebViewLayer?
     get() = layers.filterIsInstance<Layer.WebViewLayer>().firstOrNull()
 
-/**
- * One registered block: how the registry talks back to a view.
- **/
 internal interface EmbeddedBlockHandle {
 
     val isActive: Boolean
@@ -100,7 +97,6 @@ internal interface EmbeddedBlocksRegistry {
 
 internal class EmbeddedBlocksRegistryImpl(
     private val inAppInteractor: InAppInteractor,
-    // Read on every use, never captured: the SDK scope is recreated on a soft reinitialization.
     private val scopeProvider: () -> CoroutineScope = { Mindbox.mindboxScope },
     private val monotonicNow: () -> Milliseconds,
     private val isAppPresent: () -> Boolean = {
@@ -108,9 +104,6 @@ internal class EmbeddedBlocksRegistryImpl(
     },
 ) : EmbeddedBlocksRegistry {
 
-    // Weak on purpose: a host with no lifecycle owner to say goodbye — a plain Dialog, a
-    // PopupWindow, an app that swaps views itself — only lets its block go, and a strong entry in
-    // this process-wide map would keep the block, its view and the Activity behind it alive.
     private val handlesByPlace = mutableMapOf<PlaceKey, MutableList<WeakReference<EmbeddedBlockHandle>>>()
 
     private interface AskedPass {

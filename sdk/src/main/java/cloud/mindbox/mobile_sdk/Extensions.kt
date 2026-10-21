@@ -301,18 +301,9 @@ internal fun List<InApp>.sortByPriority(): List<InApp> {
     return this.sortedByDescending { it.isPriority }
 }
 
-/**
- * The first variant that can be shown over the app's own screen, or `null` when the form has none.
- * An embedded variant is drawn inside the host layout and gets its content by place instead.
- */
 internal fun InApp.firstOverlayVariant(): InAppType? =
     form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
 
-/**
- * Whether shows of this in-app are written down: the show history, the session list and the
- * cooldown all exist to hold shows back, and an `unlimited` in-app is outside that accounting in
- * both directions — it records nothing, and nothing recorded restrains it.
- */
 internal fun InApp.countsShows(): Boolean = frequency.countsShows()
 
 internal fun Frequency.countsShows(): Boolean = delay !is Frequency.Delay.Unlimited
@@ -328,7 +319,6 @@ internal fun <T> newConcurrentSet(): MutableSet<T> =
 internal fun InApp.gatedTags(isTagsFeatureEnabled: Boolean): Map<String, String>? =
     tags.gatedTags(isTagsFeatureEnabled)
 
-/** The same gate for a tags snapshot that travels without its [InApp] (embedded content). */
 internal fun Map<String, String>?.gatedTags(isTagsFeatureEnabled: Boolean): Map<String, String>? =
     this?.takeIf { it.isNotEmpty() && isTagsFeatureEnabled }
 

@@ -9,10 +9,6 @@ import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/**
- * The MOBILE-333 filters: place lookup, and cutting embedded/directCall out of the overlay
- * path.
- */
 class EmbeddedFilteringManagerTest {
 
     private val manager = InAppFilteringManagerImpl(inAppRepository = mockk(relaxed = true))

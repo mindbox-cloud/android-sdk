@@ -9,11 +9,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Structural rules only: a place to bind to and at least one valid webview layer — the first
- * webview layer is used, extra layers are ignored. `params` are deliberately not validated —
- * they travel to the page as they came.
- */
 class EmbeddedVariantValidatorTest {
 
     private val webViewLayerValidator: WebViewLayerValidator = mockk {
@@ -100,7 +95,6 @@ class EmbeddedVariantValidatorTest {
 
     @Test
     fun `params are not validated`() {
-        // Whatever is inside params — missing keys, junk values — the variant stays valid.
         val layer = valid.content!!.background!!.layers!!
             .single() as BackgroundDto.LayerDto.WebViewLayerDto
         val variant = valid.copy(

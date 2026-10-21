@@ -5,7 +5,6 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import org.json.JSONException
 
-/** Error codes of the JS bridge contract. */
 internal enum class BridgeErrorCode(val wireValue: String) {
     UNKNOWN_ACTION("unknown_action"),
     NOT_SERVED("not_served"),

@@ -142,17 +142,10 @@ internal class EmbeddedBlockContentController(
 
     private var dueSessionRefresh: EmbeddedPlaceAnswer? = null
 
-    /** What the shown page was built from — the "same content" dedup key. */
     private var appliedDescriptor: PageDescriptor? = null
 
-    /** The snapshot of the applied content — the failure events' id and tags come from it. */
     private var appliedContent: InAppType.Embedded? = null
 
-    /**
-     * The applied content, split the way the dedup needs it: [isSamePage] is the page's identity —
-     * the winner and the address the page was built from — while [params] are data a live page can
-     * take over the bridge. A changed address is a different page even under the same winner.
-     */
     private data class PageDescriptor(
         val inAppId: String,
         val baseUrl: String?,
@@ -236,8 +229,6 @@ internal class EmbeddedBlockContentController(
         isStarted = false
         deferredParkedMayHold = null
         isAwayInBackground = !isAppInForeground()
-        // A pause, not a reset: leaving the screen does not cancel an attempt already started,
-        // and the clocks stop with the user's waiting.
         readyBudget.pause()
         configBudget.pause()
         provider?.pause()

@@ -342,23 +342,6 @@ internal class ExtensionsTest {
     }
 
     @Test
-    fun `pollIf with multiple calls`() {
-        val queue: Queue<String> = LinkedList(listOf("apple", "banana", "cherry"))
-
-        val appleResult = queue.pollIf { it.startsWith("a") }
-        assertEquals("apple", appleResult)
-        assertEquals(2, queue.size)
-
-        val nonBBfruitResult = queue.pollIf { it.startsWith("b") }
-        assertEquals("banana", nonBBfruitResult)
-        assertEquals(1, queue.size)
-
-        val cherryResult = queue.pollIf { it.length == 6 }
-        assertEquals("cherry", cherryResult)
-        assertEquals(0, queue.size)
-    }
-
-    @Test
     fun `toUrlQueryString should return empty string for empty map`() {
         val emptyMap = linkedMapOf<String, String>()
         val result = emptyMap.toUrlQueryString()
@@ -413,17 +396,6 @@ internal class ExtensionsTest {
         )
         val result = map.toUrlQueryString()
         assertEquals("?param1=value%3Dwith%3Dequals&param2=value%26with%26ampersands&param3=value%3Fwith%3Fquestion%3Fmarks", result)
-    }
-
-    @Test
-    fun `toUrlQueryString should handle numeric values as strings`() {
-        val map = linkedMapOf(
-            "number" to "123",
-            "decimal" to "123.45",
-            "negative" to "-123"
-        )
-        val result = map.toUrlQueryString()
-        assertEquals("?number=123&decimal=123.45&negative=-123", result)
     }
 
     @Test

@@ -17,10 +17,6 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 
-/**
- * Who a block belongs to: the fragment when there is one, the owner a wrapper names, never an
- * Activity or an owner that is itself going away.
- */
 @RunWith(RobolectricTestRunner::class)
 class ScreenOwnerExtensionsTest {
 
@@ -57,9 +53,7 @@ class ScreenOwnerExtensionsTest {
     }
 
     @Test
-    fun `a wrapper naming the fragment's view lifecycle means the fragment`() {
-        // Compose inside a fragment sees the view lifecycle as LocalLifecycleOwner; it dies with the
-        // view, so the screen that outlives it is the fragment.
+    fun `a wrapper naming the fragment's view lifecycle means the fragment, which outlives the view`() {
         val fragment = HostFragment()
         activity.supportFragmentManager.beginTransaction().add(android.R.id.content, fragment).commitNow()
 

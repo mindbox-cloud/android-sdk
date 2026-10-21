@@ -16,7 +16,6 @@ internal open class EmbeddedBlockRevealAnimation(
     },
 ) {
 
-    /** The accessibility "remove animations" setting zeroes the animator scale — respect it. */
     val isEnabled: Boolean
         get() = areSystemAnimationsEnabled()
 

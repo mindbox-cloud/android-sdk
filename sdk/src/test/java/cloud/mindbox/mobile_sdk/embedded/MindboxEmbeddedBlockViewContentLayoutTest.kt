@@ -18,17 +18,10 @@ import org.robolectric.Shadows.shadowOf
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewContentLayoutTest {
 
-    /**
-     * A host that answers a layout request the way Compose interop can: `AndroidViewsHandler`
-     * never passes it up to `ViewRootImpl`, it translates it into a Compose remeasure request —
-     * and that one is dropped while the node is being measured or waits in a LazyColumn's reuse
-     * pool. Then no pass ever comes, which is what the block has to survive.
-     */
     private class LayoutRequestSwallowingHost(context: Context) : FrameLayout(context) {
         override fun requestLayout() = Unit
     }
 
-    /** A page that keeps loading until the test says it rendered — as one does off screen. */
     private class SilentProvider(context: Activity) : EmbeddedContentProvider {
         override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
         override val contentView: View = View(context)
@@ -80,10 +73,6 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         shadowOf(Looper.getMainLooper()).idle()
     }
 
-    /**
-     * Attaches the block and lays the host out once — the only layout pass the test grants. What
-     * happens to content that arrives afterwards must not depend on a second one.
-     */
     private fun attachAndLayOut(view: MindboxEmbeddedBlockView, padding: Int = 0): FrameLayout {
         val host = LayoutRequestSwallowingHost(activity).apply {
             addView(view, FRAME_WIDTH, FRAME_HEIGHT)
@@ -133,24 +122,15 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         assertEquals(PADDING, content?.top)
     }
 
-    /**
-     * The corner case MOBILE-413 was actually caught on: a LazyColumn deactivates the item, so the
-     * block leaves the window keeping the frame it had, and the page reports its content right
-     * then. The reactivated node comes back without a remeasure of its own — nothing would ever
-     * measure the content if the block waited for a pass.
-     */
     @Test
-    fun `content arriving while the block is out of the window still fills the frame it kept`() {
+    fun `content arriving while a deactivated LazyColumn item keeps the block out of the window still fills the frame it kept`() {
         val view = buildView(provider = { SilentProvider(activity) })
         val host = attachAndLayOut(view)
-        // The page starts loading while the block is on screen…
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
         idle()
-        // …the item is deactivated, so the block leaves the window keeping its frame…
         host.removeView(view)
         idle()
 
-        // …and only then the page reports what it rendered.
         (lastProvider as SilentProvider).reportReady()
         idle()
 
@@ -159,14 +139,8 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         assertEquals(FRAME_HEIGHT, content?.height)
     }
 
-    /**
-     * The sequence MOBILE-413 was caught on: the list measures the item in one frame and places it
-     * in a later one, and the page reports its content in between. A child added after the measure
-     * has no measured size — `FrameLayout` would place it at 0×0 and eat its layout request along
-     * the way, so the block has to measure it to the frame it is being laid out into.
-     */
     @Test
-    fun `content added between the measure and the layout of the block is measured too`() {
+    fun `content added between the measure and the layout of the block is measured to the frame, as FrameLayout would not`() {
         val view = buildView(provider = { SilentProvider(activity) })
         val host = LayoutRequestSwallowingHost(activity).apply {
             addView(view, FRAME_WIDTH, FRAME_HEIGHT)
@@ -178,8 +152,6 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
         idle()
 
-        // Measured, but not placed yet — the state the list leaves the item in between its own
-        // measure and layout phases.
         view.layout(0, 0, 0, 0)
         host.measure(
             MeasureSpec.makeMeasureSpec(FRAME_WIDTH, MeasureSpec.EXACTLY),
@@ -200,7 +172,6 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         val host = attachAndLayOut(view)
         val content = View(activity)
 
-        // Out of the window and with the frame dropped, the way a fresh block starts out.
         host.removeView(view)
         view.layout(0, 0, 0, 0)
         idle()
@@ -208,9 +179,6 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
         idle()
         assertEquals(0, content.width)
 
-        // The block has its frame back while the content is still unmeasured inside it — the state
-        // a reactivated node comes back in. Restoring the frame is a layout of its own, so the
-        // content is put back to nothing after it: what has to heal this is the reattachment.
         view.layout(0, 0, FRAME_WIDTH, FRAME_HEIGHT)
         content.layout(0, 0, 0, 0)
         host.addView(view, FRAME_WIDTH, FRAME_HEIGHT)

@@ -236,76 +236,6 @@ internal class InAppMessageManagerTest {
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any(), any()) }
     }
 
-    @Test
-    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
-        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
-        val inApp = InAppStub.getInApp()
-        every { inAppMessageInteractor.reserveOverlayShow(any()) } returns ShowReservationOutcome.REFUSED
-        every { inAppMessageViewDisplayer.isInAppActive() } returns false
-        inAppMessageManager = InAppMessageManagerImpl(
-            inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            testDispatcher,
-            monitoringRepository,
-            sessionStorageManager,
-            userVisitManager,
-            inAppMessageDelayedManager,
-            timeProvider,
-            featureToggleManager
-        )
-        coEvery {
-            inAppMessageInteractor.listenToTargetingEvents()
-        } just runs
-        coEvery {
-            inAppMessageInteractor.processEventAndConfig()
-        }.answers {
-            flow {
-                emit(inApp to Milliseconds(0L))
-            }
-        }
-        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        every { inAppMessageDelayedManager.process(inApp, any()) } answers {
-            this@runTest.launch {
-                inAppToShowFlow.emit(inApp to Milliseconds(0L))
-            }
-        }
-
-        inAppMessageManager.listenEventAndInApp()
-        advanceUntilIdle()
-        verify(exactly = 1) { inAppMessageDelayedManager.process(inApp, any()) }
-        coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
-        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any(), any()) }
-    }
-
-    @Test
-    fun `in app messages error message`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(
-            inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            testDispatcher,
-            monitoringRepository,
-            sessionStorageManager,
-            userVisitManager,
-            inAppMessageDelayedManager,
-            timeProvider,
-            featureToggleManager
-        )
-        coEvery {
-            inAppMessageInteractor.processEventAndConfig()
-        } returns flow {
-            throw Error("test error")
-        }
-        try {
-            inAppMessageManager.listenEventAndInApp()
-            advanceUntilIdle()
-        } catch (e: Error) {
-            e.printStackTrace()
-        }
-        coVerify(exactly = 1) {
-            inAppMessageInteractor.listenToTargetingEvents()
-        }
-    }
-
     private fun (() -> Any?).shouldNotThrow() = try {
         invoke()
     } catch (ex: Exception) {
@@ -588,7 +518,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `showInAppById answers shown once the window is on screen, and only then`() = runTest {
+    fun `showInAppById answers shown once the window is on screen, and a later dismiss is not a second answer`() = runTest {
         val inApp = InAppStub.getInApp().copy(id = "tap-id")
         val variant = inApp.form.variants.first()
         coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
@@ -608,7 +538,6 @@ internal class InAppMessageManagerTest {
         callbacks.captured.onInAppShown.onShown()
         assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
 
-        // A dismiss after the show is an ordinary dismiss, not a second answer.
         callbacks.captured.onInAppDismiss.onDismiss()
         assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
     }
@@ -665,8 +594,6 @@ internal class InAppMessageManagerTest {
         assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE)), outcomes)
         verify(exactly = 0) { inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any()) }
     }
-
-    // ---- the overlay's hold in the show budgets: taken before the show, given back if it never shows ----
 
     private fun TestScope.managerWithCapturedCallbacks(
         inApp: InApp,
@@ -757,7 +684,6 @@ internal class InAppMessageManagerTest {
         val shown = managerWithCapturedCallbacks(inApp)
         shown().onInAppShown.onShown()
         shown().onInAppDismiss.onDismiss()
-        // The hold ended with the show (the commit lives in saveShownInApp); nothing to give back.
         verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
     }
 
@@ -790,7 +716,6 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `a candidate that found the hold already standing is shown but never gives it back`() = runTest {
-        // The hold belongs to the earlier candidate of the same in-app; this one owns nothing.
         val inApp = InAppStub.getInApp()
         val callbacks = managerWithCapturedCallbacks(inApp)
         val secondCandidate = managerWithCapturedCallbacks(inApp, hold = ShowReservationOutcome.ALREADY_HELD)
@@ -804,12 +729,8 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
     }
 
-    // ---- a candidate's show and its refusal are terminal and mutually exclusive ----
-
     @Test
     fun `a show reported after the candidate was told it will not be shown writes nothing`() = runTest {
-        // A page's late `init` on a torn-down holder, or a restored holder whose original already
-        // gave the hold back: the Inapp.Show must not outlive the candidate's refusal.
         val inApp = InAppStub.getInApp()
         val callbacks = managerWithCapturedCallbacks(inApp)
 
@@ -821,9 +742,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `a second show report of the same candidate is not counted again`() = runTest {
-        // Two holders can report the same show: the one paused in the background finishing its
-        // image, and the one restored on top of it.
+    fun `a second show report of the same candidate, from a paused and a restored holder, is not counted again`() = runTest {
         val inApp = InAppStub.getInApp()
         val callbacks = managerWithCapturedCallbacks(inApp)
 

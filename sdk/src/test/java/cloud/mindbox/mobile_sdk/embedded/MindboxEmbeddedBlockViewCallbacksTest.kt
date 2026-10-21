@@ -11,10 +11,6 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 
-/**
- * The three callbacks: which outcome reaches which one, the reason a failure carries, and the
- * one-callback-per-outcome rule with a reason that changes underneath it.
- */
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewCallbacksTest {
 
@@ -168,9 +164,7 @@ class MindboxEmbeddedBlockViewCallbacksTest {
     }
 
     @Test
-    fun `no answer from the SDK keeps the place when the host set an error view`() {
-        // The error screen replaces a look that took the block's space: a placeholder-strategy
-        // block. A block that waits hidden never shows one — that path has its own test.
+    fun `no answer from the SDK keeps the place of a placeholder-strategy block when the host set an error view`() {
         val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER)
         view.setErrorView(View(activity))
         activity.attachBlock(view)

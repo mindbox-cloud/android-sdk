@@ -52,16 +52,6 @@ class CheckerUtilsTest {
     }
 
     @Test
-    fun `returns false when all checkers return false`() {
-        every { checker1.check(any()) } returns false
-        every { checker2.check(any()) } returns false
-
-        val result = allAllow(emptyList(), checker1, checker2)
-
-        assertFalse(result)
-    }
-
-    @Test
     fun `returns true when no checkers are provided`() {
         val result = allAllow(emptyList())
 

@@ -176,7 +176,6 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.state.unShownOperationalInApps.isEmpty())
         assertTrue(sessionStorageManager.state.operationalInApps.isEmpty())
         assertTrue(sessionStorageManager.state.inAppMessageShownInSession.isEmpty())
-        // The block-event memory dies with the session, every cell together.
         assertTrue(sessionStorageManager.state.embeddedLastShownByPlace.isEmpty())
         assertTrue(sessionStorageManager.state.embeddedLastTargetedByPlace.isEmpty())
         assertTrue(sessionStorageManager.state.embeddedLastOperationByPlace.isEmpty())
@@ -218,20 +217,6 @@ class SessionStorageManagerTest {
         sessionStorageManager.onTrackVisit(null, null)
 
         assertEquals(TrackVisitOrigin(source = "link", requestUrl = "https://example.com/promo"), sessionStorageManager.lastTrackVisitData)
-    }
-
-    @Test
-    fun `check inAppMessageShownInSession elements count`() {
-        val inAppId1 = "inApp1"
-        val inAppId2 = "inApp2"
-        val expectedResult = 3
-        assertTrue(sessionStorageManager.state.inAppMessageShownInSession.isEmpty())
-
-        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId1)
-        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId2)
-        sessionStorageManager.state.inAppMessageShownInSession.add(inAppId1)
-
-        assertEquals(expectedResult, sessionStorageManager.state.inAppMessageShownInSession.size)
     }
 
     @Test

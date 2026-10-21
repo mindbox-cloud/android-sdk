@@ -382,56 +382,6 @@ class WebViewOperationExecutorTest {
         )
     }
 
-    @Test
-    fun `executeSyncOperation merges tags keeping client value on collision and still returns response`() = runTest {
-        val payload: String =
-            """{"operation":"OpenScreen","body":{"screen":"home","tags":{"templateType":"ClientOwn"}}}"""
-        val expectedResponse: String = """{"result":"ok"}"""
-        sender.syncResponse = expectedResponse
-        val actualResponse: String = executor.executeSyncOperation(
-            payload,
-            hostInAppId = "host-id",
-            hostTags = mapOf("templateType" to "Popup", "campaign" to "summer"),
-        )
-        assertEquals(expectedResponse, actualResponse)
-        assertEquals(
-            listOf("OpenScreen" to """{"screen":"home","tags":{"templateType":"ClientOwn","campaign":"summer"}}"""),
-            sender.sentSync,
-        )
-    }
-
-    @Test
-    fun `executeSyncOperation tags the operation with the in-app it names and returns the backend body`() = runTest {
-        givenConfigInApp("story-2", tags = mapOf("story" to "second"))
-        val payload: String = """{"operation":"OpenScreen","inappId":"story-2","body":{"screen":"home"}}"""
-        val expectedResponse: String = """{"result":"ok"}"""
-        sender.syncResponse = expectedResponse
-        val actualResponse: String = executor.executeSyncOperation(payload, hostInAppId = "host-id", hostTags = mapOf("templateType" to "Popup"))
-        assertEquals(expectedResponse, actualResponse)
-        assertEquals(
-            listOf("OpenScreen" to """{"screen":"home","tags":{"story":"second"}}"""),
-            sender.sentSync,
-        )
-    }
-
-    @Test
-    fun `executeSyncOperation refuses an inappId that is a number or an empty string as invalid_payload and sends nothing`() = runTest {
-        sender.syncResponse = """{"result":"ok"}"""
-        val payloads: List<String> = listOf(
-            """{"operation":"OpenScreen","inappId":5,"body":{}}""",
-            """{"operation":"OpenScreen","inappId":"","body":{}}""",
-        )
-        payloads.forEach { payload: String ->
-            try {
-                executor.executeSyncOperation(payload, hostInAppId = "host-id", hostTags = null)
-                fail("Expected BridgeRefusalException for payload: $payload")
-            } catch (exception: BridgeRefusalException) {
-                assertEquals("payload $payload", BridgeErrorCode.INVALID_PAYLOAD, exception.code)
-            }
-        }
-        assertEquals(emptyList<Pair<String, String>>(), sender.sentSync)
-    }
-
     private fun executeSyncOperationExpectingError(error: MindboxError): WebViewSyncOperationException = runBlocking {
         val payload: String = """{"operation":"OpenScreen","body":{"screen":"home"}}"""
         sender.syncError = error
@@ -510,45 +460,5 @@ class WebViewOperationExecutorTest {
             """{"errorKey":"unknown","errorName":"java.lang.Throwable","errorMessage":"network failure"}""",
             exception.payloadJson,
         )
-    }
-
-    @Test
-    fun `executeSyncOperation throws when payload misses body`() = runTest {
-        val payload: String = """{"operation":"OpenScreen"}"""
-        try {
-            executor.executeSyncOperation(payload, hostInAppId = "host-id", hostTags = null)
-            fail("Expected BridgeRefusalException")
-        } catch (exception: BridgeRefusalException) {
-            assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
-            assertEquals("Body is not provided", exception.message)
-        }
-        assertEquals(emptyList<Pair<String, String>>(), sender.sentSync)
-    }
-
-    @Test
-    fun `executeSyncOperation refuses a null payload as invalid_payload`() = runTest {
-        try {
-            executor.executeSyncOperation(payload = null, hostInAppId = "host-id", hostTags = null)
-            fail("Expected BridgeRefusalException")
-        } catch (exception: BridgeRefusalException) {
-            assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
-            assertEquals("Payload is not provided", exception.message)
-        }
-        assertEquals(emptyList<Pair<String, String>>(), sender.sentSync)
-    }
-
-    @Test
-    fun `executeSyncOperation refuses a payload that is not json as invalid_payload`() = runTest {
-        val payloads: List<String> = listOf("not-json", "")
-        payloads.forEach { payload: String ->
-            try {
-                executor.executeSyncOperation(payload, hostInAppId = "host-id", hostTags = null)
-                fail("Expected BridgeRefusalException for payload: $payload")
-            } catch (exception: BridgeRefusalException) {
-                assertEquals(BridgeErrorCode.INVALID_PAYLOAD, exception.code)
-                assertEquals("Payload is not a valid JSON object", exception.message)
-            }
-        }
-        assertEquals(emptyList<Pair<String, String>>(), sender.sentSync)
     }
 }

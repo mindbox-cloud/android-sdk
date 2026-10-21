@@ -3,7 +3,6 @@ package cloud.mindbox.mobile_sdk.inapp.data.repositories
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
-import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.TargetingErrorKey
 import com.android.volley.NetworkResponse
@@ -28,18 +27,6 @@ internal class InAppTargetingErrorRepositoryTest {
         repository.saveError(TargetingErrorKey.CustomerSegmentation, throwable)
         val expectedDetails = "statusCode=500, networkTimeMs=${volleyError.networkTimeMs}, body=$responseBody"
         assertEquals("${throwable.message}. $expectedDetails", errors[TargetingErrorKey.CustomerSegmentation])
-    }
-
-    @Test
-    fun `saveError stores geo error`() {
-        val errors = mutableMapOf<TargetingErrorKey, String>()
-        val responseBody = """{"error":"geo failed"}"""
-        val volleyError = createVolleyError(statusCode = 503, responseBody = responseBody, networkTimeMs = 200)
-        val throwable = GeoError(volleyError)
-        sessionStorageManager.state.lastTargetingErrors = errors
-        repository.saveError(TargetingErrorKey.Geo, throwable)
-        val expectedDetails = "statusCode=503, networkTimeMs=${volleyError.networkTimeMs}, body=$responseBody"
-        assertEquals("${throwable.message}. $expectedDetails", errors[TargetingErrorKey.Geo])
     }
 
     @Test

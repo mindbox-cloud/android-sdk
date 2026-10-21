@@ -63,7 +63,6 @@ internal class WebViewInAppViewHolder(
 ) : AbstractInAppViewHolder<InAppType.WebView>(wrapper, controller, inAppCallback), MindboxWebPage {
 
     companion object {
-        /** The same texts as on iOS, so one search finds the failure on both platforms. */
         internal fun initTimeoutDescription(readyCheckFailure: String?): String {
             val seconds = Constants.WebView.readyTimeout.interval / 1_000
             return if (readyCheckFailure != null) {
@@ -103,7 +102,6 @@ internal class WebViewInAppViewHolder(
 
     @Volatile private var isClosed = false
 
-    // Main thread only: page events, the content result and the init timeout all land there.
     private var currentWebViewOrigin: String? = null
     private var readyChecker: WebViewReadyChecker? = null
     private var hasInitialized = false
@@ -198,10 +196,6 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    /**
-     * A page joins the broadcast set once it has proven it can receive, that is, on its first
-     * `ready` — registering earlier would aim a broadcast at a document that has no bridge yet.
-     */
     private fun registerForBroadcasts() {
         if (isRegisteredForBroadcasts) return
         isRegisteredForBroadcasts = true
@@ -474,7 +468,9 @@ internal class WebViewInAppViewHolder(
      * Readiness probe for a freshly finished page. Module scripts can evaluate a beat after
      * `onPageFinished` (slow device, cold cache), so a single early `false` must not close a
      * healthy in-app — the checker polls before giving up. Every new `onPageFinished` (redirect,
-     * re-load) restarts the poll; teardown cancels it.
+     * re-load) restarts the poll; teardown cancels it. The outgoing-message verification in
+     * [sendActionInternal] intentionally stays single-shot ([checkEvaluateJavaScript]) — that
+     * path talks to a page that already proved itself ready.
      *
      * Give-up BEFORE `init` only records the failure ([pendingReadyCheckFailure]) — the
      * init timer is the closing authority there, since the checker's ~1.2s budget can
@@ -731,7 +727,6 @@ internal class WebViewInAppViewHolder(
         }
     }
 
-    /** Returns how long the page has been waited for, or null when no wait is running. */
     private fun stopTimer(): String? {
         val timeout = initTimeout ?: return null
         mainHandler.removeCallbacks(timeout)

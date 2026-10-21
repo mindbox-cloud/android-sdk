@@ -37,10 +37,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.time.Duration
 
-/**
- * The overlay across a background stint: what the paused holder keeps, what the restored one
- * inherits, and what a candidate that never reached the screen leaves behind.
- */
 @RunWith(RobolectricTestRunner::class)
 internal class InAppMessageViewDisplayerRestoreTest {
 
@@ -103,7 +99,6 @@ internal class InAppMessageViewDisplayerRestoreTest {
         every { window } returns null
     }
 
-    /** A modal paused in the background: not reusable, so the restore builds a new holder from its wrapper. */
     private fun pausedModal(callbacks: InAppActionCallbacks, inAppId: String = "paused-id"): InAppViewHolder<*> =
         mockk(relaxed = true) {
             every { canReuseOnRestore(any()) } returns false
@@ -115,9 +110,7 @@ internal class InAppMessageViewDisplayerRestoreTest {
         }
 
     @Test
-    fun `the restored holder is built from the original wrapper and keeps its callbacks`() {
-        // The original show may never have fired (the image was still loading when the app went
-        // to the background): the restored overlay must be able to report the first real show.
+    fun `the restored holder is built from the original wrapper and keeps its callbacks for a show the original never fired`() {
         val callbacks = CountingCallbacks()
         setField("pausedHolder", pausedModal(callbacks))
 
@@ -140,8 +133,6 @@ internal class InAppMessageViewDisplayerRestoreTest {
 
     @Test
     fun `restoring the paused overlay tells every queued candidate it will not be shown`() {
-        // With no activity the candidate waits in the queue; the restored overlay takes the screen,
-        // so the queue entry can only hold a slot in the show budgets for nothing.
         val queued = CountingCallbacks()
         displayer.tryShowInAppMessage(InAppStub.getModalWindow().copy(inAppId = "queued-id"), queued, {}, null)
         assertEquals(1, queue().size)

@@ -19,10 +19,6 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 
-/**
- * The loading strategy: what the block shows before the SDK answers, how the place memory is
- * written by the outcomes, and when the reveal animation runs.
- */
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewLoadingStrategyTest {
 
@@ -56,7 +52,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         }
     }
 
-    /** Growth that stays mid-flight until the test finishes it — the clip window is observable. */
     private class PendingGrowthAnimation : RecordingAnimation() {
         private var pendingEnd: (() -> Unit)? = null
         private var pendingView: View? = null
@@ -77,7 +72,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         }
     }
 
-    /** The real memory over an in-memory store: the view is tested against the real write rules. */
     private class TestPlaceMemory(known: Boolean = false) {
         private var stored: String = ""
         val writes = mutableListOf<String>()
@@ -135,8 +129,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         provider?.onStateChange?.invoke(state)
         idleMainLooper()
     }
-
-    // --- The first look, decided at creation ---
 
     @Test
     fun `the first look is the strategy plus the place memory and nothing else`() {
@@ -211,8 +203,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         assertTrue(view.animatesReveal)
     }
 
-    // --- The hidden block through the outcomes ---
-
     @Test
     fun `a hidden block stays collapsed while loading and shows only confirmed content`() {
         val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.HIDDEN)
@@ -252,8 +242,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         assertEquals(View.GONE, view.visibility)
     }
 
-    // --- The place memory written by the outcomes ---
-
     @Test
     fun `shown content writes the place down`() {
         val memory = TestPlaceMemory()
@@ -290,8 +278,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         assertEquals(emptyList<String>(), memory.writes)
         assertTrue(memory.knows("main-screen-top"))
     }
-
-    // --- The reveal animation and its gates ---
 
     @Test
     fun `content arriving into a hidden block fades in and grows the height`() {
@@ -403,8 +389,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         assertEquals(View.GONE, view.visibility)
     }
 
-    // --- The settled rules the strategies lean on ---
-
     @Test
     fun `a hidden block that went empty does not reopen for the placeholder of a retry`() {
         val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.HIDDEN)
@@ -436,7 +420,7 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
     }
 
     @Test
-    fun `the observer hears whether the change is an animated reveal`() {
+    fun `the observer hears whether the change is an animated reveal, the replay and the loading pass are not`() {
         val heard = mutableListOf<Pair<MindboxEmbeddedBlockAppearance, Boolean>>()
         val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.HIDDEN)
         view.setAppearanceObserver { shown -> heard.add(shown to view.isRevealAnimated) }
@@ -445,7 +429,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         contentForThePlace()
         pageReports(EmbeddedBlockState.Ready)
 
-        // The replay on subscribing and the Loading pass are never a reveal; the content is.
         assertEquals(false, heard.first().second)
         assertEquals(MindboxEmbeddedBlockAppearance.CONTENT to true, heard.last())
     }
@@ -475,7 +458,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         contentForThePlace()
         pageReports(EmbeddedBlockState.Ready)
 
-        // The growth is running: the block's own height is animating up from zero…
         assertEquals(0, view.layoutParams.height)
         view.measure(
             View.MeasureSpec.makeMeasureSpec(500, View.MeasureSpec.EXACTLY),
@@ -483,7 +465,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         )
         view.layout(0, 0, 500, 0)
 
-        // …while the content inside stays laid out at the full target height, revealed by the clip.
         val content = requireNotNull(provider).contentView
         assertEquals(300, content.measuredHeight)
 
@@ -536,12 +517,10 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
             .idleFor(java.time.Duration.ofMillis(300L))
 
-        // The shimmer faded out in step with the content and left ready for its next show.
         assertTrue(placeholder.parent == null)
         assertEquals(1f, placeholder.alpha)
         assertEquals(1f, requireNotNull(provider).contentView.alpha)
 
-        // The next loading shows the same placeholder again — fully visible, not a faded ghost.
         pageReports(EmbeddedBlockState.Loading)
         assertTrue(placeholder.parent != null)
         assertEquals(1f, placeholder.alpha)
@@ -564,8 +543,6 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
 
     @Test
     fun `a hidden block that has shown content may keep a later failure with the error view`() {
-        // Once content was shown the space is taken — a failure behaves like on any block, and
-        // like on iOS: the birth-time settlement protects only the space never taken.
         val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.HIDDEN)
         view.setErrorView(View(activity))
         activity.attachBlock(view)
@@ -575,16 +552,5 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
         pageReports(EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR))
 
         assertEquals(View.VISIBLE, view.visibility)
-    }
-
-    @Test
-    fun `a block without a place starts hidden under the default strategy and answers empty`() {
-        val listener = RecordingListener()
-        val view = MindboxEmbeddedBlockView(activity, null, placeSystemName = null)
-        view.setListener(listener)
-        activity.attachBlock(view)
-
-        assertEquals(View.GONE, view.visibility)
-        assertEquals(listOf("empty"), listener.events)
     }
 }

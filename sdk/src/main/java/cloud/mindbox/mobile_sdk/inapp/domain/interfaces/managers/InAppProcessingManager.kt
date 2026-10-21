@@ -6,10 +6,6 @@ import cloud.mindbox.mobile_sdk.models.InAppEventType
 
 internal interface InAppProcessingManager {
 
-    /**
-     * [selectVariant] is the caller's statement of which variant it is going to render — the content
-     * fetched for a candidate is that variant's, not simply the first one. `null` skips the candidate.
-     */
     suspend fun chooseInAppToShow(
         inApps: List<InApp>,
         triggerEvent: InAppEventType,
@@ -18,7 +14,6 @@ internal interface InAppProcessingManager {
 
     suspend fun sendTargetedInApp(inApp: InApp, triggerEvent: InAppEventType)
 
-    /** Sends `Inapp.Targeting` without re-checking anything: the caller has already matched targeting. */
     fun sendTargetedInApp(inApp: InApp)
 
     suspend fun matchesTargeting(inApp: InApp, triggerEvent: InAppEventType): Boolean

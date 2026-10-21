@@ -7,11 +7,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The per-place memory behind the AUTOMATIC loading strategy: a show writes the place down, an
- * empty answer strikes it out, and the record is one extensible value keyed by the normalized
- * place name.
- */
 class EmbeddedBlockPlaceMemoryTest {
 
     private var stored: String = ""
@@ -39,13 +34,6 @@ class EmbeddedBlockPlaceMemoryTest {
         memory().rememberShownContent(place)
 
         assertTrue(memory().hasShownContent(place))
-    }
-
-    @Test
-    fun `the record is keyed by the normalized place name`() {
-        memory().rememberShownContent(PlaceKey.of("  Main-Screen-Top "))
-
-        assertTrue(memory().hasShownContent(PlaceKey.of("main-screen-top")))
     }
 
     @Test

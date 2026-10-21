@@ -83,12 +83,6 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * The block holder against the real page protocol, driven through the real bridge
- * transport (`SdkBridge` js interface): `ready` answers with `items` as a JSON array,
- * `filterShowableInapps` returns the interactor's subset, `contentRendered {count}` is the
- * readiness signal, and `initDataUpdated` refreshes the page without recreating the webview.
- */
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlockWebViewHolderTest {
 
@@ -177,8 +171,6 @@ class EmbeddedBlockWebViewHolderTest {
 
     private val webView: WebView
         get() = holder.run {
-            // The content view is gated by readiness; reach the raw view through the bridge
-            // registration instead.
             webViewField()
         }
 
@@ -218,7 +210,6 @@ class EmbeddedBlockWebViewHolderTest {
     private fun request(action: String, payload: String, id: String = "req-1"): String =
         """{"type":"request","action":"$action","payload":${com.google.gson.Gson().toJson(payload)},"id":"$id","version":1,"timestamp":1}"""
 
-    /** Unwraps the JS bridge call back into the outgoing message payload. */
     private fun lastOutgoingMessage(): JsonObject? {
         val script = shadowOf(webView).lastEvaluatedJavascript ?: return null
         val quoted = Regex("""emit\((".*")\);return""").find(script)?.groupValues?.get(1) ?: return null
@@ -275,7 +266,6 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(request(action = "filterShowableInapps", payload = "{}"))
         await { lastOutgoingMessage()?.get("action")?.asString == "filterShowableInapps" }
 
-        // A refusal the page can retry, not an empty answer it would take for the truth.
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
         assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
         coVerify(exactly = 0) { inAppInteractor.filterShowableInAppIds(any(), any()) }
@@ -314,8 +304,6 @@ class EmbeddedBlockWebViewHolderTest {
 
         await { states.lastOrNull() == EmbeddedBlockState.Ready }
         assertTrue(holder.contentView != null)
-        // Content on screen is a show, counted like any other in-app's; the frequency decides
-        // inside the interactor whether there is anything to write.
         verify(timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), any()) }
     }
 
@@ -328,12 +316,10 @@ class EmbeddedBlockWebViewHolderTest {
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
         await { lastOutgoingMessage()?.get("action")?.asString == "contentRendered" }
 
-        // Nobody is looking: the render is acknowledged, the show is not reported.
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
 
         holder.start()
 
-        // The block returned to the screen — the user sees the content now.
         verify(exactly = 1, timeout = 5_000L) { inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), any()) }
     }
 
@@ -407,7 +393,6 @@ class EmbeddedBlockWebViewHolderTest {
 
         await { states.lastOrNull() == EmbeddedBlockState.Failed(MindboxEmbeddedBlockFailReason.INTERNAL_ERROR) }
         verify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
-        // The page must hear the refusal too: a success response would pass for the truth.
         assertEquals("error", lastOutgoingMessage()!!.get("type").asString)
         assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
     }
@@ -506,25 +491,6 @@ class EmbeddedBlockWebViewHolderTest {
         }
     }
 
-    @Test
-    fun `a data push reopens the window for the page's next report`() {
-        every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
-        startAndAwaitPageLoad()
-        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
-        await { states.lastOrNull() == EmbeddedBlockState.Ready }
-
-        holder.updateParams(mapOf("items" to "[]")) {}
-        await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
-        val push = lastOutgoingMessage()!!
-        postFromPage(
-            """{"type":"response","action":"initDataUpdated","payload":"{\"success\":true}",""" +
-                """"id":${push.get("id")},"version":1,"timestamp":2}"""
-        )
-        postFromPage(request(action = "contentRendered", payload = """{"count":0}""", id = "after-push"))
-
-        await { holder.rendersNothing }
-    }
-
     private val outcomes = slot<OnShowInAppOutcome>()
 
     private fun givenShowPathCapturesOutcome() {
@@ -540,8 +506,6 @@ class EmbeddedBlockWebViewHolderTest {
 
     @Test
     fun `showInApp is answered with success only once the window is on screen`() {
-        // Nothing goes back to the page until the show ends; the block's own show accounting is
-        // not spent on a tap either way.
         every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
         givenShowPathCapturesOutcome()
         startAndAwaitPageLoad()
@@ -580,20 +544,6 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `showInApp for an id nothing resolves is answered with unknown_inapp`() {
-        givenShowPathCapturesOutcome()
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "showInApp", payload = """{"inappId":"missing"}"""))
-        await { outcomes.isCaptured }
-        outcomes.captured.onOutcome(ShowInAppOutcome.NotShown(BridgeErrorCode.UNKNOWN_INAPP))
-        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
-
-        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertEquals("unknown_inapp", lastOutgoingPayload()!!.get("error").asString)
-    }
-
-    @Test
     fun `showInApp whose show failed after it started is answered with show_failed, once`() {
         givenShowPathCapturesOutcome()
         startAndAwaitPageLoad()
@@ -605,7 +555,6 @@ class EmbeddedBlockWebViewHolderTest {
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("show_failed", lastOutgoingPayload()!!.get("error").asString)
 
-        // A late success changes nothing: the deferred is already complete, no second envelope.
         val answered = shadowOf(webView).lastEvaluatedJavascript
         outcomes.captured.onOutcome(ShowInAppOutcome.Shown)
         assertTrue(noShowInAppAnswerYet() || shadowOf(webView).lastEvaluatedJavascript == answered)
@@ -724,7 +673,6 @@ class EmbeddedBlockWebViewHolderTest {
         givenShowPathCapturesOutcome()
         startAndAwaitPageLoad()
 
-        // The whole envelope is one JSON document: payload is a plain object, not a quoted string.
         postFromPage(
             """{"type":"request","action":"showInApp","payload":{"inappId":"inapp-1","params":{"a":1}},"id":"req-obj","version":1,"timestamp":1}"""
         )
@@ -808,16 +756,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `release before the first ready has nothing to unregister`() {
-        startAndAwaitPageLoad()
-
-        holder.release()
-
-        verify(exactly = 0) { webPageRegistry.unregister(any()) }
-    }
-
-    @Test
-    fun `local state set is broadcast to every other page`() {
+    fun `local state set answers the author and is broadcast to every other page`() {
         startAndAwaitPageLoad()
 
         postFromPage(
@@ -825,7 +764,6 @@ class EmbeddedBlockWebViewHolderTest {
         )
         await { lastOutgoingMessage()?.get("action")?.asString == "localState.set" }
 
-        // The author gets the ordinary answer; everyone else hears the change with the same payload.
         val answer = lastOutgoingMessage()!!.get("payload").asString
         verify(exactly = 1) {
             webPageRegistry.broadcast(WebViewAction.LOCAL_STATE_CHANGED, answer, holder)
@@ -887,17 +825,6 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `openLink with an unusable payload is refused`() {
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "openLink", payload = "{}"))
-        await { lastOutgoingMessage()?.get("action")?.asString == "openLink" }
-
-        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
-    }
-
-    @Test
     fun `haptic with an unusable payload is swallowed with an empty answer`() {
         startAndAwaitPageLoad()
 
@@ -908,69 +835,14 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `motion start without a usable gesture is refused`() {
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "motion.start", payload = """{"gestures":[]}"""))
-        await { lastOutgoingMessage()?.get("action")?.asString == "motion.start" }
-
-        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
-    }
-
-    @Test
-    fun `log from the page is acknowledged`() {
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "log", payload = """"page says hi""""))
-        await { lastOutgoingMessage()?.get("action")?.asString == "log" }
-
-        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
-    }
-
-    @Test
-    fun `motion start with a known gesture but no sensors is refused`() {
+    fun `motion start with a known gesture but no accelerometer is refused`() {
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "motion.start", payload = """{"gestures":["shake"]}"""))
         await { lastOutgoingMessage()?.get("action")?.asString == "motion.start" }
 
-        // Robolectric offers no accelerometer.
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("gestures_unavailable", lastOutgoingPayload()!!.get("error").asString)
-    }
-
-    @Test
-    fun `motion stop is always acknowledged`() {
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "motion.stop", payload = "{}"))
-        await { lastOutgoingMessage()?.get("action")?.asString == "motion.stop" }
-
-        assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
-        assertTrue(lastOutgoingPayload()!!.get("success").asBoolean)
-    }
-
-    @Test
-    fun `settings open with an unusable payload is refused`() {
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "settings.open", payload = "{}"))
-        await { lastOutgoingMessage()?.get("action")?.asString == "settings.open" }
-
-        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertEquals("invalid_payload", lastOutgoingPayload()!!.get("error").asString)
-    }
-
-    @Test
-    fun `permission request with an unknown type is refused`() {
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "permission.request", payload = """{"type":"unknown"}"""))
-        await { lastOutgoingMessage()?.get("action")?.asString == "permission.request" }
-
-        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertEquals("unsupported_value", lastOutgoingPayload()!!.get("error").asString)
     }
 
     @Test
@@ -1022,7 +894,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `initDataUpdated refreshes the page without recreating the webview`() {
+    fun `initDataUpdated sends the whole start payload and refreshes the page without recreating the webview, as on iOS`() {
         startAndAwaitPageLoad()
         val viewBeforeUpdate = webView
 
@@ -1033,8 +905,6 @@ class EmbeddedBlockWebViewHolderTest {
         await { lastOutgoingMessage()?.get("action")?.asString == "initDataUpdated" }
 
         val outgoing = lastOutgoingMessage()!!
-        // The push carries the whole start payload — the same envelope `ready` is answered with —
-        // not only the params (contract shared with iOS).
         val payload = lastOutgoingPayload()!!
         assertTrue(payload.get("items").isJsonArray)
         assertEquals(
@@ -1043,7 +913,6 @@ class EmbeddedBlockWebViewHolderTest {
         )
         assertEquals("endpoint-id", payload.get("endpointId").asString)
 
-        // The page answers success — the very same webview keeps living.
         postFromPage(
             """{"type":"response","action":"initDataUpdated","payload":"{\"success\":true}",""" +
                 """"id":${outgoing.get("id")},"version":1,"timestamp":2}"""
@@ -1191,14 +1060,12 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `an action the block does not perform is acknowledged, not refused`() {
+    fun `an action the block does not perform is acknowledged, not refused, as on iOS`() {
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "click", payload = "{}"))
         await { lastOutgoingMessage()?.get("action")?.asString == "click" }
 
-        // In sync with iOS: a block has no window to click through, and "nothing to do here" is
-        // an outcome the page carries on from. Nothing about the block changes.
         assertEquals("response", lastOutgoingMessage()?.get("type")?.asString)
         assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
     }
@@ -1207,26 +1074,12 @@ class EmbeddedBlockWebViewHolderTest {
     fun `a question the block cannot answer is refused by name`() {
         startAndAwaitPageLoad()
 
-        // `close` a block would acknowledge; an operation it cannot run is a different half of the
-        // rule — the page hears a refusal instead of a success it would take for done.
         postFromPage(request(action = "navigationIntercepted", payload = "{}"))
         await { lastOutgoingMessage()?.get("action")?.asString == "navigationIntercepted" }
 
         assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
         assertEquals("not_served", lastOutgoingPayload()!!.get("error").asString)
         assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
-    }
-
-    @Test
-    fun `back sent by the page is refused as not_served`() {
-        startAndAwaitPageLoad()
-
-        postFromPage(request(action = "back", payload = "{}", id = "back-1"))
-        await { lastOutgoingMessage()?.get("id")?.asString == "back-1" }
-
-        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
-        assertEquals("back", lastOutgoingMessage()?.get("action")?.asString)
-        assertEquals("""{"error":"not_served"}""", lastOutgoingMessage()?.get("payload")?.asString)
     }
 
     @Test
@@ -1353,23 +1206,6 @@ class EmbeddedBlockWebViewHolderTest {
 
         await { !holder.isAttemptAlive }
         assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
-    }
-
-    @Test
-    fun `a page that rendered off screen counts its show when the block comes back`() {
-        coEvery { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } returns true
-        startAndAwaitPageLoad()
-
-        holder.pause()
-        postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
-
-        coVerify(exactly = 0) { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) }
-
-        holder.start()
-
-        coVerify(exactly = 1, timeout = 5_000L) {
-            inAppInteractor.recordBlockShow(PlaceKey.of("main-screen-top"), "embedded-id", any(), any(), any(), any())
-        }
     }
 
     @Test

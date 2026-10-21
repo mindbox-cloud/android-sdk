@@ -35,15 +35,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/**
- * The half of the shared seam an overlay takes and a block does not: the capabilities only a
- * surface with a window has. Every block test walks the other branch of both, so a regression
- * that leaves an overlay without its `close` would keep them all green — this class is where the
- * two host shapes are pinned side by side.
- *
- * The presence gate is not here on purpose: it moved to the dispatcher, where one rule serves
- * every surface (see `WebViewActionHandlersTest`).
- */
 @RunWith(RobolectricTestRunner::class)
 class WebViewCommonBridgeActionsTest {
 
@@ -176,9 +167,7 @@ class WebViewCommonBridgeActionsTest {
     }
 
     @Test
-    fun `an action that changes nothing still answers the contract success`() {
-        // `{}` is not what the protocol calls a successful answer, and the page is free to tell
-        // the two apart on any action it decides to wait on.
+    fun `an action that changes nothing still answers the contract success, not an empty object`() {
         val handlers = handlersOf(FakeHost())
 
         assertEquals(BridgeMessage.SUCCESS_PAYLOAD, handlers.answer(WebViewAction.LOG, """{"message":"hi"}"""))
@@ -187,8 +176,6 @@ class WebViewCommonBridgeActionsTest {
 
     @Test
     fun `both host shapes serve the same vocabulary`() {
-        // The seam is what makes an overlay and a block speak one protocol: whichever half of a
-        // capability a surface has, the set of actions it answers is the same.
         val withWindow = handlersOf(FakeHost(closeCapability = { "{}" }, hideCapability = { "{}" }))
         val withoutWindow = handlersOf(FakeHost())
 
@@ -330,8 +317,6 @@ class WebViewCommonBridgeActionsTest {
             handler(request(WebViewAction.LOCAL_STATE_SET, """{"data":{"inapp.completed.1":"true"}}"""))
         }
 
-        // The author already holds the answer; everyone else learns without being asked — this is
-        // how a page dims an element while the in-app that wrote it is still on top.
         verify {
             webPageRegistry.broadcast(WebViewAction.LOCAL_STATE_CHANGED, answer, excludingAuthor = host.hostPage)
         }

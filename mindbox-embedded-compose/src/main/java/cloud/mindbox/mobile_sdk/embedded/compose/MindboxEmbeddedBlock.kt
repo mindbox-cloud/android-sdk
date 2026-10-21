@@ -34,63 +34,34 @@ import kotlin.math.roundToInt
 /**
  * An embedded Mindbox block as a composable.
  *
- * The caller marks a *place* by its [placeSystemName] — what the place shows is decided by the
- * mobile config, the app never learns it. **The caller owns the size**: give the block an
- * explicit height (e.g. `Modifier.height(120.dp)`) — the block is a fixed frame and the content
- * adapts to it. What the block shows before the SDK answers is decided by [loadingStrategy]: a
- * placeholder (the SDK's default placeholder or the [placeholder] slot), nothing, or — by
- * default — nothing until the place has shown content once on this device and a placeholder from
- * then on. A block that takes its space up front keeps the layout still at the price of flashing
- * where there is nothing to show; a block that waits hidden never flashes at the price of the
- * layout growing when content arrives — a place that always has a campaign behind it is worth an
- * explicit [MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER]. On failure the [error] slot shows,
- * if set, unless the block is still waiting hidden and has never taken its space. The content is
- * revealed with the SDK's own animation — a fade, and the growth of a block that waited hidden —
- * unless [animatesReveal] is off.
- *
- * The behavior mirrors the View one and belongs to the block itself: it is visible while
- * loading and showing content, and collapses to zero height when the place ends up without
- * content — unless it failed and the [error] slot is set: that slot is a request to show a
- * failure, so the block stays and shows it. An empty place collapses either way. The callbacks
- * only report the outcome.
+ * The caller names a place and gives the block an explicit height; the SDK decides what the place
+ * shows. The block takes the whole available width, and zero height when there is nothing to
+ * show. The behavior is that of [MindboxEmbeddedBlockView].
  *
  * ```kotlin
  * MindboxEmbeddedBlock(
  *     placeSystemName = "main-screen-top",
  *     modifier = Modifier.height(120.dp),
- *     onLoad = { /* the block is shown */ },
  * )
  * ```
  *
- * @param placeSystemName The place identifier matched against the config's `inlineBlocks`
- * section. Changing it recreates the block for the new place. Blocks with the same name work
- * independently, each with its own content.
- * @param timeoutMs How long the block waits to learn what it shows before failing with
- * [MindboxEmbeddedBlockFailReason.NETWORK_ERROR] — [onFail], and the [error] slot applies — in
- * milliseconds. `null` means the SDK default of 30 s. Fixed when the block is created, as the
- * place is: a new value given to a block already on screen is ignored, and the block says so in
- * the log. Wrap the block in a `key()` of your own to build one on a different budget.
+ * @param placeSystemName The place the block fills. Whitespace around it is trimmed, letter case
+ * is ignored. A new name builds a new block.
+ * @param timeoutMs How long the block waits for the SDK's answer before failing with
+ * [MindboxEmbeddedBlockFailReason.NETWORK_ERROR]. `null` takes the
+ * `mindbox_embedded_block_timeout_ms` integer resource, 30 s by default. Counted while the screen
+ * with the block is shown. Fixed when the block is created.
  * @param loadingStrategy What the block shows until the SDK answers.
- * [MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC] — the default — keeps the block hidden until
- * the place has shown content once on this device and puts a placeholder there from then on. The
- * first look is known before the first frame, so a block that waits hidden never flashes reserved
- * space. Fixed when the block is created, as the place is.
- * @param animatesReveal Whether the SDK animates the reveal of the content — a fade, and the
- * growth of a block that waited hidden. `true` by default. Turn it off to animate the block's
- * container yourself in [onLoad]. Fixed when the block is created, as the place is.
- * @param onLoad The block is shown and visible. Main thread.
- * @param onEmpty The place has nothing to show — a normal outcome, not a breakage: no campaign
- * for the place, or the targeting, the A/B split, the show limits or the page itself left it
- * empty. The block collapsed; the [error] slot does not apply. Main thread.
- * @param onFail The block could not get or show its content; the reason is one of the
- * [MindboxEmbeddedBlockFailReason] constants, for the host's logs. Not called for an empty place —
- * that is [onEmpty], so a section hidden from `onFail` alone stays for a place with nothing to
- * show. The block collapsed, or — if the [error] slot is set — stayed in place showing it. Main
- * thread.
- * @param placeholder Replaces the SDK's default loading placeholder. Fills the whole block frame.
- * @param error The view for a block that failed. Setting it keeps the block visible instead of
- * the default collapse; an empty place collapses regardless, and a block still waiting hidden —
- * see [loadingStrategy] — stays hidden. Fills the whole block frame.
+ * [MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC] by default. Fixed when the block is created.
+ * @param animatesReveal Whether the content is revealed with an animation. `true` by default.
+ * Fixed when the block is created.
+ * @param onLoad The content is shown. Main thread.
+ * @param onEmpty The place has nothing to show; the block collapsed. Main thread.
+ * @param onFail The block could not get or show its content; the block collapsed or shows
+ * [error]. The reason is one of the [MindboxEmbeddedBlockFailReason] constants. Main thread.
+ * @param placeholder Replaces the SDK's shimmer while the content is loading. Fills the block.
+ * @param error Shown instead of collapsing the block when it fails. Failures only, and only once
+ * the block has taken its space. Fills the block.
  */
 @OptIn(InternalMindboxApi::class)
 @Composable

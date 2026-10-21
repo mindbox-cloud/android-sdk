@@ -33,30 +33,12 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlin.math.abs
 
 /**
- * A drop-in container for an embedded Mindbox block.
+ * A container for an embedded Mindbox block.
  *
- * The host marks a *place* by [placeSystemName] and never learns what goes into it — the mobile
- * config decides through an in-app with an `embedded` form variant bound to that place, and can
- * change it without an app release. Blocks sharing a place work independently.
- *
- * The place name is matched like an operation system name: surrounding whitespace is trimmed and
- * letter case is ignored, so `Main-Screen-Top` and `main-screen-top` are the same place, not two.
- *
- * **The host owns the size**: give the block an explicit height. The content adapts to that
- * frame. What the block shows before the SDK answers is decided by [loadingStrategy]: a
- * placeholder — the SDK's default one or the host's own ([setPlaceholderView]) — nothing, or — by
- * default — nothing until the place has shown content once on this device and a placeholder from
- * then on. A block that takes its space up front keeps the layout still at the price of flashing
- * where there is nothing to show; a block that waits hidden never flashes at the price of the
- * layout growing when content arrives. A place that always has a campaign behind it is worth an
- * explicit [MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER]. When the place ends up without
- * content the block hides itself; a failure can be shown instead of hidden if the host gave it a
- * view for one ([setErrorView]).
- *
- * The content is revealed with the SDK's own animation — it fades in, and a block that started
- * hidden grows to its height — unless [animatesReveal] is off. A host that wants an animation of
- * its own turns that off, puts the block in a container of its own and animates the container in
- * [MindboxEmbeddedBlockListener.onLoad].
+ * The host names a place with [placeSystemName] and gives the block an explicit height; the SDK
+ * decides what the place shows. Content starts when the block enters the window, pauses when it
+ * leaves, and is kept for a screen that goes to the back stack. With nothing to show the block
+ * becomes `GONE`.
  *
  * ```xml
  * <cloud.mindbox.mobile_sdk.embedded.MindboxEmbeddedBlockView
@@ -64,17 +46,6 @@ import kotlin.math.abs
  *     android:layout_height="120dp"
  *     app:mindboxPlaceSystemName="main-screen-top" />
  * ```
- *
- * The SDK owns the flow: content starts on attach, pauses on detach, reloads once per session.
- * A screen that leaves the window for the back stack — a Fragment behind a newer one, a Compose
- * destination behind the next — keeps the block's content, and the block the screen builds on its
- * return shows it at once. The content goes when the screen goes.
- * The block owns its behavior too — visible while loading and while showing content, `GONE`
- * when the place ends up without content: always for an empty place, and for a failure unless
- * [setErrorView] keeps it in place. A block that
- * has collapsed does not reopen its space for the retry's placeholder — only content expands it
- * back, so the host layout is not jerked on every pass across the screen.
- * [setListener] only observes: callbacks arrive after the block already acted.
  */
 public class MindboxEmbeddedBlockView internal constructor(
     context: Context,
@@ -115,24 +86,17 @@ public class MindboxEmbeddedBlockView internal constructor(
     ) : this(context, attrs, readPlaceSystemName(context, attrs))
 
     /**
-     * Creates a block for [placeSystemName] in code, where there is no XML to carry the attributes.
+     * Creates a block in code.
      *
-     * @param placeSystemName The place this block fills, as named in the mobile config. Matched
-     * with surrounding whitespace trimmed and letter case ignored, the same way an operation system
-     * name is.
-     * @param timeoutMs How long the block waits to learn what it shows before failing with
-     * [MindboxEmbeddedBlockFailReason.NETWORK_ERROR] — [MindboxEmbeddedBlockListener.onFail], and
-     * [setErrorView] applies — in milliseconds; the same budget `app:mindboxTimeoutMs` sets from
-     * XML. `null` means the SDK default of 30 s. An answer that arrives after that no longer
-     * expands the block; the next attempt starts when the block enters the window again.
-     * @param loadingStrategy What the block shows until the SDK answers — the same choice
-     * `app:mindboxLoadingStrategy` makes from XML. [MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC] —
-     * the default — keeps the block hidden until the place has shown content once on this device
-     * and puts a placeholder there from then on.
-     * @param animatesReveal Whether the SDK animates the reveal of the content — a fade, and the
-     * growth of a block that waited hidden; the same flag `app:mindboxAnimatesReveal` sets from
-     * XML. `true` by default. Turn it off to animate the block's container yourself in
-     * [MindboxEmbeddedBlockListener.onLoad].
+     * @param placeSystemName The place the block fills. Whitespace around it is trimmed, letter
+     * case is ignored.
+     * @param timeoutMs How long the block waits for the SDK's answer before failing with
+     * [MindboxEmbeddedBlockFailReason.NETWORK_ERROR]. `null` takes the
+     * `mindbox_embedded_block_timeout_ms` integer resource, 30 s by default. Counted while the
+     * screen with the block is shown.
+     * @param loadingStrategy What the block shows until the SDK answers.
+     * [MindboxEmbeddedBlockLoadingStrategy.AUTOMATIC] by default.
+     * @param animatesReveal Whether the content is revealed with an animation. `true` by default.
      */
     @JvmOverloads
     public constructor(
@@ -143,19 +107,14 @@ public class MindboxEmbeddedBlockView internal constructor(
         animatesReveal: Boolean = true,
     ) : this(context, null, placeSystemName, timeoutMs?.let(::Milliseconds), loadingStrategy, animatesReveal)
 
+    /** The place the block fills, trimmed; `null` when none was given. */
     public val placeSystemName: String? = placeSystemName.orNullIfBlank()
 
-    /**
-     * What the block shows until the SDK answers, given at creation.
-     * See [MindboxEmbeddedBlockLoadingStrategy].
-     */
+    /** What the block shows until the SDK answers, given at creation. */
     public val loadingStrategy: MindboxEmbeddedBlockLoadingStrategy =
         loadingStrategy ?: readLoadingStrategy(context, attrs)
 
-    /**
-     * Whether the SDK animates the reveal of the content, given at creation. `false` swaps the
-     * looks and applies the space at once — for a host that animates the block's container itself.
-     */
+    /** Whether the content is revealed with an animation, given at creation. */
     public val animatesReveal: Boolean = animatesReveal ?: readAnimatesReveal(context, attrs)
 
     private var listener: MindboxEmbeddedBlockListener = DefaultListener
@@ -254,6 +213,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         )
     }
 
+    /** Sets the listener of the block's outcomes. A listener set after the outcome receives it at once. */
     public fun setListener(listener: MindboxEmbeddedBlockListener?) {
         if (isReleased) return
 
@@ -267,11 +227,10 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     /**
-     * Replaces the SDK's default loading placeholder. Fills the whole block frame.
-     *
-     * Takes effect immediately: a block that is loading right now swaps to the new placeholder.
-     * Pass `null` to go back to the default one. A block that waits hidden — see
-     * [loadingStrategy] — shows no placeholder at all.
+     * Replaces the SDK's shimmer with [view] while the content is loading; `null` restores the
+     * shimmer. The view fills the block. To only recolor the shimmer, override the
+     * `mindbox_embedded_block_shimmer_rest` and `mindbox_embedded_block_shimmer_highlight` color
+     * resources.
      */
     public fun setPlaceholderView(view: View?) {
         placeholderView = view
@@ -281,19 +240,9 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     /**
-     * The view for a block that failed. Setting it opts into showing the failure instead of the
-     * default collapse: the block keeps its place and shows this view. Fills the whole block frame.
-     *
-     * Applies to failures only — an empty place always collapses, so a host cannot fill the space
-     * of a block that was never meant to be there.
-     *
-     * A view set mid-failure swaps the error screen already shown, and `null` given while one is
-     * shown takes the failure back down to a collapse — the space returns to the layout. What
-     * neither does is expand a block that has already collapsed: reopening space the layout has
-     * reclaimed would make it jump, so such a view takes effect on a load that starts the cycle
-     * anew, never on the silent retry a return to the screen brings. For the same reason a block
-     * that waits hidden — see [loadingStrategy] — shows no error screen while it has not taken its
-     * space; once it has shown content, a failure applies here like anywhere else.
+     * Shows [view] instead of collapsing the block when it fails; `null` restores the collapse.
+     * The view fills the block. Applies to failures only, and only once the block has taken its
+     * space: a block that waits hidden stays hidden.
      */
     public fun setErrorView(view: View?) {
         errorView = view
@@ -303,15 +252,6 @@ public class MindboxEmbeddedBlockView internal constructor(
         }
     }
 
-    /**
-     * Reports how the block occupies its place, for wrappers that lay it out themselves instead of
-     * relying on this view's own `visibility` — see [MindboxEmbeddedBlockAppearance].
-     *
-     * The current value arrives right away on subscribing: a wrapper that comes after the outcome
-     * cannot miss what the block already decided. Whether the change deserves an animation is
-     * [isRevealAnimated] at the moment the observer runs — the view is the one owner of that
-     * decision, gates included, so a wrapper animating its own frame never disagrees with it.
-     */
     @InternalMindboxApi
     public fun setAppearanceObserver(observer: ((MindboxEmbeddedBlockAppearance) -> Unit)?) {
         if (isReleased) return
@@ -325,18 +265,6 @@ public class MindboxEmbeddedBlockView internal constructor(
     public var isRevealAnimated: Boolean = false
         private set
 
-    /**
-     * Tells the block whether the host still shows it — a second source for the same input as
-     * window visibility: the content runs while the window shows it and the host says so.
-     *
-     * For wrappers whose whole app lives in one window. In Flutter every screen shares it, so
-     * leaving a screen never takes the block out of a window: the block would keep waiting — and
-     * spending its budget — on a screen nobody is looking at, and could collapse before the user
-     * ever got there. `true` by default, so a wrapper that says nothing behaves as before.
-     *
-     * A pause, not a reset: a block hidden mid-load keeps the page it has and the remainder of its
-     * budget; shown again, it counts that remainder down instead of starting the budget anew.
-     */
     @InternalMindboxApi
     public fun setHostVisible(visible: Boolean) {
         if (isHostVisible == visible) return
@@ -461,11 +389,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     }
 
     /**
-     * Releases the block and everything it holds. One way only: a released block never shows
-     * content again — to show the place again, create a new block.
-     *
-     * Call it when the block is discarded before its screen is destroyed; otherwise its resources
-     * live until then. A block that only leaves the window needs no call.
+     * Releases the block and its content. A released block shows nothing again. Needed only when
+     * the block is discarded before its screen is destroyed.
      */
     public fun release() {
         if (isReleased) return
@@ -780,8 +705,6 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun deliverPendingEvent(): Unit = loggingRunCatching {
         isDeliveryScheduled = false
-        // Loading is not an outcome, so the record of what was delivered is left alone: writing it
-        // down would make the outcome that follows look new even when it is the one already heard.
         when (val current = state) {
             EmbeddedBlockState.Loading -> Unit
             EmbeddedBlockState.Ready -> deliverIfChanged(BlockEvent.LOADED) { view -> onLoad(view) }
