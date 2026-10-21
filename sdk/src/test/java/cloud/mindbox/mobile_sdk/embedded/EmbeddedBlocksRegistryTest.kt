@@ -56,10 +56,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.coroutines.CoroutineContext
 
-/**
- * The central controller is deliberately dumb: a registry and a router. Both directions call
- * the same interactor code — no selection filter is ever invoked from here.
- */
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlocksRegistryTest {
@@ -120,8 +116,6 @@ class EmbeddedBlocksRegistryTest {
 
     private val interactor: InAppInteractor = mockk(relaxed = true)
 
-    // A var, like the SDK scope it stands for: soft re-initialization cancels it and puts a fresh
-    // one in its place.
     private var scope = TestScope(UnconfinedTestDispatcher())
     private var workerScope: CoroutineScope? = null
 
@@ -224,7 +218,6 @@ class EmbeddedBlocksRegistryTest {
 
         assertEquals(listOf<InAppType.Embedded?>(content), first.received)
         assertEquals(listOf<InAppType.Embedded?>(content), second.received)
-        // One resolve serves everyone.
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
     }
 
@@ -268,8 +261,6 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, handle!!)
         idleMain()
 
-        // A host without a lifecycle owner never says goodbye — it only lets the block go. The
-        // registry must not be what keeps it, and the Activity behind it, in this process.
         handle = null
         awaitCollection(handleReference)
 
@@ -327,8 +318,6 @@ class EmbeddedBlocksRegistryTest {
 
     @Test
     fun `controller never calls selection itself`() {
-        // The registry routes; the selection lives in the interactor. The only domain entries
-        // the controller touches are selectInAppForPlace and the push flow subscription.
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns winner()
         val controller = controller()
         controller.register(place, keptAlive(RecordingHandle()))
@@ -356,7 +345,6 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        // The SDK has answered: the block hears "pending" at once, the content waits out the delay.
         assertEquals(1, handle.pendingCount)
         assertEquals(emptyList<InAppType.Embedded?>(), handle.received)
 
@@ -380,8 +368,6 @@ class EmbeddedBlocksRegistryTest {
         idleMain()
         scope.testScheduler.advanceTimeBy(3_000L)
         scope.testScheduler.runCurrent()
-        // The block left and returned mid-delay: the same winner re-selected must not restart
-        // the countdown, or a frequently revisited block would wait forever.
         controller.onBlockAppeared(place)
         idleMain()
 
@@ -392,7 +378,6 @@ class EmbeddedBlocksRegistryTest {
         scope.testScheduler.runCurrent()
         idleMain()
 
-        // Delivered on the original schedule — five seconds after the first selection.
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
     }
 
@@ -477,8 +462,6 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        // The block is detached mid-delay: the clock keeps running for the place, and its end
-        // is what the session remembers — not the block that happened to be there.
         registration.close()
         idleMain()
         scope.testScheduler.advanceTimeBy(5_001L)
@@ -508,7 +491,6 @@ class EmbeddedBlocksRegistryTest {
 
         controller.onBlockAppeared(place)
         idleMain()
-        // A new resolve lands while the old winner still waits: its outcome replaces the timer.
         controller.onBlockAppeared(place)
         idleMain()
         scope.testScheduler.advanceTimeBy(10_000L)
@@ -561,7 +543,6 @@ class EmbeddedBlocksRegistryTest {
 
         scope.launch { configVersions.emit(newerConfig) }
         idleMain()
-        // Nothing resolves in the background for a paused block.
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
 
         controller.onBlockAppeared(place)
@@ -695,8 +676,6 @@ class EmbeddedBlocksRegistryTest {
 
         controller.onBlockAppeared(place)
         idleMain()
-        // The pull resolve hangs on the gate; the operation lands meanwhile and must queue up
-        // WITH its trigger — a triggerless second pass would never match operation-targetings.
         scope.launch { placeEvents.emit(EmbeddedPlaceEvent(place, operation)) }
         idleMain()
         firstResolveGate.complete(EmbeddedResolveOutcome.Empty(olderConfig))
@@ -716,8 +695,6 @@ class EmbeddedBlocksRegistryTest {
         controller.register(place, handle)
         idleMain()
 
-        // Soft re-initialization: the scope both channels were collecting on is cancelled and a
-        // fresh one takes its place.
         scope.cancel()
         scope = TestScope(UnconfinedTestDispatcher())
         controller.startListening()
@@ -728,7 +705,6 @@ class EmbeddedBlocksRegistryTest {
         scope.launch { configVersions.emit(newerConfig) }
         idleMain()
 
-        // Push and config invalidation are both alive again on the new scope.
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, operation) }
         coVerify(atLeast = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
     }
@@ -747,7 +723,6 @@ class EmbeddedBlocksRegistryTest {
         controller.startListening()
         idleMain()
 
-        // Nothing tells us what was emitted while nobody was collecting, so the place is stale.
         coVerify(exactly = 1) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
         assertEquals(listOf<InAppType.Embedded?>(content), handle.received)
     }
@@ -762,13 +737,10 @@ class EmbeddedBlocksRegistryTest {
         controller.startListening()
         idleMain()
 
-        // One subscription per channel, and no re-resolve: the channels never died.
         coVerify(exactly = 1) { interactor.listenEmbeddedPlaceEvents() }
         coVerify(exactly = 1) { interactor.listenConfigVersions() }
         coVerify(exactly = 0) { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) }
     }
-
-    // ---- show budget holds: taken where the content goes to the blocks, given back when nothing shows ----
 
     private class HoldingHandle : EmbeddedBlockHandle {
         override val isActive: Boolean = true
@@ -847,7 +819,6 @@ class EmbeddedBlocksRegistryTest {
 
         controller.onBlockAppeared(place)
         idleMain()
-        // The hold would sit through the whole delay otherwise — the budget is asked at the delivery.
         verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), any()) }
 
         scope.testScheduler.advanceTimeBy(5_001L)
@@ -948,7 +919,6 @@ class EmbeddedBlocksRegistryTest {
         controller.onBlockAppeared(place)
         idleMain()
 
-        // Once for the unregistration, once for the answer that found nobody to hear it.
         verify(exactly = 1) { interactor.releasePlaceShow(place) }
         verify(exactly = 1) { interactor.releasePlaceShow(place, any()) }
     }

@@ -176,7 +176,6 @@ class SessionStorageManagerTest {
         assertTrue(sessionStorageManager.state.unShownOperationalInApps.isEmpty())
         assertTrue(sessionStorageManager.state.operationalInApps.isEmpty())
         assertTrue(sessionStorageManager.state.inAppMessageShownInSession.isEmpty())
-        // The block-event memory dies with the session, every cell together.
         assertTrue(sessionStorageManager.state.embeddedLastShownByPlace.isEmpty())
         assertTrue(sessionStorageManager.state.embeddedLastTargetedByPlace.isEmpty())
         assertTrue(sessionStorageManager.state.embeddedLastOperationByPlace.isEmpty())

@@ -34,8 +34,6 @@ class EmbeddedBlockShimmerViewTest {
 
     private fun assertClose(expected: Float, actual: Float) = assertEquals(expected, actual, TOLERANCE)
 
-    // MARK: - Color
-
     @Test
     fun `light theme is one near-black tint whose opacity dips in the highlight`() {
         val rest = ContextCompat.getColor(activity, R.color.mindbox_embedded_block_shimmer_rest)
@@ -76,22 +74,16 @@ class EmbeddedBlockShimmerViewTest {
         assertTrue(EmbeddedBlockDefaultViews.placeholder(activity) is EmbeddedBlockShimmerView)
     }
 
-    // MARK: - Geometry
-
     @Test
     fun `at both rest positions the ramp lies outside the block, which shows a flat tint`() {
-        // The ramp is the three middle stops; the outer two are flat and may be anywhere.
         val atStart = EmbeddedBlockShimmerDesign.blockStops(START_X)
         val atEnd = EmbeddedBlockShimmerDesign.blockStops(END_X)
 
         assertTrue("before the sweep the ramp waits off the leading edge", atStart.slice(1..3).all { it < 0f })
         assertTrue("after the sweep the ramp has left past the trailing edge", atEnd.slice(1..3).all { it > 1f })
-        // And the flat outer stops still cover the block from both sides at either rest.
         assertTrue(atStart.first() < 0f && atStart.last() > 1f)
         assertTrue(atEnd.first() < 0f && atEnd.last() > 1f)
     }
-
-    // MARK: - Cycle
 
     @Test
     fun `the layer rests at the start for the first pause`() {
@@ -137,16 +129,14 @@ class EmbeddedBlockShimmerViewTest {
         assertFalse(view.isSweeping)
     }
 
-    // MARK: - Shared beat
-
     @Test
     fun `every shimmer is at the same point of the cycle, whenever it appeared`() {
         var now = 0L
         val first = shimmer(now = { now }, epoch = 0L)
-        now = 900L // the second one comes later, mid-sweep of the first
+        now = 900L
         val second = shimmer(now = { now }, epoch = 0L)
 
-        now = 1_100L // still mid-sweep: the sweep runs from 600 to 1600 ms
+        now = 1_100L
         assertClose(first.currentLayerLeft(), second.currentLayerLeft())
         assertTrue("both are mid-sweep, not at a rest", first.currentLayerLeft() > START_X && first.currentLayerLeft() < END_X)
     }

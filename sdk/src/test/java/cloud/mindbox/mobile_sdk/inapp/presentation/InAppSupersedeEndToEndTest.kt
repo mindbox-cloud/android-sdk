@@ -59,7 +59,6 @@ import java.io.IOException
 import java.time.Duration
 import kotlin.coroutines.resume
 
-// No Dispatchers.setMain: the manager's main step has to queue on the same Robolectric looper the holders run on.
 @RunWith(RobolectricTestRunner::class)
 internal class InAppSupersedeEndToEndTest {
 

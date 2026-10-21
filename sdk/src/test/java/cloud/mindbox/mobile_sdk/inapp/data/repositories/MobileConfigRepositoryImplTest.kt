@@ -193,7 +193,6 @@ internal class MobileConfigRepositoryImplTest {
     fun `startListening re-arms the config subscription killed with the sdk scope`() = withTestMindboxScope {
         val revived = createRepository()
 
-        // The soft reinitialization: the scope dies with the subscription inside it.
         Mindbox.mindboxScope.cancel()
         installMindboxScope(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
 
@@ -206,9 +205,6 @@ internal class MobileConfigRepositoryImplTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `an emission that deserializes to nothing still concludes the wait with an empty config`() = withTestMindboxScope {
-        // The fetch-failed fallback re-emits whatever is stored — an empty string when there is
-        // no cache. That emission must answer the waiters with an empty config at once (the
-        // block collapses fast, no wait_budget), never leave them hanging on configState.
         val repository = createRepository(deserializedBlank = null)
         repository.startListening()
         assertFalse(repository.hasConfig())

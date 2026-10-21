@@ -214,7 +214,6 @@ internal class InAppSerializationManagerTest {
             inAppSerializationManager.serializeToInAppShowErrorsString(errors)
         ).asJsonObject
 
-        // One polymorphic array; the legacy `failures` never ships again.
         val expected = com.google.gson.JsonParser.parseString(
             """
             {"errors":[

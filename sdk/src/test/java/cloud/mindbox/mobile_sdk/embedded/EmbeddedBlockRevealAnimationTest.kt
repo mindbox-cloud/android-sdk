@@ -15,7 +15,6 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 
-/** The two animator runs behind the reveal, driven to their end on the test looper. */
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlockRevealAnimationTest {
 

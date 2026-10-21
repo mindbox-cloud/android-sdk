@@ -608,7 +608,6 @@ internal class InAppMessageManagerTest {
         callbacks.captured.onInAppShown.onShown()
         assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
 
-        // A dismiss after the show is an ordinary dismiss, not a second answer.
         callbacks.captured.onInAppDismiss.onDismiss()
         assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
     }
@@ -665,8 +664,6 @@ internal class InAppMessageManagerTest {
         assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE)), outcomes)
         verify(exactly = 0) { inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any()) }
     }
-
-    // ---- the overlay's hold in the show budgets: taken before the show, given back if it never shows ----
 
     private fun TestScope.managerWithCapturedCallbacks(
         inApp: InApp,
@@ -757,7 +754,6 @@ internal class InAppMessageManagerTest {
         val shown = managerWithCapturedCallbacks(inApp)
         shown().onInAppShown.onShown()
         shown().onInAppDismiss.onDismiss()
-        // The hold ended with the show (the commit lives in saveShownInApp); nothing to give back.
         verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
     }
 
@@ -790,7 +786,6 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `a candidate that found the hold already standing is shown but never gives it back`() = runTest {
-        // The hold belongs to the earlier candidate of the same in-app; this one owns nothing.
         val inApp = InAppStub.getInApp()
         val callbacks = managerWithCapturedCallbacks(inApp)
         val secondCandidate = managerWithCapturedCallbacks(inApp, hold = ShowReservationOutcome.ALREADY_HELD)
@@ -804,12 +799,8 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
     }
 
-    // ---- a candidate's show and its refusal are terminal and mutually exclusive ----
-
     @Test
     fun `a show reported after the candidate was told it will not be shown writes nothing`() = runTest {
-        // A page's late `init` on a torn-down holder, or a restored holder whose original already
-        // gave the hold back: the Inapp.Show must not outlive the candidate's refusal.
         val inApp = InAppStub.getInApp()
         val callbacks = managerWithCapturedCallbacks(inApp)
 
@@ -822,8 +813,6 @@ internal class InAppMessageManagerTest {
 
     @Test
     fun `a second show report of the same candidate is not counted again`() = runTest {
-        // Two holders can report the same show: the one paused in the background finishing its
-        // image, and the one restored on top of it.
         val inApp = InAppStub.getInApp()
         val callbacks = managerWithCapturedCallbacks(inApp)
 

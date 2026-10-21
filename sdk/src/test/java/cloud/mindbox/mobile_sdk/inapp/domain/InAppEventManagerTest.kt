@@ -56,8 +56,6 @@ internal class InAppEventManagerTest {
 
     @Test
     fun `embedded place request is not a valid in-app event`() {
-        // MOBILE-333: block content is resolved by pull/push through the blocks controller;
-        // the place signal must never reach the overlay conveyor (the MOBILE-324 bypass is gone).
         assertFalse(
             inAppEventManager.isValidInAppEvent(
                 InAppEventType.EmbeddedPlaceRequested(placeSystemName = PlaceKey.of("main-screen-top")),

@@ -15,10 +15,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The new fields cross the DTO → domain border here. An unknown restriction resolves in
- * favour of showing (`null` = no restriction) instead of dropping the in-app.
- */
 class EmbeddedMapperTest {
 
     private val mapper = InAppMapper()
@@ -35,8 +31,6 @@ class EmbeddedMapperTest {
         id = "in-app-id",
         targeting = cloud.mindbox.mobile_sdk.models.TreeTargetingDto.TrueNodeDto("true"),
         frequency = FrequencyDto.FrequencyOnceDto(type = "once", kind = "lifetime"),
-        // The stub modal carries elements the mapper cannot map without the validator step —
-        // the embedded variant keeps these tests about the new fields only.
         form = FormDto(variants = listOf(InAppStub.getEmbeddedDto())),
     )
 
@@ -56,8 +50,6 @@ class EmbeddedMapperTest {
 
     @Test
     fun `extra non-webview layers are dropped on mapping`() {
-        // An unexpected image layer next to the webview one (even with a broken action) must
-        // not fail the mapping: the block only ever uses webview layers.
         val embedded = InAppStub.getEmbeddedDto()
         val withExtraLayer = embedded.copy(
             content = embedded.content!!.copy(

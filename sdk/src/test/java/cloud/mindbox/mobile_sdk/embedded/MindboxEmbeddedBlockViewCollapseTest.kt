@@ -14,10 +14,6 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 
-/**
- * The collapse rule: space once ceded to the host is not taken back for a placeholder — the block
- * re-resolves on every return to the screen, and only shown content expands it again.
- */
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewCollapseTest {
 
@@ -106,7 +102,6 @@ class MindboxEmbeddedBlockViewCollapseTest {
 
         leaveAndReturn(view)
 
-        // The block is loading again, but the space it gave back is not reclaimed for a retry.
         assertEquals(View.GONE, view.visibility)
     }
 

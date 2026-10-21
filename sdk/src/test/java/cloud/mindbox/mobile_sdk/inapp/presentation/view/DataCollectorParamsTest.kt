@@ -22,11 +22,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/**
- * AC35: a config param whose value is JSON must reach the page as a structure — the
- * page checks `Array.isArray(items)` and silently draws nothing for a string. Plain string
- * params keep their type (the regression pair).
- */
 @RunWith(RobolectricTestRunner::class)
 class DataCollectorParamsTest {
 
@@ -85,7 +80,6 @@ class DataCollectorParamsTest {
     fun `plain string params are still sent as strings`() {
         val payload = collect(mapOf("formId" to "73379", "flag" to "true", "name" to "plain"))
 
-        // Values that merely parse as numbers or booleans must stay strings.
         assertTrue(payload.get("formId").asJsonPrimitive.isString)
         assertTrue(payload.get("flag").asJsonPrimitive.isString)
         assertTrue(payload.get("name").asJsonPrimitive.isString)
@@ -103,7 +97,6 @@ class DataCollectorParamsTest {
     fun `the in-app id is sent under the contract spelling only`() {
         val payload = collect(emptyMap())
 
-        // Cut hard, in sync with iOS: the page that reads `inappId` ships before any SDK release.
         assertEquals("in-app-id", payload.get("inappId").asString)
         assertNull(payload.get("inAppId"))
     }
@@ -124,8 +117,6 @@ class DataCollectorParamsTest {
 
     @Test
     fun `the keys the sdk measures cannot be dictated by params`() {
-        // In sync with iOS: what the page is told about the operation and the visit is measured
-        // here, so a config that names those keys must not be able to rewrite them.
         val session = SessionStorageManager(mockk(relaxed = true)).apply {
             lastTrackVisitData = TrackVisitOrigin(
                 source = "link",
@@ -154,8 +145,6 @@ class DataCollectorParamsTest {
 
     @Test
     fun `a show with no operation behind it tells the page about none`() {
-        // The block and the requested show pass `null`, and the session's last trigger — which
-        // belongs to somebody else's in-app — stays out of the payload.
         val session = SessionStorageManager(mockk(relaxed = true)).apply {
             state.inAppTriggerEvent = InAppEventType.OrdinalEvent(
                 eventType = EventType.AsyncOperation("SomebodyElsesOperation"),
@@ -171,9 +160,6 @@ class DataCollectorParamsTest {
 
     @Test
     fun `a key the SDK has no value for is left to the configuration`() {
-        // The overwrite is there so a page cannot forge what the SDK measures. Where the SDK
-        // measures nothing there is nothing to forge, and taking the configuration's own value
-        // away would be the same kind of lie in the other direction — iOS keeps it, so do we.
         val payload = collect(
             params = mapOf("operationName" to "ConfiguredOperation"),
             operation = null,

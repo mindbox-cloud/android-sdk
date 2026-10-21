@@ -15,12 +15,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.time.Duration
 
-/**
- * The public-constructor path: the block resolves its content through the real config lookup
- * (no injected fake), exactly as a host app creates it. Nothing is initialized in this test
- * process — which is precisely the case a host hits when it inflates a screen before the SDK
- * finished starting up.
- */
 @RunWith(RobolectricTestRunner::class)
 class MindboxEmbeddedBlockViewLookupTest {
 
@@ -56,8 +50,6 @@ class MindboxEmbeddedBlockViewLookupTest {
         attach(view)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(29L))
 
-        // No config yet is not an empty place: the block holds its placeholder and stays silent
-        // for as long as the config timeout allows.
         assertEquals(View.VISIBLE, view.visibility)
         assertTrue(listener.events.isEmpty())
         assertEquals("main-screen-top", view.placeSystemName)
@@ -72,8 +64,6 @@ class MindboxEmbeddedBlockViewLookupTest {
         attach(view)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
 
-        // 30 seconds without a config → Failed(networkError): the SDK gave no answer; a late config
-        // would still expand the block because the registration survives.
         assertEquals(View.GONE, view.visibility)
         assertEquals(listOf("fail:networkError"), listener.events)
     }
@@ -144,8 +134,6 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `a block without a place name hides itself`() {
-        // XML without the attribute (or a programmatic view with no name): nothing to match
-        // against the config — the block hides itself, never a crash.
         val view = MindboxEmbeddedBlockView(activity)
         val listener = RecordingListener()
         view.setListener(listener)
@@ -159,7 +147,6 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `the place name is read from the xml attribute`() {
-        // The layout path: a host marks the place in XML and never touches the SDK in code.
         val attrs = Robolectric.buildAttributeSet()
             .addAttribute(R.attr.mindboxPlaceSystemName, "main-screen-top")
             .build()
@@ -207,7 +194,6 @@ class MindboxEmbeddedBlockViewLookupTest {
 
         assertEquals(listOf("fail:networkError"), listener.events)
 
-        // A second pass across the screen: the same empty place is the same outcome, not news.
         (view.parent as LinearLayout).removeView(view)
         shadowOf(Looper.getMainLooper()).idle()
         attach(view)
@@ -218,7 +204,6 @@ class MindboxEmbeddedBlockViewLookupTest {
 
     @Test
     fun `the block behaves with no listener at all`() {
-        // The show/hide behavior belongs to the block, not to the host's callbacks.
         val view = MindboxEmbeddedBlockView(
             activity,
             "main-screen-top",

@@ -20,10 +20,6 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 
-/**
- * The store of contents kept for screens that left the window but not the back stack: who gets
- * what back, when a kept content is freed, and how the limit is applied.
- */
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlockContentStoreTest {
 
@@ -113,7 +109,6 @@ class EmbeddedBlockContentStoreTest {
 
     @Test
     fun `a screen with two blocks on one place gets its contents back last kept first`() {
-        // The blocks leave in reverse order of attachment and come back in attachment order.
         val screen = Screen()
         val lower = readyContent()
         val upper = readyContent()
@@ -156,8 +151,6 @@ class EmbeddedBlockContentStoreTest {
         screens.zip(contents).forEach { (screen, kept) ->
             store.retain(screen, PLACE, kept.controller, activity = null)
         }
-        // The limit waits for the next frame: a popped screen's content passes through the store
-        // for a moment and must not push out a content a live screen is waiting for.
         assertEquals(4, store.size)
 
         idle()
@@ -174,7 +167,6 @@ class EmbeddedBlockContentStoreTest {
         val contents = List(4) { readyContent() }
         (0..2).forEach { index -> store.retain(screens[index], PLACE, contents[index].controller, activity = null) }
 
-        // The first screen comes back and leaves again: its content is now the most recent touch.
         store.reclaim(screens[0], PLACE, activity = null)
         store.retain(screens[0], PLACE, contents[0].controller, activity = null)
         store.retain(screens[3], PLACE, contents[3].controller, activity = null)

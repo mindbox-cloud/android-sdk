@@ -37,10 +37,6 @@ import org.robolectric.Shadows.shadowOf
 import java.io.Closeable
 import java.time.Duration
 
-/**
- * The per-view state machine: both timeouts, the failed-state re-resolve, the same-winner
- * dedup and the paused-delivery deferral.
- */
 @RunWith(RobolectricTestRunner::class)
 class EmbeddedBlockContentControllerTest {
 
@@ -308,8 +304,6 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `pending winner disarms the waiting budget and keeps the skeleton`() {
-        // A delayed winner is the SDK's answer, not its silence: the 30s budget stands down
-        // while the block stays in the loading state until the delivery.
         val controller = controller(configTimeout = Milliseconds(30_000L))
         controller.start()
 
@@ -421,7 +415,6 @@ class EmbeddedBlockContentControllerTest {
 
         idleFor(Duration.ofMillis(51L))
 
-        // The SDK stayed silent for the whole budget: the fact ships with no in-app to name.
         verify(exactly = 1) {
             tracker.sendPlaceWaitBudgetExceeded(
                 PlaceKey.of("main-screen-top"),
@@ -507,8 +500,6 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.lastHandle?.onContentPending()
 
-        // The block leaves and returns while the winner waits out its delay: the SDK has
-        // answered — the re-armed budget must not fire a false "the SDK stayed silent".
         controller.pause()
         controller.start()
         idleFor(Duration.ofMillis(51L))
@@ -597,7 +588,6 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `host resource is not consulted here — the timeout is a constructor value`() {
-        // The view reads the integer resource / XML attribute; the controller only obeys it.
         val controller = controller(configTimeout = Milliseconds(50L))
         controller.start()
 
@@ -637,7 +627,6 @@ class EmbeddedBlockContentControllerTest {
 
         blocksRegistry.pushContent("main-screen-top", content)
 
-        // No re-creation and no release: the layout is not poked for an identical winner.
         assertEquals(1, createdProviders.size)
         assertEquals(0, provider.releaseCount)
     }
@@ -662,7 +651,6 @@ class EmbeddedBlockContentControllerTest {
         controller.pause()
 
         blocksRegistry.lastHandle?.onContentResolved(content)
-        // Nothing is drawn in the background.
         assertTrue(createdProviders.isEmpty())
 
         controller.start()
@@ -682,7 +670,6 @@ class EmbeddedBlockContentControllerTest {
 
         handle.onContentResolved(content)
 
-        // The registry reserved for this delivery; a neighbour dropping its content must not free it.
         assertTrue(handle.isHoldingContent)
         controller.start()
         assertEquals(EmbeddedBlockState.Ready, states.last())
@@ -700,7 +687,6 @@ class EmbeddedBlockContentControllerTest {
 
         controller.start()
 
-        // The failed provider is dropped and the place is asked again — not resumed.
         assertEquals(1, provider.releaseCount)
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
     }
@@ -742,7 +728,7 @@ class EmbeddedBlockContentControllerTest {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
             override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
-            override fun start() = Unit // never reports anything
+            override fun start() = Unit
 
             override fun pause() = Unit
 
@@ -769,7 +755,6 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         idleFor(Duration.ofSeconds(20))
         controller.pause()
-        // Off screen the clock stands still, however long the block stays there.
         idleFor(Duration.ofSeconds(20))
         controller.start()
 
@@ -786,7 +771,7 @@ class EmbeddedBlockContentControllerTest {
             override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
             override val contentView: View? = View(RuntimeEnvironment.getApplication())
 
-            override fun start() = Unit // never reports anything
+            override fun start() = Unit
 
             override fun pause() = Unit
 
@@ -805,8 +790,6 @@ class EmbeddedBlockContentControllerTest {
         controller.pause()
         controller.start()
 
-        // 5 of the 7 seconds are already spent: flicking the screen hands back the remainder,
-        // not the whole budget.
         idleFor(Duration.ofSeconds(1))
         assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
 
@@ -962,14 +945,11 @@ class EmbeddedBlockContentControllerTest {
             .copy(params = mapOf("items" to "[]"))
         blocksRegistry.pushContent("main-screen-top", content.copy(layers = listOf(refreshedLayer)))
 
-        // The webview stays; only the new params travel over the bridge.
         assertEquals(mapOf("items" to "[]"), updatedParams)
     }
 
     @Test
     fun `same winner pointing at another page rebuilds the content`() {
-        // The address is part of the page's identity: the backend re-pointing the same in-app at
-        // another page must not be deduplicated into keeping the old one.
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -1029,8 +1009,6 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `delivery of the same winner after a failure rebuilds the content`() {
-        // A failed block stays started and registered; a push or config re-resolve returning the
-        // SAME winner must bring it back instead of being deduplicated into the error view.
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -1047,9 +1025,6 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `a block that drew nothing asks for its content again on return`() {
-        // The page answered `contentRendered {count: 0}` — every element was filtered out, expired
-        // or not targeted at this customer. None of those reasons outlives the screen, so the
-        // remembered "empty" must not either: iOS rebuilds here, and so do we.
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -1065,8 +1040,6 @@ class EmbeddedBlockContentControllerTest {
 
     @Test
     fun `delivery of the same winner to a collapsed block rebuilds the content`() {
-        // For a collapsed block the same answer is news: nothing is on screen to deduplicate
-        // against, and only a rebuilt page can draw and report itself again.
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -1129,20 +1102,17 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
 
-        // No assertion beyond survival: the listener crash is logged, never rethrown.
         assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
     }
-
-    // ---- the place's hold in the show budgets: held while content is loading or shown, given back once the content is dropped ----
 
     @Test
     fun `a block holds content from the delivery until it shows, and lets go on Failed or Empty`() {
         val controller = controller()
         controller.start()
-        assertTrue(controller.isHoldingContent) // Loading: the attempt is on
+        assertTrue(controller.isHoldingContent)
 
         blocksRegistry.pushContent("main-screen-top", content)
-        assertTrue(controller.isHoldingContent) // Ready (FakeProvider reports Ready on start)
+        assertTrue(controller.isHoldingContent)
         assertEquals(emptyList<String>(), blocksRegistry.droppedPlaces)
 
         createdProviders.last().onStateChange?.invoke(networkError)
@@ -1171,7 +1141,6 @@ class EmbeddedBlockContentControllerTest {
 
         blocksRegistry.pushContent("main-screen-top", content)
 
-        // The registry reserved for this delivery; the drop must hand the hold back.
         assertEquals(droppedByTimeout + 1, blocksRegistry.droppedPlaces.size)
         assertFalse(controller.isHoldingContent)
         assertEquals(0, createdProviders.size)
@@ -1192,7 +1161,6 @@ class EmbeddedBlockContentControllerTest {
         }
         assertTrue(blocksRegistry.droppedPlaces.contains("main-screen-top"))
 
-        // The answer settled the budget: the timeout does not report the place a second time.
         idleFor(Duration.ofMillis(30_001L))
         verify(exactly = 1) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
     }
@@ -1313,7 +1281,6 @@ class EmbeddedBlockContentControllerTest {
         controller.pause()
         controller.start()
 
-        // The failure settles like every other one: the block asks afresh on its next appearance, not now.
         assertEquals(listOf(EmbeddedBlockState.Ready, internalError), states.takeLast(2))
         assertEquals(listOf("main-screen-top"), blocksRegistry.appearedPlaces)
         verify(exactly = 1) {
