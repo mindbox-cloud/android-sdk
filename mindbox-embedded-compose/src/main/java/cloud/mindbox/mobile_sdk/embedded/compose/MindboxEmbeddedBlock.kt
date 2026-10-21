@@ -36,7 +36,8 @@ import kotlin.math.roundToInt
  *
  * The caller names a place and gives the block an explicit height; the SDK decides what the place
  * shows. The block takes the whole available width, and zero height when there is nothing to
- * show. The behavior is that of [MindboxEmbeddedBlockView].
+ * show. The behavior is that of [MindboxEmbeddedBlockView]. Keep the block in the composition rather
+ * than removing it in [onEmpty]: a collapsed block still shows content the place gets later.
  *
  * ```kotlin
  * MindboxEmbeddedBlock(
@@ -60,8 +61,9 @@ import kotlin.math.roundToInt
  * @param onFail The block could not get or show its content; the block collapsed or shows
  * [error]. The reason is one of the [MindboxEmbeddedBlockFailReason] constants. Main thread.
  * @param placeholder Replaces the SDK's shimmer while the content is loading. Fills the block.
- * @param error Shown instead of collapsing the block when it fails. Failures only, and only once
- * the block has taken its space. Fills the block.
+ * @param error Shown instead of collapsing the block when it fails. Failures only. Set it before
+ * the block fails: a slot set after the block has collapsed, for example in [onFail], does not
+ * expand it. A block that waits hidden shows no error view. Fills the block.
  */
 @OptIn(InternalMindboxApi::class)
 @Composable

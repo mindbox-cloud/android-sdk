@@ -56,7 +56,7 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `no config within the timeout fails the block with networkError, a late config still expands it`() {
+    fun `no config within the timeout fails the block with networkError`() {
         val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
         val listener = RecordingListener()
         view.setListener(listener)
