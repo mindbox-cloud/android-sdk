@@ -114,6 +114,15 @@ class GatewayManagerTest {
         assertEquals("api.mindbox.ru", result)
     }
 
+    @Test
+    fun `resolveOperationsDomain preserves http scheme from config value`() {
+        val config = mockConfiguration.copy(operationsDomain = null)
+
+        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = "http://internal-proxy.com")
+
+        assertEquals("http://internal-proxy.com", result)
+    }
+
     // endregion
 
     // region operationsDomain URL routing
