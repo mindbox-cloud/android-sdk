@@ -37,6 +37,10 @@ android {
 
     testOptions {
         unitTests.includeAndroidResources = true
+        unitTests.all {
+            maxParallelForks = Math.min(4, Math.max(1, Runtime.runtime.availableProcessors().intdiv(2)))
+            maxHeapSize = "1536m"
+        }
     }
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         kotlinOptions {
