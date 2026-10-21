@@ -94,7 +94,7 @@ class BridgeMessageValidatorTest {
     }
 
     @Test
-    fun `isValid returns true for an action this SDK does not know`() {
+    fun `isValid returns true for an action this SDK does not know, so it can be answered`() {
         val message: BridgeMessage.Request = createRequest(action = WebViewAction.UNKNOWN)
 
         assertTrue(validator.isValid(message))

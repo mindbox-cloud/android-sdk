@@ -798,7 +798,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `local state set is broadcast to every other page`() {
+    fun `local state set answers the author and is broadcast to every other page`() {
         startAndAwaitPageLoad()
 
         postFromPage(
@@ -909,7 +909,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `motion start with a known gesture but no sensors is refused`() {
+    fun `motion start with a known gesture but no accelerometer is refused`() {
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "motion.start", payload = """{"gestures":["shake"]}"""))
@@ -1001,7 +1001,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `initDataUpdated refreshes the page without recreating the webview`() {
+    fun `initDataUpdated sends the whole start payload and refreshes the page without recreating the webview, as on iOS`() {
         startAndAwaitPageLoad()
         val viewBeforeUpdate = webView
 
@@ -1167,7 +1167,7 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
-    fun `an action the block does not perform is acknowledged, not refused`() {
+    fun `an action the block does not perform is acknowledged, not refused, as on iOS`() {
         startAndAwaitPageLoad()
 
         postFromPage(request(action = "click", payload = "{}"))

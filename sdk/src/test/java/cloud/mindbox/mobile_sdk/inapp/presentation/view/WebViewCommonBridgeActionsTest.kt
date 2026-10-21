@@ -167,7 +167,7 @@ class WebViewCommonBridgeActionsTest {
     }
 
     @Test
-    fun `an action that changes nothing still answers the contract success`() {
+    fun `an action that changes nothing still answers the contract success, not an empty object`() {
         val handlers = handlersOf(FakeHost())
 
         assertEquals(BridgeMessage.SUCCESS_PAYLOAD, handlers.answer(WebViewAction.LOG, """{"message":"hi"}"""))

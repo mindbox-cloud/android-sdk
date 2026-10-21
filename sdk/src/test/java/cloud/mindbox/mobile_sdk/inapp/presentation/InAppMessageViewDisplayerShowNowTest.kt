@@ -150,7 +150,7 @@ internal class InAppMessageViewDisplayerShowNowTest {
     }
 
     @Test
-    fun `the replaced show reaches the registered app callback as dismissed`() {
+    fun `the replaced show reaches the registered app callback as dismissed before the internal accounting`() {
         givenForegroundActivity()
         val appCallback = mockk<InAppCallback>(relaxUnitFun = true)
         displayer.registerInAppCallback(appCallback)

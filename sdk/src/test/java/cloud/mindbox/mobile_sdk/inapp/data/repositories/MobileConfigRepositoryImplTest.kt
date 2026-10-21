@@ -204,7 +204,7 @@ internal class MobileConfigRepositoryImplTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `an emission that deserializes to nothing still concludes the wait with an empty config`() = withTestMindboxScope {
+    fun `an emission that deserializes to nothing still concludes the wait with an empty config at once`() = withTestMindboxScope {
         val repository = createRepository(deserializedBlank = null)
         repository.startListening()
         assertFalse(repository.hasConfig())

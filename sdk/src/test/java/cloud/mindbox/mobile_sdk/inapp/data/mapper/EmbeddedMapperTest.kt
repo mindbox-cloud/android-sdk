@@ -49,7 +49,7 @@ class EmbeddedMapperTest {
     }
 
     @Test
-    fun `extra non-webview layers are dropped on mapping`() {
+    fun `extra non-webview layers, even with a broken action, are dropped on mapping`() {
         val embedded = InAppStub.getEmbeddedDto()
         val withExtraLayer = embedded.copy(
             content = embedded.content!!.copy(

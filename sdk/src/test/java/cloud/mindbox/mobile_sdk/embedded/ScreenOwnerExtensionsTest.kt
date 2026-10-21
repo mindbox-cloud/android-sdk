@@ -53,7 +53,7 @@ class ScreenOwnerExtensionsTest {
     }
 
     @Test
-    fun `a wrapper naming the fragment's view lifecycle means the fragment`() {
+    fun `a wrapper naming the fragment's view lifecycle means the fragment, which outlives the view`() {
         val fragment = HostFragment()
         activity.supportFragmentManager.beginTransaction().add(android.R.id.content, fragment).commitNow()
 

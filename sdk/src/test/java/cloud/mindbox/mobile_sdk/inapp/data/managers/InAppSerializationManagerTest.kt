@@ -193,7 +193,7 @@ internal class InAppSerializationManagerTest {
     }
 
     @Test
-    fun `serializeToInAppShowErrorsString pins the polymorphic errors contract`() {
+    fun `serializeToInAppShowErrorsString pins the polymorphic errors contract and never ships the legacy failures array`() {
         val errors = listOf(
             InAppShowFailure(
                 inAppId = inAppId,

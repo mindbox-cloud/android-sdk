@@ -164,7 +164,7 @@ class MindboxEmbeddedBlockViewCallbacksTest {
     }
 
     @Test
-    fun `no answer from the SDK keeps the place when the host set an error view`() {
+    fun `no answer from the SDK keeps the place of a placeholder-strategy block when the host set an error view`() {
         val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER)
         view.setErrorView(View(activity))
         activity.attachBlock(view)

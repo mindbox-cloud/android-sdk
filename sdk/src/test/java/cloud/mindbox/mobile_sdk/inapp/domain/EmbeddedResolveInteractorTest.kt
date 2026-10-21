@@ -293,7 +293,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `selectInAppForPlace skips a candidate its frequency already blocks`() = runTest {
+    fun `selectInAppForPlace skips a candidate its frequency already blocks but still sends its targeting`() = runTest {
         givenConfig(embeddedInApp())
         every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
 
@@ -311,7 +311,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `targeting catch-up never covers directCall in-apps`() = runTest {
+    fun `targeting catch-up never covers directCall in-apps, their targeting ships once with the explicit show`() = runTest {
         val directCall = modalInApp(id = "direct-call").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         val ordinary = modalInApp(id = "ordinary")
         givenConfig(directCall, ordinary)
@@ -329,7 +329,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `targeting catch-up never covers in-apps without an overlay variant`() = runTest {
+    fun `targeting catch-up never covers in-apps without an overlay variant but still covers a mixed form`() = runTest {
         val pureEmbedded = embeddedInApp(id = "pure-embedded")
         val mixed = mixedInApp(id = "mixed")
         givenConfig(pureEmbedded, mixed)
@@ -438,7 +438,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `selectInAppForPlace drops the pass failures once somebody won the place`() = runTest {
+    fun `selectInAppForPlace drops the pass failures once somebody won the place, as the overlay pass does`() = runTest {
         givenConfig(embeddedInApp())
 
         interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
@@ -573,7 +573,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `getInAppToShowById ignores every restriction`() = runTest {
+    fun `getInAppToShowById ignores every restriction, directCall and a recorded show included`() = runTest {
         givenConfig(
             modalInApp(id = "restricted").copy(displayConditions = DisplayConditions.DIRECT_CALL)
         )
@@ -645,7 +645,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `getInAppToShowById picks first when config has duplicate ids`() = runTest {
+    fun `getInAppToShowById picks the first of duplicate ids across sdkVersion ranges`() = runTest {
         val first = modalInApp(id = "dup")
         val second = InAppStub.getInApp().copy(
             id = "dup",
@@ -689,7 +689,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `filterShowableInAppIds cuts an id its frequency already blocks`() = runTest {
+    fun `filterShowableInAppIds cuts an id its frequency already blocks but still sends its targeting`() = runTest {
         givenConfig(modalInApp(id = "inapp-1"))
         every { inAppRepository.getShownInApps() } returns mapOf("inapp-1" to listOf(1L))
 
@@ -864,7 +864,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `recordBlockShow stays silent while the place slot holds the same content`() {
+    fun `recordBlockShow stays silent while the place slot holds the same content and speaks again on a change, 1 to 2 to 1`() {
         interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
         interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
 
@@ -896,7 +896,7 @@ class EmbeddedResolveInteractorTest {
     }
 
     @Test
-    fun `live operation matched to an embedded place emits a place event`() = runTest {
+    fun `live operation matched to an embedded place emits a place event without resolving`() = runTest {
         val embedded = embeddedInApp()
         givenConfig(embedded)
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))

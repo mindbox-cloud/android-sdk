@@ -140,7 +140,7 @@ internal class BridgeMessagePayloadTest {
     }
 
     @Test
-    fun `an action this SDK does not know survives parsing as unknown`() {
+    fun `an action this SDK does not know survives parsing as unknown instead of a null action`() {
         val message = gson.fromBridgeMessage(
             """{"type":"request","action":"teleport","payload":{},"id":"id-1","version":1,"timestamp":1}"""
         )?.message

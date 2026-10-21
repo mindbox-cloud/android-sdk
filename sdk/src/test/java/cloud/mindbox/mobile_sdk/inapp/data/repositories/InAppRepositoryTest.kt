@@ -320,7 +320,7 @@ class InAppRepositoryTest {
     }
 
     @Test
-    fun `concurrent saveShownInApp does not lose a write`() {
+    fun `concurrent saveShownInApp from two places does not lose a write`() {
         val currentTime = System.currentTimeMillis()
         var stored = ""
         val gson = com.google.gson.Gson()

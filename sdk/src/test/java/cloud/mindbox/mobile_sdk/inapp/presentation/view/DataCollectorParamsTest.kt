@@ -77,7 +77,7 @@ class DataCollectorParamsTest {
     }
 
     @Test
-    fun `plain string params are still sent as strings`() {
+    fun `plain string params are still sent as strings even when they parse as numbers or booleans`() {
         val payload = collect(mapOf("formId" to "73379", "flag" to "true", "name" to "plain"))
 
         assertTrue(payload.get("formId").asJsonPrimitive.isString)
@@ -144,7 +144,7 @@ class DataCollectorParamsTest {
     }
 
     @Test
-    fun `a show with no operation behind it tells the page about none`() {
+    fun `a show with no operation behind it tells the page about none, not the session's last trigger`() {
         val session = SessionStorageManager(mockk(relaxed = true)).apply {
             state.inAppTriggerEvent = InAppEventType.OrdinalEvent(
                 eventType = EventType.AsyncOperation("SomebodyElsesOperation"),
@@ -159,7 +159,7 @@ class DataCollectorParamsTest {
     }
 
     @Test
-    fun `a key the SDK has no value for is left to the configuration`() {
+    fun `a key the SDK has no value for is left to the configuration, as on iOS`() {
         val payload = collect(
             params = mapOf("operationName" to "ConfiguredOperation"),
             operation = null,

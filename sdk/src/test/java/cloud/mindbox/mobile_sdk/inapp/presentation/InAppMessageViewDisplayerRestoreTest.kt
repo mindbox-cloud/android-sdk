@@ -110,7 +110,7 @@ internal class InAppMessageViewDisplayerRestoreTest {
         }
 
     @Test
-    fun `the restored holder is built from the original wrapper and keeps its callbacks`() {
+    fun `the restored holder is built from the original wrapper and keeps its callbacks for a show the original never fired`() {
         val callbacks = CountingCallbacks()
         setField("pausedHolder", pausedModal(callbacks))
 

@@ -108,7 +108,7 @@ internal class ShowBudgetManagerImplTest {
     }
 
     @Test
-    fun `re-reserving the same in-app for the same owner keeps the one hold`() {
+    fun `re-reserving the same in-app for the same owner keeps the one hold, the second asker owns nothing`() {
         assertEquals(ShowReservationOutcome.GRANTED, manager.reserve(place, "block", counting, isPriority = false))
 
         assertEquals(ShowReservationOutcome.ALREADY_HELD, manager.reserve(place, "block", counting, isPriority = false))

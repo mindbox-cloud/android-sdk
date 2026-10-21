@@ -123,7 +123,7 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
     }
 
     @Test
-    fun `content arriving while the block is out of the window still fills the frame it kept`() {
+    fun `content arriving while a deactivated LazyColumn item keeps the block out of the window still fills the frame it kept`() {
         val view = buildView(provider = { SilentProvider(activity) })
         val host = attachAndLayOut(view)
         blocksRegistry.lastHandle?.onContentResolved(embeddedContent())
@@ -140,7 +140,7 @@ class MindboxEmbeddedBlockViewContentLayoutTest {
     }
 
     @Test
-    fun `content added between the measure and the layout of the block is measured too`() {
+    fun `content added between the measure and the layout of the block is measured to the frame, as FrameLayout would not`() {
         val view = buildView(provider = { SilentProvider(activity) })
         val host = LayoutRequestSwallowingHost(activity).apply {
             addView(view, FRAME_WIDTH, FRAME_HEIGHT)

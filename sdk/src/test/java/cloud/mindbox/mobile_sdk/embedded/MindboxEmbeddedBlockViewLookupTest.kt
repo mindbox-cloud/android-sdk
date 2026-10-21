@@ -56,7 +56,7 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `no config within the timeout collapses the block to empty`() {
+    fun `no config within the timeout fails the block with networkError, a late config still expands it`() {
         val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
         val listener = RecordingListener()
         view.setListener(listener)
@@ -133,7 +133,7 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `a block without a place name hides itself`() {
+    fun `a block without a place name hides itself without a crash`() {
         val view = MindboxEmbeddedBlockView(activity)
         val listener = RecordingListener()
         view.setListener(listener)
@@ -203,7 +203,7 @@ class MindboxEmbeddedBlockViewLookupTest {
     }
 
     @Test
-    fun `the block behaves with no listener at all`() {
+    fun `the block shows and hides itself with no listener at all`() {
         val view = MindboxEmbeddedBlockView(
             activity,
             "main-screen-top",

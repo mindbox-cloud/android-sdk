@@ -420,7 +420,7 @@ class MindboxEmbeddedBlockViewLoadingStrategyTest {
     }
 
     @Test
-    fun `the observer hears whether the change is an animated reveal`() {
+    fun `the observer hears whether the change is an animated reveal, the replay and the loading pass are not`() {
         val heard = mutableListOf<Pair<MindboxEmbeddedBlockAppearance, Boolean>>()
         val view = buildView(loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.HIDDEN)
         view.setAppearanceObserver { shown -> heard.add(shown to view.isRevealAnimated) }

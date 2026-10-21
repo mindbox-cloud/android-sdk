@@ -55,7 +55,7 @@ internal class InAppEventManagerTest {
     }
 
     @Test
-    fun `embedded place request is not a valid in-app event`() {
+    fun `embedded place request is not a valid in-app event and never reaches the overlay conveyor`() {
         assertFalse(
             inAppEventManager.isValidInAppEvent(
                 InAppEventType.EmbeddedPlaceRequested(placeSystemName = PlaceKey.of("main-screen-top")),

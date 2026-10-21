@@ -48,7 +48,7 @@ class EmbeddedContractSerializationTest {
     }
 
     @Test
-    fun `embedded variant with webview layer is parsed`() {
+    fun `embedded variant with webview layer is parsed and structured param values survive as JSON strings`() {
         val form = manager.deserializeToInAppFormDto(
             json(
                 """
@@ -101,7 +101,7 @@ class EmbeddedContractSerializationTest {
     }
 
     @Test
-    fun `form with unknown variant type is dropped whole`() {
+    fun `form with unknown variant type is dropped whole, the way an old SDK survives a new variant`() {
         val form = manager.deserializeToInAppFormDto(
             json(
                 """
@@ -202,7 +202,7 @@ class EmbeddedContractSerializationTest {
     }
 
     @Test
-    fun `explicit null restriction fields do not fail the inapps block`() {
+    fun `explicit null restriction fields and unknown keys do not fail the inapps block`() {
         val config = manager.deserializeToConfigDtoBlank(
             """
             {"inapps":[{"id":"a","isPriority":false,"delayTime":null,

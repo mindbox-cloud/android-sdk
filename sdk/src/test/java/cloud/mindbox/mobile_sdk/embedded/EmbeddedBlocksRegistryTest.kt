@@ -204,7 +204,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `two blocks on the same place both receive the same content`() {
+    fun `two blocks on the same place both receive the same content from one resolve`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns winner()
         val first = RecordingHandle()
         val second = RecordingHandle()
@@ -253,7 +253,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `a block whose host is gone stops holding its place`() {
+    fun `a block let go by a host without a lifecycle owner is not kept alive by the registry`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("story-operation"))
         val controller = controller()
         var handle: RecordingHandle? = RecordingHandle()
@@ -317,7 +317,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `controller never calls selection itself`() {
+    fun `the registry routes and never calls the selection filter itself`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns winner()
         val controller = controller()
         controller.register(place, keptAlive(RecordingHandle()))
@@ -356,7 +356,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `the same winner re-selected keeps the running delay timer`() {
+    fun `the same winner re-selected mid-delay keeps the running timer and its original schedule`() {
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns
             winner(delay = Milliseconds(5_000L))
         val handle = RecordingHandle()
@@ -686,7 +686,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `channels resubscribe after the SDK scope is recreated`() {
+    fun `channels resubscribe on a fresh scope after a soft re-initialization cancelled the old one`() {
         val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
         coEvery { interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)) } returns winner()
         coEvery { interactor.selectInAppForPlace(place, operation) } returns winner()
@@ -728,7 +728,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `startListening leaves live channels alone`() {
+    fun `startListening leaves live channels alone, one subscription per channel and no re-resolve`() {
         val controller = controller()
         controller.register(place, keptAlive(RecordingHandle()))
         idleMain()

@@ -588,7 +588,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `showInAppById answers shown once the window is on screen, and only then`() = runTest {
+    fun `showInAppById answers shown once the window is on screen, and a later dismiss is not a second answer`() = runTest {
         val inApp = InAppStub.getInApp().copy(id = "tap-id")
         val variant = inApp.form.variants.first()
         coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
@@ -812,7 +812,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `a second show report of the same candidate is not counted again`() = runTest {
+    fun `a second show report of the same candidate, from a paused and a restored holder, is not counted again`() = runTest {
         val inApp = InAppStub.getInApp()
         val callbacks = managerWithCapturedCallbacks(inApp)
 

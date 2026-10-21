@@ -105,7 +105,7 @@ class WebViewActionHandlersTest {
     }
 
     @Test
-    fun `an action that needs the user is refused while nobody is looking`() {
+    fun `an action that needs the user is refused before its handler runs while nobody is looking`() {
         val handlers = WebViewActionHandlers()
         var ran = false
         handlers.register(WebViewAction.OPEN_LINK) {

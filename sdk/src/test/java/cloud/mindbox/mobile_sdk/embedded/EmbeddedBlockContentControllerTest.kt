@@ -402,7 +402,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `config timeout ships the anonymous ShowFailure`() {
+    fun `config timeout ships a ShowFailure with no in-app to name`() {
         val tracker = mockk<InAppFailureTracker>(relaxed = true)
         val controller = EmbeddedBlockContentController(
             placeSystemName = "main-screen-top",
@@ -619,7 +619,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `same winner with same params does not touch the content`() {
+    fun `same winner with same params neither recreates nor releases the content`() {
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -645,7 +645,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `content delivered while paused is applied on the next start`() {
+    fun `content delivered while paused is applied on the next start, nothing is drawn in the background`() {
         val controller = controller()
         controller.start()
         controller.pause()
@@ -677,7 +677,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `failed state re-resolves on returning to the screen`() {
+    fun `failed state re-resolves on returning to the screen, the failed provider is dropped, not resumed`() {
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -949,7 +949,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `same winner pointing at another page rebuilds the content`() {
+    fun `same winner at another page address rebuilds the content instead of deduplicating it`() {
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -1024,7 +1024,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a block that drew nothing asks for its content again on return`() {
+    fun `a block whose page rendered zero elements asks for its content again on return, as on iOS`() {
         val controller = controller()
         controller.start()
         blocksRegistry.pushContent("main-screen-top", content)
@@ -1095,7 +1095,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `crash in the host state listener stays contained`() {
+    fun `crash in the host state listener is logged, never rethrown`() {
         val controller = controller()
         controller.onStateChange = { error("host listener boom") }
 
