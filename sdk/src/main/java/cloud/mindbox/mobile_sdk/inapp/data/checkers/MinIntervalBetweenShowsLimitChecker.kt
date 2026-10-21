@@ -23,7 +23,6 @@ internal class MinIntervalBetweenShowsLimitChecker(
             }
 
             else -> {
-                // Moved by counted shows and closes only: an in-app with unlimited frequency (a story) never moves it.
                 val lastDismissInappTime: Timestamp = inAppRepository.getLastInappDismissTime()
                 val lastReservationTime: Timestamp = reservations.maxOfOrNull { reservation -> reservation.reservedAt.ms }
                     ?.let(::Timestamp) ?: Timestamp(0L)

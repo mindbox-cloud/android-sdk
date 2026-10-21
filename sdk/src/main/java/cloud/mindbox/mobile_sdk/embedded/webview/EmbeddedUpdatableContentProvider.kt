@@ -12,13 +12,6 @@ internal enum class DataPushOutcome {
     ABANDONED,
 }
 
-/**
- * An updatable provider sends new data to its page in place over the bridge (`initDataUpdated`)
- * without recreating the webview — used when a new config keeps the same winner but changes its
- * params, and when a new session picks the same winner again. It also accounts the page's show
- * once per session: the session it confirms, whether the show is withheld, whether the page
- * renders nothing, and the frequency and tags the show is counted with.
- **/
 internal interface EmbeddedUpdatableContentProvider : EmbeddedContentProvider {
 
     @MainThread

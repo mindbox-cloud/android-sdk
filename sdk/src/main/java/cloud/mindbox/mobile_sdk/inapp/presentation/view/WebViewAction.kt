@@ -207,11 +207,6 @@ internal fun Gson.toBridgeJson(message: BridgeMessage, sentAction: String?): Str
     return toJson(toJsonTree(message).asJsonObject.apply { addProperty("action", sentAction) })
 }
 
-/**
- * The one error-payload rule for every surface: a sync-operation failure already carries the
- * structural payload the page's tracker dispatches on and must pass through untouched — running
- * it through [Gson.toJson] again would double-encode it.
- */
 internal fun Gson.toBridgeErrorPayload(error: Throwable): String = when (error) {
     is WebViewSyncOperationException -> error.payloadJson
     else -> toJson(BridgeErrorPayload(error = error.bridgeErrorCode.wireValue))
@@ -311,7 +306,6 @@ internal fun WebViewActionHandlers.dispatch(
             runCatching { suspending(message) }
                 .onSuccess(respond)
                 .onFailure { error ->
-                    // A cancelled scope is teardown, not an answer the page is waiting for.
                     if (error is CancellationException) throw error
                     refuse(error)
                 }

@@ -109,7 +109,6 @@ internal class EmbeddedBlockShimmerView(
         val shader = shader ?: return
         shaderMatrix.setTranslate(currentLayerLeft() * width, 0f)
         shader.setLocalMatrix(shaderMatrix)
-        // Set again on purpose: a hardware canvas does not pick a matrix change up otherwise.
         paint.shader = shader
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
         if (isSweeping) postInvalidateOnAnimation()

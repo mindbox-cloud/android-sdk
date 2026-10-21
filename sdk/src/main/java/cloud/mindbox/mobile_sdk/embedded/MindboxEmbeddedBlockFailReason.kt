@@ -3,15 +3,11 @@ package cloud.mindbox.mobile_sdk.embedded
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 
 /**
- * Why a [MindboxEmbeddedBlockView] failed — the argument of [MindboxEmbeddedBlockListener.onFail].
- *
- * A class with constants, not an enum or a sealed class: later SDK versions may add reasons, and
- * a `when` on it always needs an `else` branch, so a new reason breaks no host. Meant for the
- * host's logs and analytics — the block has already applied its own behavior, nothing has to be
- * decided from it.
+ * Why a block failed, for logs and analytics. A class with constants, not an enum: later SDK
+ * versions may add reasons, so a `when` on it needs an `else` branch.
  */
 public class MindboxEmbeddedBlockFailReason private constructor(
-    /** The stable name of the reason, the same on every platform. */
+    /** The name of the reason, the same on every platform. */
     public val value: String,
 ) {
 
@@ -23,17 +19,11 @@ public class MindboxEmbeddedBlockFailReason private constructor(
 
     public companion object {
 
-        /**
-         * The content is unavailable because of the environment: no network or no config, the SDK
-         * gave no answer within its wait budget, or the block page did not load.
-         */
+        /** No network or no config, no answer within the timeout, or the page did not load. */
         @JvmField
         public val NETWORK_ERROR: MindboxEmbeddedBlockFailReason = MindboxEmbeddedBlockFailReason("networkError")
 
-        /**
-         * An error on the Mindbox side: the page loaded but did not report its content or reported
-         * something unusable, or the SDK failed inside.
-         */
+        /** The page did not report usable content, or the SDK failed inside. */
         @JvmField
         public val INTERNAL_ERROR: MindboxEmbeddedBlockFailReason = MindboxEmbeddedBlockFailReason("internalError")
     }

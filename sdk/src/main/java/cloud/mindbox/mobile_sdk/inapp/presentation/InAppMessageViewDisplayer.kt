@@ -20,12 +20,6 @@ internal interface InAppMessageViewDisplayer {
         tags: Map<String, String>? = null,
     )
 
-    /**
-     * An invited show: closes whatever is on screen with honest dismiss accounting and presents
-     * [inAppType] immediately — past the queue, the lock and every limit. A tap that does nothing
-     * is a defect. [extraParams] travel into the shown page's start payload untouched.
-     * Main thread only.
-     */
     fun showInAppMessageNow(
         inAppType: InAppType,
         inAppActionCallbacks: InAppActionCallbacks,

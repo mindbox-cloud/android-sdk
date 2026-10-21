@@ -62,7 +62,6 @@ internal interface PresentationModule : MindboxModule {
     val webPageRegistry: MindboxWebPageRegistry
     val embeddedBlocksRegistry: EmbeddedBlocksRegistry
 
-    /** The registry only if a block has already asked for it — never creates one. */
     val embeddedBlocksRegistryIfCreated: EmbeddedBlocksRegistry?
     val embeddedBlockContentStore: EmbeddedBlockContentStore
     val operationTagsResolver: OperationTagsResolver
@@ -77,7 +76,6 @@ internal interface DataModule : MindboxModule {
     val sessionStorageManager: SessionStorageManager
     val mobileConfigRepository: MobileConfigRepository
 
-    /** The repository only if something already asked for it — never creates one. */
     val mobileConfigRepositoryIfCreated: MobileConfigRepository?
     val mobileConfigSerializationManager: MobileConfigSerializationManager
     val inAppWebViewPrewarmManager: InAppWebViewPrewarmManager
