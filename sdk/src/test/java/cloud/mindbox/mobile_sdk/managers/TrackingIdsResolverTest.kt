@@ -14,6 +14,7 @@ import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -97,9 +98,11 @@ class TrackingIdsResolverImplTest {
 
     private fun handlerThatHangs(): PushServiceHandler =
         mockk<PushServiceHandler>().also { handler ->
+            every { handler.notificationProvider } returns "HCM"
+            every { handler.trackingIdType } returns HUAWEI
             every { handler.tryGetTrackingId(context) } answers {
                 Thread.sleep(300L)
-                TrackingIdResult.Denied(GOOGLE)
+                TrackingIdResult.Denied(HUAWEI)
             }
         }
 
@@ -345,6 +348,27 @@ class TrackingIdsResolverImplTest {
         val payload = resolverWithHangingProvider().resolve(context)
 
         assertEquals(emptyList<TrackingId>(), payload)
+    }
+
+    @Test
+    fun `a denial that came in time is applied while the hanging provider keeps its value`() = runBlocking {
+        lastSent = STORED_BOTH
+        val resolver = resolverWithHangingProvider(TrackingIdResult.Denied(GOOGLE))
+
+        val payload = resolver.resolve(context)
+
+        assertEquals(listOf(huaweiId), payload)
+        assertTrue(resolver.hasChanged(payload))
+    }
+
+    @Test
+    fun `a fresh value that came in time is applied while the hanging provider keeps its value`() = runBlocking {
+        lastSent = STORED_BOTH
+        val renewed = "7f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b"
+
+        val payload = resolverWithHangingProvider(success(GOOGLE, renewed)).resolve(context)
+
+        assertEquals(listOf(TrackingId(GOOGLE, renewed), huaweiId), payload)
     }
 
     @Test
