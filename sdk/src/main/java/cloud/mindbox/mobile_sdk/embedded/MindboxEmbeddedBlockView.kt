@@ -146,6 +146,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var isReleased = false
     private var shownContent: View? = null
     private var coverView: View? = null
+    private var coveredPageFocusability: Pair<Boolean, Boolean>? = null
     private var fadingOutView: View? = null
     private var fadeAnimator: Animator? = null
     private var growthAnimator: Animator? = null
@@ -688,6 +689,10 @@ public class MindboxEmbeddedBlockView internal constructor(
         shownContent?.let { content ->
             content.alpha = 0f
             content.importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+            coveredPageFocusability = content.isFocusable to content.isFocusableInTouchMode
+            content.clearFocus()
+            content.isFocusableInTouchMode = false
+            content.isFocusable = false
         }
         (placeholder.parent as? ViewGroup)?.removeView(placeholder)
         addView(placeholder, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -700,15 +705,24 @@ public class MindboxEmbeddedBlockView internal constructor(
         removeView(cover)
         shownContent?.let { content ->
             content.alpha = 1f
-            content.importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_AUTO
+            letPageInteract(content)
         }
+    }
+
+    private fun letPageInteract(content: View) {
+        content.importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_AUTO
+        coveredPageFocusability?.let { (isFocusable, isFocusableInTouchMode) ->
+            content.isFocusableInTouchMode = isFocusableInTouchMode
+            content.isFocusable = isFocusable
+        }
+        coveredPageFocusability = null
     }
 
     private fun uncover(animated: Boolean) {
         val cover = coverView ?: return
         coverView = null
         val content = shownContent
-        content?.importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_AUTO
+        content?.let(::letPageInteract)
         if (!animated || content == null) {
             removeView(cover)
             content?.alpha = 1f

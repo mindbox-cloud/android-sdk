@@ -93,12 +93,11 @@ internal class EmbeddedBlockContentController(
     var isPageCovered = false
         private set
     private var isNewDataSentToCoveredPage = false
-    private var hasCoveredPageTakenNewData = false
     private var wasCoverReported = false
 
     val isRetainable: Boolean
         get() = !isReleased && heldOutcome == null &&
-            lastReportedState == EmbeddedBlockState.Ready && provider?.contentView != null
+            (lastReportedState == EmbeddedBlockState.Ready || isPageCovered) && provider?.contentView != null
 
     val heldOutcome: EmbeddedBlockState?
         get() = heldCollapse ?: EmbeddedBlockState.Empty.takeIf { isShownPageEmptied && !hasParkedShowableContent }
@@ -214,10 +213,11 @@ internal class EmbeddedBlockContentController(
             }
         } == true
         coverPageOfEndedSession()
+        dropDataSentInEndedSession()
 
         provider?.let { current ->
             current.onStateChange = ::onProviderState
-            if (!isPageCovered || hasCoveredPageTakenNewData) readyBudget.armIfNeeded()
+            if (!isPageCovered || isNewDataSentToCoveredPage) readyBudget.armIfNeeded()
             armCoverWaitIfNeeded()
             if (!startProvider(current, appliedContent)) return
         }
@@ -296,6 +296,7 @@ internal class EmbeddedBlockContentController(
 
     override fun onReturnChecked() {
         coverPageOfEndedSession()
+        dropDataSentInEndedSession()
         deferredParkedMayHold?.let { mayHold ->
             deferredParkedMayHold = null
             if (isActive && !applyParkedAnswer(mayHold)) {
@@ -346,7 +347,10 @@ internal class EmbeddedBlockContentController(
     override fun onSessionRenewed() {
         if (isReleased) return
         if (isStarted) {
+            hasPendingDelivery = false
             coverPageOfEndedSession()
+            dropDataSentInEndedSession()
+            armCoverWaitIfNeeded()
             return
         }
         if (isAwayInBackground || !holdsLiveContent) return
@@ -371,7 +375,6 @@ internal class EmbeddedBlockContentController(
         )
         isPageCovered = true
         isNewDataSentToCoveredPage = false
-        hasCoveredPageTakenNewData = false
         attemptStartTick = attemptStartTick ?: monotonicNow()
         updatablePage?.setCovered(true)
         armCoverWaitIfNeeded()
@@ -386,7 +389,6 @@ internal class EmbeddedBlockContentController(
         if (isPageCovered) updatablePage?.setCovered(false)
         isPageCovered = false
         isNewDataSentToCoveredPage = false
-        hasCoveredPageTakenNewData = false
     }
 
     private val isCoveredAwaitingAnswer: Boolean
@@ -394,7 +396,14 @@ internal class EmbeddedBlockContentController(
 
     private fun awaitNextAnswerUnderCover() {
         isNewDataSentToCoveredPage = false
+        readyBudget.reset()
         armCoverWaitIfNeeded()
+    }
+
+    private fun dropDataSentInEndedSession() {
+        if (!isPageCovered || !isNewDataSentToCoveredPage || !isOfEndedSession(pageSessionEpoch)) return
+        mindboxLogI("[EmbeddedBlock] The session whose data was sent to the covered page of '$placeSystemName' has ended, waiting for the new session's answer")
+        awaitNextAnswerUnderCover()
     }
 
     private fun applyParkedAnswer(mayHold: Boolean): Boolean {
@@ -699,6 +708,7 @@ internal class EmbeddedBlockContentController(
         if (isNewSession && isPageCovered) {
             isNewDataSentToCoveredPage = true
             configBudget.reset()
+            if (isStarted) readyBudget.armIfNeeded()
         }
         val onResult: (DataPushOutcome) -> Unit = { outcome ->
             mainHandler.post {
@@ -709,10 +719,6 @@ internal class EmbeddedBlockContentController(
                         appliedDescriptor = descriptor
                         appliedContent = content
                         appliedSessionEpoch = push.sessionEpoch
-                        if (isPageCovered) {
-                            hasCoveredPageTakenNewData = true
-                            if (isStarted) readyBudget.armIfNeeded()
-                        }
                     }
                     outcome == DataPushOutcome.ABANDONED -> {
                         awaitNextAnswerUnderCover()
@@ -731,6 +737,7 @@ internal class EmbeddedBlockContentController(
                                 "keeping it until the new session answers"
                         )
                     }
+                    isPageCovered -> failPresentation("Page did not confirm the new session's data")
                     else -> {
                         mindboxLogW("[EmbeddedBlock] Block '$placeSystemName': the page never confirmed the data push — rebuilding it")
                         recreateProvider(content, layer, answerForRebuild(current, answer, isNewSession))
@@ -823,7 +830,7 @@ internal class EmbeddedBlockContentController(
     }
 
     private val hasCoveredPageRenderedNewData: Boolean
-        get() = isNewDataSentToCoveredPage && updatablePage?.hasRenderedLastData != false
+        get() = isNewDataSentToCoveredPage && updatablePage?.hasRenderedLastData != false && !isOfEndedSession(pageSessionEpoch)
 
     private val rendersPageOfEndedSession: Boolean
         get() = !isPageCovered && isStarted && updatablePage != null &&
@@ -961,12 +968,12 @@ internal class EmbeddedBlockContentController(
 
     private fun onReadyTimeout() {
         if (!isStarted || provider == null) return
+        failPresentation("Page did not send contentRendered within ${readyTimeout.interval / 1_000}s")
+    }
+
+    private fun failPresentation(description: String) {
         mindboxLogI("[EmbeddedBlock] Block '$placeSystemName': reporting presentation_failed for in-app ${appliedContent?.inAppId}")
-        sendFailure(
-            content = appliedContent,
-            code = FailureReason.PRESENTATION_FAILED,
-            description = "Page did not send contentRendered within ${readyTimeout.interval / 1_000}s",
-        )
+        sendFailure(content = appliedContent, code = FailureReason.PRESENTATION_FAILED, description = description)
         hasGivenUp = true
         dropProvider()
         report(EmbeddedBlockState.Failed(FailureReason.PRESENTATION_FAILED))

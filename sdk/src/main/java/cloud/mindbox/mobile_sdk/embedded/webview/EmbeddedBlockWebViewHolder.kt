@@ -137,7 +137,7 @@ internal class EmbeddedBlockWebViewHolder(
 
             override val hostInAppId: String get() = inAppId
             override val isRequesterActive: Boolean
-                get() = this@EmbeddedBlockWebViewHolder.isUserPresent && hostActivity?.isFinishing != true
+                get() = this@EmbeddedBlockWebViewHolder.isUserPresent && !isCovered && hostActivity?.isFinishing != true
 
             override fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit) {
                 val controller = webViewController ?: return

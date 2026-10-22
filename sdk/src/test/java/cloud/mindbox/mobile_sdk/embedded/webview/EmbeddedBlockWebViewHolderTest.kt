@@ -221,6 +221,19 @@ class EmbeddedBlockWebViewHolderTest {
         lastOutgoingMessage()?.get("payload")?.asString?.let { JsonParser.parseString(it).asJsonObject }
 
     @Test
+    fun `a show requested just before the page was covered is refused at its final check`() {
+        givenShowPathCapturesRequester()
+        startAndAwaitPageLoad()
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { outcomes.isCaptured }
+        assertTrue(requesterIsActive.captured())
+
+        holder.setCovered(true)
+
+        assertFalse(requesterIsActive.captured())
+    }
+
+    @Test
     fun `showInApp from a page covered until the new session answers is refused with not_visible`() {
         startAndAwaitPageLoad()
         holder.setCovered(true)

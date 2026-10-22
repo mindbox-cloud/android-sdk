@@ -1,5 +1,9 @@
 package cloud.mindbox.mobile_sdk.embedded
 
+import cloud.mindbox.mobile_sdk.embedded.webview.DataPushOutcome
+import cloud.mindbox.mobile_sdk.embedded.webview.EmbeddedUpdatableContentProvider
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import android.app.Activity
 import android.content.Context
 import android.os.Bundle
@@ -60,7 +64,9 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         override fun startListening() = Unit
 
-        override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = true
+        var endedSessions = setOf<SessionEpoch>()
+
+        override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = sessionEpoch !in endedSessions
 
         override fun deferUntilReturnChecked(): Boolean = false
 
@@ -92,6 +98,60 @@ class MindboxEmbeddedBlockViewRetainTest {
 
         override fun release() {
             releaseCount++
+        }
+    }
+
+    private class CoverablePage(context: Context) : EmbeddedUpdatableContentProvider {
+        override var onStateChange: ((EmbeddedBlockState) -> Unit)? = null
+        override val contentView: View = View(context)
+        var releaseCount = 0
+        var pushResult: ((DataPushOutcome) -> Unit)? = null
+        override var hasRenderedLastData = true
+
+        override fun start() {
+            onStateChange?.invoke(EmbeddedBlockState.Ready)
+        }
+
+        override fun pause() = Unit
+
+        override fun release() {
+            releaseCount++
+        }
+
+        override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
+            hasRenderedLastData = false
+            pushResult = onResult
+        }
+
+        override fun refreshForSession(
+            params: Map<String, String>,
+            sessionEpoch: SessionEpoch,
+            selectionTime: Milliseconds,
+            onResult: (DataPushOutcome) -> Unit,
+        ) {
+            hasRenderedLastData = false
+            pushResult = onResult
+        }
+
+        override fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds) = Unit
+
+        override fun confirmForSession(sessionEpoch: SessionEpoch) = Unit
+
+        override fun timeToDisplaySoFar(sessionEpoch: SessionEpoch): Milliseconds? = null
+
+        override fun withholdShow(isWithheld: Boolean) = Unit
+
+        override val rendersNothing = false
+
+        override var onRendersNothing: (() -> Unit)? = null
+
+        override fun setCovered(isCovered: Boolean) = Unit
+
+        override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) = Unit
+
+        fun render() {
+            hasRenderedLastData = true
+            onStateChange?.invoke(EmbeddedBlockState.Ready)
         }
     }
 
@@ -150,6 +210,8 @@ class MindboxEmbeddedBlockViewRetainTest {
     private val blocksRegistry = FakeBlocksRegistry()
     private val store = EmbeddedBlockContentStore(maxRetained = 3)
     private val providers = mutableListOf<FakeProvider>()
+    private val pages = mutableListOf<CoverablePage>()
+    private var makesPages = false
     private val loads = mutableListOf<MindboxEmbeddedBlockView>()
     private val empties = mutableListOf<MindboxEmbeddedBlockView>()
     private val fails = mutableListOf<MindboxEmbeddedBlockView>()
@@ -168,7 +230,9 @@ class MindboxEmbeddedBlockViewRetainTest {
             placeName,
             contentController = EmbeddedBlockContentController(
                 placeSystemName = placeName,
-                providerFactory = { _, _ -> FakeProvider(context).also { providers.add(it) } },
+                providerFactory = { _, _ ->
+                    if (makesPages) CoverablePage(context).also { pages.add(it) } else FakeProvider(context).also { providers.add(it) }
+                },
                 blocksRegistry = { blocksRegistry },
                 hostActivity = { context.findActivity() },
                 isAppInForeground = { isAppInForeground },
@@ -289,6 +353,43 @@ class MindboxEmbeddedBlockViewRetainTest {
         assertEquals(1, providers.size)
         assertEquals(0, store.size)
         assertSame(secondBlock, providers.single().contentView.parent)
+        assertEquals(listOf(firstBlock, secondBlock), loads)
+    }
+
+    @Test
+    fun `a page covered for a new session stays with the fragment and comes back under the placeholder`() {
+        makesPages = true
+        val home = openHome()
+        deliverContent()
+        val firstBlock = home.block
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        blocksRegistry.handles.single().onSessionRenewed()
+        idle()
+        assertEquals(2, firstBlock.childCount)
+
+        goForward()
+
+        assertEquals(1, store.size)
+        assertEquals(0, pages.single().releaseCount)
+
+        goBack()
+        val secondBlock = home.block
+        show(secondBlock)
+
+        assertEquals(1, pages.size)
+        assertEquals(0, store.size)
+        assertEquals(2, secondBlock.childCount)
+        assertSame(pages.single().contentView, secondBlock.getChildAt(0))
+        assertEquals(0f, pages.single().contentView.alpha)
+
+        blocksRegistry.handles.single().onContentResolved(InAppStub.getEmbedded(), placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        pages.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        pages.single().render()
+        idle()
+
+        assertEquals(1, secondBlock.childCount)
+        assertSame(pages.single().contentView, secondBlock.getChildAt(0))
+        assertEquals(1f, pages.single().contentView.alpha)
         assertEquals(listOf(firstBlock, secondBlock), loads)
     }
 

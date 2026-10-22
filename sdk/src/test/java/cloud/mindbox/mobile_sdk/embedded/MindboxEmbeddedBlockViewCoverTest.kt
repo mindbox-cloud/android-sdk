@@ -233,6 +233,28 @@ class MindboxEmbeddedBlockViewCoverTest {
     }
 
     @Test
+    fun `the covered page loses keyboard focus and gets it back once uncovered`() {
+        val (view, page) = shownPage()
+        page.contentView.isFocusableInTouchMode = true
+        page.contentView.isFocusable = true
+        page.contentView.requestFocus()
+        assertTrue(page.contentView.isFocused)
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        blocksRegistry.lastHandle?.onSessionRenewed()
+        idle()
+
+        assertFalse(page.contentView.isFocused)
+        assertFalse(page.contentView.isFocusable)
+        assertFalse(page.contentView.isFocusableInTouchMode)
+
+        renderNewSessionData(page)
+
+        assertTrue(page.contentView.isFocusable)
+        assertTrue(page.contentView.isFocusableInTouchMode)
+        assertEquals(1, view.childCount)
+    }
+
+    @Test
     fun `the page rendering the new session's data takes the placeholder off and gets taps again`() {
         val (view, page) = coveredPage()
 
