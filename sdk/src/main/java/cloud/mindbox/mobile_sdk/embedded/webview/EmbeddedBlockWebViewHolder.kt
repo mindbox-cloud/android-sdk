@@ -152,6 +152,10 @@ internal class EmbeddedBlockWebViewHolder(
                     mindboxLogI("[EmbeddedBlock] Refused a show request from a block that is not shown")
                     throw BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, "The block is not shown: $lastState")
                 }
+                if (isCovered) {
+                    mindboxLogI("[EmbeddedBlock] Refused a show request from a page covered until the new session answers")
+                    throw BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, "The block is covered until the new session answers")
+                }
             }
         })
     }
@@ -311,6 +315,12 @@ internal class EmbeddedBlockWebViewHolder(
 
     override val hasRenderedLastData: Boolean
         get() = didReportShownContent
+
+    @Volatile private var isCovered = false
+
+    override fun setCovered(isCovered: Boolean) {
+        this.isCovered = isCovered
+    }
 
     override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
         pendingAckJob?.cancel()

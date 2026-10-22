@@ -33,6 +33,9 @@ internal interface EmbeddedUpdatableContentProvider : EmbeddedContentProvider {
     val hasRenderedLastData: Boolean
 
     @MainThread
+    fun setCovered(isCovered: Boolean)
+
+    @MainThread
     fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds)
 
     @MainThread

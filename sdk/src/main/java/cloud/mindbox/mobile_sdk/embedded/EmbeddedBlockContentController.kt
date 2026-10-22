@@ -218,6 +218,7 @@ internal class EmbeddedBlockContentController(
         provider?.let { current ->
             current.onStateChange = ::onProviderState
             if (!isPageCovered || hasCoveredPageTakenNewData) readyBudget.armIfNeeded()
+            armCoverWaitIfNeeded()
             if (!startProvider(current, appliedContent)) return
         }
 
@@ -274,7 +275,7 @@ internal class EmbeddedBlockContentController(
             return
         }
         dropContentWaitingForReturnCheck()
-        applyAnswer(content, answer, mayHold = true, isParked = false)
+        if (!applyAnswer(content, answer, mayHold = true, isParked = false)) armCoverWaitIfNeeded()
     }
 
     private val ParkedAnswer.waitsForReturnCheck: Boolean
@@ -297,7 +298,9 @@ internal class EmbeddedBlockContentController(
         coverPageOfEndedSession()
         deferredParkedMayHold?.let { mayHold ->
             deferredParkedMayHold = null
-            if (isActive && !applyParkedAnswer(mayHold) && hasNoContentComing) beginWaitingForContent()
+            if (isActive && !applyParkedAnswer(mayHold)) {
+                if (hasNoContentComing) beginWaitingForContent() else armCoverWaitIfNeeded()
+            }
         }
         sendDueSessionRefresh()
     }
@@ -370,13 +373,28 @@ internal class EmbeddedBlockContentController(
         isNewDataSentToCoveredPage = false
         hasCoveredPageTakenNewData = false
         attemptStartTick = attemptStartTick ?: monotonicNow()
+        updatablePage?.setCovered(true)
+        armCoverWaitIfNeeded()
         report(EmbeddedBlockState.Loading)
     }
 
+    private fun armCoverWaitIfNeeded() {
+        if (isStarted && isCoveredAwaitingAnswer && !hasPendingDelivery) configBudget.armIfNeeded()
+    }
+
     private fun uncoverPage() {
+        if (isPageCovered) updatablePage?.setCovered(false)
         isPageCovered = false
         isNewDataSentToCoveredPage = false
         hasCoveredPageTakenNewData = false
+    }
+
+    private val isCoveredAwaitingAnswer: Boolean
+        get() = isPageCovered && !isNewDataSentToCoveredPage
+
+    private fun awaitNextAnswerUnderCover() {
+        isNewDataSentToCoveredPage = false
+        armCoverWaitIfNeeded()
     }
 
     private fun applyParkedAnswer(mayHold: Boolean): Boolean {
@@ -678,7 +696,10 @@ internal class EmbeddedBlockContentController(
         val isNewSession = isNewSessionFor(answer)
         val push = DataPush(descriptor, sessionEpoch = if (isNewSession) answer.sessionEpoch else pageSessionEpoch)
         dataPush = push
-        if (isNewSession && isPageCovered) isNewDataSentToCoveredPage = true
+        if (isNewSession && isPageCovered) {
+            isNewDataSentToCoveredPage = true
+            configBudget.reset()
+        }
         val onResult: (DataPushOutcome) -> Unit = { outcome ->
             mainHandler.post {
                 if (isReleased || provider !== current || epoch != updateEpoch) return@post
@@ -694,7 +715,7 @@ internal class EmbeddedBlockContentController(
                         }
                     }
                     outcome == DataPushOutcome.ABANDONED -> {
-                        isNewDataSentToCoveredPage = false
+                        awaitNextAnswerUnderCover()
                         mindboxLogI(
                             "[EmbeddedBlock] The data push to the page of '$placeSystemName' was abandoned before the page answered, " +
                                 "the place's next answer sends it again"
@@ -704,7 +725,7 @@ internal class EmbeddedBlockContentController(
                         mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed while the block has nothing to show, not rebuilding")
                     }
                     isOfEndedSession(answer.sessionEpoch) -> {
-                        isNewDataSentToCoveredPage = false
+                        awaitNextAnswerUnderCover()
                         mindboxLogI(
                             "[EmbeddedBlock] The page of '$placeSystemName' did not take the data of a session that has ended, " +
                                 "keeping it until the new session answers"
@@ -916,7 +937,10 @@ internal class EmbeddedBlockContentController(
     }
 
     private fun onConfigTimeout() {
-        if (isReleased || hasEverResolved()) return
+        if (isReleased || (hasEverResolved() && (!isCoveredAwaitingAnswer || hasPendingDelivery))) {
+            configBudget.reset()
+            return
+        }
         mindboxLogW(
             "[EmbeddedBlock] No answer within ${configWaitDuration.interval}ms of waiting for " +
                 "'$placeSystemName', failing; a later answer is dropped, the next appearance " +
@@ -928,6 +952,7 @@ internal class EmbeddedBlockContentController(
             waited = configWaitDuration,
             phase = if (hasConfig()) WaitBudgetPhase.RESOLVE_PENDING else WaitBudgetPhase.CONFIG_MISSING,
         )
+        if (isPageCovered) forgetAppliedContent()
         report(EmbeddedBlockState.Failed(FailureReason.WAIT_BUDGET_EXCEEDED))
     }
 

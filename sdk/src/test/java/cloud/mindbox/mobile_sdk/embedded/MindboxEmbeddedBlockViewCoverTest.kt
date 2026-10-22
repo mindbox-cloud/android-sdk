@@ -53,6 +53,8 @@ class MindboxEmbeddedBlockViewCoverTest {
 
         override var hasRenderedLastData = true
 
+        override fun setCovered(isCovered: Boolean) = Unit
+
         override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
             hasRenderedLastData = false
             pushResult = onResult

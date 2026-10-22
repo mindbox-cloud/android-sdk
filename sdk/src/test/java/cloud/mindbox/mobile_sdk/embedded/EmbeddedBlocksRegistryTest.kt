@@ -3172,6 +3172,8 @@ class EmbeddedBlocksRegistryTest {
 
         override val hasRenderedLastData = true
 
+        override fun setCovered(isCovered: Boolean) = Unit
+
         override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) = Unit
     }
 

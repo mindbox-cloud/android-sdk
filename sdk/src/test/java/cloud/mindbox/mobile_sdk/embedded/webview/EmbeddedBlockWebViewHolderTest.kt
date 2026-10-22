@@ -221,6 +221,19 @@ class EmbeddedBlockWebViewHolderTest {
         lastOutgoingMessage()?.get("payload")?.asString?.let { JsonParser.parseString(it).asJsonObject }
 
     @Test
+    fun `showInApp from a page covered until the new session answers is refused with not_visible`() {
+        startAndAwaitPageLoad()
+        holder.setCovered(true)
+
+        postFromPage(request(action = "showInApp", payload = """{"inappId":"inapp-1"}"""))
+        await { lastOutgoingMessage()?.get("action")?.asString == "showInApp" }
+
+        assertEquals("error", lastOutgoingMessage()?.get("type")?.asString)
+        assertEquals("not_visible", lastOutgoingPayload()!!.get("error").asString)
+        verify(exactly = 0) { inAppMessageManager.showInAppById(any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `content page is fetched through the gateway and loaded with the base url`() {
         startAndAwaitPageLoad()
 
