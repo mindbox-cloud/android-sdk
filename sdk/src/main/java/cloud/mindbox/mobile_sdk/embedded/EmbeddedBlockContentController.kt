@@ -89,6 +89,13 @@ internal class EmbeddedBlockContentController(
 
     var lastReportedState: EmbeddedBlockState? = null
         private set
+
+    var isPageCovered = false
+        private set
+    private var isNewDataSentToCoveredPage = false
+    private var hasCoveredPageTakenNewData = false
+    private var wasCoverReported = false
+
     val isRetainable: Boolean
         get() = !isReleased && heldOutcome == null &&
             lastReportedState == EmbeddedBlockState.Ready && provider?.contentView != null
@@ -206,10 +213,11 @@ internal class EmbeddedBlockContentController(
                 landParkedAnswer(mayHold = isBackFromBackground)
             }
         } == true
+        coverPageOfEndedSession()
 
         provider?.let { current ->
             current.onStateChange = ::onProviderState
-            readyBudget.armIfNeeded()
+            if (!isPageCovered || hasCoveredPageTakenNewData) readyBudget.armIfNeeded()
             if (!startProvider(current, appliedContent)) return
         }
 
@@ -286,6 +294,7 @@ internal class EmbeddedBlockContentController(
     }
 
     override fun onReturnChecked() {
+        coverPageOfEndedSession()
         deferredParkedMayHold?.let { mayHold ->
             deferredParkedMayHold = null
             if (isActive && !applyParkedAnswer(mayHold) && hasNoContentComing) beginWaitingForContent()
@@ -332,8 +341,42 @@ internal class EmbeddedBlockContentController(
     }
 
     override fun onSessionRenewed() {
-        if (isStarted || isReleased || isAwayInBackground || !holdsLiveContent) return
+        if (isReleased) return
+        if (isStarted) {
+            coverPageOfEndedSession()
+            return
+        }
+        if (isAwayInBackground || !holdsLiveContent) return
         leftBehind = true
+    }
+
+    private fun coverPageOfEndedSession() {
+        if (isPageCovered || !isStarted || updatablePage == null) return
+        if (lastReportedState != EmbeddedBlockState.Ready || !isOfEndedSession(pageSessionEpoch)) return
+        coverPage()
+    }
+
+    private fun coverShownPage() {
+        if (isPageCovered || !isStarted || lastReportedState != EmbeddedBlockState.Ready) return
+        coverPage()
+    }
+
+    private fun coverPage() {
+        mindboxLogI(
+            "[EmbeddedBlock] Block '$placeSystemName' shows the page of an ended session, " +
+                "covering it with the placeholder until the new session's content renders"
+        )
+        isPageCovered = true
+        isNewDataSentToCoveredPage = false
+        hasCoveredPageTakenNewData = false
+        attemptStartTick = attemptStartTick ?: monotonicNow()
+        report(EmbeddedBlockState.Loading)
+    }
+
+    private fun uncoverPage() {
+        isPageCovered = false
+        isNewDataSentToCoveredPage = false
+        hasCoveredPageTakenNewData = false
     }
 
     private fun applyParkedAnswer(mayHold: Boolean): Boolean {
@@ -353,11 +396,6 @@ internal class EmbeddedBlockContentController(
             parkedAnswer = null
             dropAnswerOfEndedSession()
         }
-        if (parkedAnswer != null || !isOfEndedSession(pageSessionEpoch)) return
-        mindboxLogI(
-            "[EmbeddedBlock] Block '$placeSystemName' is back on its screen, " +
-                "keeping its page of an ended session until the new session answers"
-        )
     }
 
     private fun applyParked(parked: ParkedAnswer, mayHold: Boolean): Boolean {
@@ -450,7 +488,7 @@ internal class EmbeddedBlockContentController(
     }
 
     private fun holdsShownContent(answer: EmbeddedPlaceAnswer): Boolean =
-        !answer.isByOperation && lastReportedState == EmbeddedBlockState.Ready
+        !answer.isByOperation && lastReportedState == EmbeddedBlockState.Ready && !isNewSessionFor(answer)
 
     private fun holdCollapse(state: EmbeddedBlockState) {
         mindboxLogI(
@@ -493,6 +531,12 @@ internal class EmbeddedBlockContentController(
         if (isReleased || !isShownPageEmptied) return
         if (hasParkedShowableContent) {
             keepEmptiedPageForParkedContent()
+            return
+        }
+        if (isPageCovered) {
+            mindboxLogI("[EmbeddedBlock] The covered page of block '$placeSystemName' rendered nothing for the new session, collapsing it")
+            forgetAppliedContent()
+            report(EmbeddedBlockState.Empty)
             return
         }
         if (isStarted || isAwayInBackground) return
@@ -538,7 +582,10 @@ internal class EmbeddedBlockContentController(
         if (current != null && descriptor == (sentPush?.descriptor ?: appliedDescriptor) && lastReportedState?.nothingToShow != true) {
             refreshMetricsSnapshot(current, content)
             when {
-                current is EmbeddedUpdatableContentProvider && isNewSessionFor(answer) -> refreshForNewSession(current, answer, content)
+                current is EmbeddedUpdatableContentProvider && isNewSessionFor(answer) -> {
+                    coverShownPage()
+                    refreshForNewSession(current, answer, content)
+                }
                 sentPush != null -> mindboxLogI(
                     "[EmbeddedBlock] Same winner ${content.inAppId} for '$placeSystemName' with the params already on their way to its page, sending nothing"
                 )
@@ -554,10 +601,11 @@ internal class EmbeddedBlockContentController(
         }
         if (current is EmbeddedUpdatableContentProvider &&
             appliedDescriptor?.isSamePage(descriptor) == true &&
-            lastReportedState == EmbeddedBlockState.Ready
+            (lastReportedState == EmbeddedBlockState.Ready || isPageCovered)
         ) {
             mindboxLogI("[EmbeddedBlock] Same winner ${content.inAppId} with new params, updating the content in place")
             refreshMetricsSnapshot(current, content)
+            if (isNewSessionFor(answer)) coverShownPage()
             pushPageData(current, layer, content, answer)
             releaseHeldCollapse()
             return
@@ -581,7 +629,7 @@ internal class EmbeddedBlockContentController(
         content: InAppType.Embedded,
     ) {
         val layer = content.pageLayer ?: return
-        if (lastReportedState != EmbeddedBlockState.Ready) {
+        if (lastReportedState != EmbeddedBlockState.Ready && !isPageCovered) {
             mindboxLogI(
                 "[EmbeddedBlock] A new session picked ${content.inAppId} for '$placeSystemName' again while " +
                     "its page loads, refreshing the page once it renders"
@@ -596,7 +644,7 @@ internal class EmbeddedBlockContentController(
     }
 
     private val isDueSessionRefreshSendable: Boolean
-        get() = dueSessionRefresh != null && isActive && lastReportedState == EmbeddedBlockState.Ready
+        get() = dueSessionRefresh != null && isActive && (lastReportedState == EmbeddedBlockState.Ready || isPageCovered)
 
     private fun sendDueSessionRefreshOnceReturnChecked() {
         if (!isDueSessionRefreshSendable) return
@@ -630,6 +678,7 @@ internal class EmbeddedBlockContentController(
         val isNewSession = isNewSessionFor(answer)
         val push = DataPush(descriptor, sessionEpoch = if (isNewSession) answer.sessionEpoch else pageSessionEpoch)
         dataPush = push
+        if (isNewSession && isPageCovered) isNewDataSentToCoveredPage = true
         val onResult: (DataPushOutcome) -> Unit = { outcome ->
             mainHandler.post {
                 if (isReleased || provider !== current || epoch != updateEpoch) return@post
@@ -639,18 +688,28 @@ internal class EmbeddedBlockContentController(
                         appliedDescriptor = descriptor
                         appliedContent = content
                         appliedSessionEpoch = push.sessionEpoch
+                        if (isPageCovered) {
+                            hasCoveredPageTakenNewData = true
+                            if (isStarted) readyBudget.armIfNeeded()
+                        }
                     }
-                    outcome == DataPushOutcome.ABANDONED -> mindboxLogI(
-                        "[EmbeddedBlock] The data push to the page of '$placeSystemName' was abandoned before the page answered, " +
-                            "the place's next answer sends it again"
-                    )
+                    outcome == DataPushOutcome.ABANDONED -> {
+                        isNewDataSentToCoveredPage = false
+                        mindboxLogI(
+                            "[EmbeddedBlock] The data push to the page of '$placeSystemName' was abandoned before the page answered, " +
+                                "the place's next answer sends it again"
+                        )
+                    }
                     heldOutcome != null -> {
                         mindboxLogW("[EmbeddedBlock] In-place update over the bridge failed while the block has nothing to show, not rebuilding")
                     }
-                    isOfEndedSession(answer.sessionEpoch) -> mindboxLogI(
-                        "[EmbeddedBlock] The page of '$placeSystemName' did not take the data of a session that has ended, " +
-                            "keeping it until the new session answers"
-                    )
+                    isOfEndedSession(answer.sessionEpoch) -> {
+                        isNewDataSentToCoveredPage = false
+                        mindboxLogI(
+                            "[EmbeddedBlock] The page of '$placeSystemName' did not take the data of a session that has ended, " +
+                                "keeping it until the new session answers"
+                        )
+                    }
                     else -> {
                         mindboxLogW("[EmbeddedBlock] Block '$placeSystemName': the page never confirmed the data push — rebuilding it")
                         recreateProvider(content, layer, answerForRebuild(current, answer, isNewSession))
@@ -728,21 +787,40 @@ internal class EmbeddedBlockContentController(
             failInternally(appliedContent, "Ready content for '$placeSystemName' has no view")
             return
         }
+        if (state is EmbeddedBlockState.Ready && isPageCovered && !hasCoveredPageRenderedNewData) {
+            mindboxLogI("[EmbeddedBlock] The covered page of block '$placeSystemName' reports itself shown before rendering the new session's data, keeping it covered")
+            return
+        }
+        if (state is EmbeddedBlockState.Ready && rendersPageOfEndedSession) {
+            readyBudget.reset()
+            coverPage()
+            sendDueSessionRefreshOnceReturnChecked()
+            return
+        }
         report(state)
         if (state == EmbeddedBlockState.Ready) sendDueSessionRefreshOnceReturnChecked()
     }
+
+    private val hasCoveredPageRenderedNewData: Boolean
+        get() = isNewDataSentToCoveredPage && updatablePage?.hasRenderedLastData != false
+
+    private val rendersPageOfEndedSession: Boolean
+        get() = !isPageCovered && isStarted && updatablePage != null &&
+            (dueSessionRefresh != null || isOfEndedSession(pageSessionEpoch))
 
     private fun report(state: EmbeddedBlockState) {
         if (state !is EmbeddedBlockState.Loading) {
             readyBudget.reset()
             attemptStartTick = null
+            uncoverPage()
         }
         if (state.nothingToShow) {
             heldCollapse = null
             dueSessionRefresh = null
         }
-        if (state == lastReportedState) return
+        if (state == lastReportedState && isPageCovered == wasCoverReported) return
         lastReportedState = state
+        wasCoverReported = isPageCovered
         onStateChange?.let { listener -> loggingRunCatching { listener(state) } }
         if (state.nothingToShow) notifyContentDropped()
     }
@@ -881,6 +959,7 @@ internal class EmbeddedBlockContentController(
         readyBudget.reset()
         provider?.let { current -> loggingRunCatching { current.release() } }
         provider = null
+        uncoverPage()
         appliedSessionEpoch = null
         dataPush = null
         dueSessionRefresh = null

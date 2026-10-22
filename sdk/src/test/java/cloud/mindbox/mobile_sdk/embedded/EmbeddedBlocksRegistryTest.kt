@@ -41,6 +41,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -1082,7 +1083,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `a feed on screen stays as it is through a new session's delay and takes that session's data once the delay has run`() {
+    fun `a feed on screen is covered by the placeholder through a new session's delay and takes that session's data once the delay has run`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen winner(delay = Milliseconds(5_000L))
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
@@ -1099,8 +1100,8 @@ class EmbeddedBlocksRegistryTest {
         scope.testScheduler.runCurrent()
         idleMain()
 
-        assertEquals(reportedBeforeRenewal, states.size)
-        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Loading), states.drop(reportedBeforeRenewal))
+        assertTrue(block.isPageCovered)
         assertEquals(0, pages.single().releaseCount)
         assertTrue(pages.single().sessionRefreshes.isEmpty())
         verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
@@ -1109,7 +1110,8 @@ class EmbeddedBlocksRegistryTest {
         scope.testScheduler.runCurrent()
         idleMain()
 
-        assertEquals(reportedBeforeRenewal, states.size)
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready), states.drop(reportedBeforeRenewal))
+        assertFalse(block.isPageCovered)
         assertEquals(0, pages.single().releaseCount)
         assertEquals(listOf(SessionEpoch(1L)), pages.single().sessionRefreshes.map { refresh -> refresh.first })
         verify(exactly = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
@@ -3149,6 +3151,7 @@ class EmbeddedBlocksRegistryTest {
             sessionRefreshes.add(sessionEpoch to selectionTime)
             sessionRefreshParams.add(params)
             onResult(DataPushOutcome.CONFIRMED)
+            onStateChange?.invoke(EmbeddedBlockState.Ready)
         }
 
         override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) = onResult(DataPushOutcome.CONFIRMED)
@@ -3166,6 +3169,8 @@ class EmbeddedBlocksRegistryTest {
         override val rendersNothing = false
 
         override var onRendersNothing: (() -> Unit)? = null
+
+        override val hasRenderedLastData = true
 
         override fun refreshMetricsSnapshot(frequency: Frequency, tags: Map<String, String>?) = Unit
     }
@@ -3243,13 +3248,14 @@ class EmbeddedBlocksRegistryTest {
 
         coVerify(exactly = 2) { interactor.selectInAppForPlace(place, any()) }
         verify(exactly = 0) { interactor.reservePlaceShow(any(), any(), SessionEpoch(1L)) }
+        val reportedBeforeReturn = states.size
 
         isAppInForeground = true
         block.start()
         idleMain()
 
         verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
-        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready), states.drop(reportedBeforeReturn))
     }
 
     @Test
@@ -3315,11 +3321,11 @@ class EmbeddedBlocksRegistryTest {
         verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
         assertEquals(listOf(SessionEpoch(1L) to Milliseconds(30L)), pages.single().sessionRefreshes)
         assertEquals(0, pages.single().releaseCount)
-        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready), states.drop(reportedBeforeReturn))
     }
 
     @Test
-    fun `a feed the new session refuses stays on screen until the user leaves it when the app comes back on its own screen`() {
+    fun `a feed the new session refuses is covered by the placeholder from the app's return on its own screen and gone at once when the new session answers`() {
         coEvery { interactor.selectInAppForPlace(place, any()) } returns winner() andThen EmbeddedResolveOutcome.Empty(olderConfig)
         val states = mutableListOf<EmbeddedBlockState>()
         val pages = mutableListOf<ShownPage>()
@@ -3336,18 +3342,19 @@ class EmbeddedBlocksRegistryTest {
         isAppInForeground = true
         block.start()
         idleMain()
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(block.isPageCovered)
+        assertEquals(0, pages.single().releaseCount)
+
         isSessionEnding = false
         currentSessionEpoch = SessionEpoch(1L)
         sessionEpochs.value = SessionEpoch(1L)
         idleMain()
 
-        assertEquals(EmbeddedBlockState.Ready, states.last())
-        assertEquals(0, pages.single().releaseCount)
-
-        block.pause()
-
         assertEquals(EmbeddedBlockState.Empty, states.last())
         assertEquals(1, pages.single().releaseCount)
+        assertTrue(pages.single().withheldShows.isEmpty())
     }
 
     private fun answerTheRenewalOnlyWhen(renewalAnswer: CompletableDeferred<EmbeddedResolveOutcome>, laterAnswer: EmbeddedResolveOutcome) {
@@ -3362,7 +3369,7 @@ class EmbeddedBlocksRegistryTest {
     }
 
     @Test
-    fun `a feed the user comes back to before the new session answers stays on screen when the new session refuses it and collapses once the user leaves it`() {
+    fun `a feed the user comes back to before the new session answers is covered by the placeholder, and gone at once when the new session refuses it`() {
         val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
         answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty(olderConfig))
         val states = mutableListOf<EmbeddedBlockState>()
@@ -3378,17 +3385,17 @@ class EmbeddedBlocksRegistryTest {
         isAppInForeground = true
         block.start()
         idleMain()
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertTrue(block.isPageCovered)
+        assertEquals(0, pages.single().releaseCount)
+
         renewalAnswer.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
-        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
-        assertEquals(0, pages.single().releaseCount)
-        assertEquals(true, pages.single().withheldShows.lastOrNull())
-
-        block.pause()
-
-        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
         assertEquals(1, pages.single().releaseCount)
+        assertTrue(pages.single().withheldShows.isEmpty())
     }
 
     @Test
@@ -3418,7 +3425,7 @@ class EmbeddedBlocksRegistryTest {
         assertEquals(0, pages.single().releaseCount)
         assertEquals(listOf(SessionEpoch(1L) to Milliseconds(7_000L)), pages.single().sessionRefreshes)
         assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), pages.single().sessionRefreshParams)
-        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready), states.drop(reportedBeforeReturn))
         verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
     }
 
@@ -3540,11 +3547,11 @@ class EmbeddedBlocksRegistryTest {
         verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
         assertEquals(listOf(SessionEpoch(1L) to Milliseconds(30L)), pages.single().sessionRefreshes)
         assertEquals(0, pages.single().releaseCount)
-        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready), states.drop(reportedBeforeReturn))
     }
 
     @Test
-    fun `a feed the user comes back to from another screen before a new session begun meanwhile answers stays on screen when the new session refuses it and collapses once the user leaves it`() {
+    fun `a feed the user comes back to from another screen before a new session begun meanwhile answers is covered by the placeholder, and gone at once when the new session refuses it`() {
         val renewalAnswer = CompletableDeferred<EmbeddedResolveOutcome>()
         answerTheRenewalOnlyWhen(renewalAnswer, laterAnswer = EmbeddedResolveOutcome.Empty(olderConfig))
         val states = mutableListOf<EmbeddedBlockState>()
@@ -3559,17 +3566,17 @@ class EmbeddedBlocksRegistryTest {
 
         block.start()
         idleMain()
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Loading), states.drop(reportedBeforeReturn))
+        assertTrue(block.isPageCovered)
+        assertEquals(0, pages.single().releaseCount)
+
         renewalAnswer.complete(EmbeddedResolveOutcome.Empty(olderConfig))
         idleMain()
 
-        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
-        assertEquals(0, pages.single().releaseCount)
-        assertEquals(true, pages.single().withheldShows.lastOrNull())
-
-        block.pause()
-
-        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
         assertEquals(1, pages.single().releaseCount)
+        assertTrue(pages.single().withheldShows.isEmpty())
     }
 
     @Test
@@ -3598,7 +3605,7 @@ class EmbeddedBlocksRegistryTest {
         assertEquals(0, pages.single().releaseCount)
         assertEquals(listOf(SessionEpoch(1L) to Milliseconds(7_000L)), pages.single().sessionRefreshes)
         assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), pages.single().sessionRefreshParams)
-        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready), states.drop(reportedBeforeReturn))
     }
 
     @Test
@@ -3618,6 +3625,7 @@ class EmbeddedBlocksRegistryTest {
         clock = Milliseconds(9_000L)
         block.start()
         idleMain()
+        assertEquals(EmbeddedBlockState.Loading, states.last())
         block.leaveForAnotherScreen()
 
         clock = Milliseconds(11_000L)
@@ -3635,7 +3643,7 @@ class EmbeddedBlocksRegistryTest {
         verify(atLeast = 1) { interactor.reservePlaceShow(place, content, SessionEpoch(1L)) }
         assertEquals(listOf(SessionEpoch(1L) to Milliseconds(7_000L)), pages.single().sessionRefreshes)
         assertEquals(0, pages.single().releaseCount)
-        assertEquals(emptyList<EmbeddedBlockState>(), states.drop(reportedBeforeReturn))
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Ready), states.drop(reportedBeforeReturn))
     }
 
     @Test

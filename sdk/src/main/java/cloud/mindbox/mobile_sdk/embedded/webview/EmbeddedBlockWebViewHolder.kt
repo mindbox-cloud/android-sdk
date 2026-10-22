@@ -309,6 +309,9 @@ internal class EmbeddedBlockWebViewHolder(
     override val isDataPushAbandoned: Boolean
         get() = pendingAckJob?.isCancelled == true
 
+    override val hasRenderedLastData: Boolean
+        get() = didReportShownContent
+
     override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
         pendingAckJob?.cancel()
         val controller = webViewController ?: run {
