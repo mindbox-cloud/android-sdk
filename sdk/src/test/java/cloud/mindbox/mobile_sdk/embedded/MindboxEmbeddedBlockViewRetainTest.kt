@@ -223,11 +223,14 @@ class MindboxEmbeddedBlockViewRetainTest {
         writeRecordsJson = { json -> placeRecords = json },
     )
 
+    private var loadingStrategy: MindboxEmbeddedBlockLoadingStrategy? = null
+
     private fun newBlock(context: Context): MindboxEmbeddedBlockView =
         MindboxEmbeddedBlockView(
             context,
             null,
             placeName,
+            loadingStrategy = loadingStrategy,
             contentController = EmbeddedBlockContentController(
                 placeSystemName = placeName,
                 providerFactory = { _, _ ->
@@ -391,6 +394,27 @@ class MindboxEmbeddedBlockViewRetainTest {
         assertSame(pages.single().contentView, secondBlock.getChildAt(0))
         assertEquals(1f, pages.single().contentView.alpha)
         assertEquals(listOf(firstBlock, secondBlock), loads)
+    }
+
+    @Test
+    fun `a page covered for a new session comes back under the placeholder to a hidden-strategy block too`() {
+        makesPages = true
+        loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.HIDDEN
+        val home = openHome()
+        deliverContent()
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        blocksRegistry.handles.single().onSessionRenewed()
+        idle()
+        goForward()
+
+        goBack()
+        val secondBlock = home.block
+        show(secondBlock)
+
+        assertEquals(View.VISIBLE, secondBlock.visibility)
+        assertEquals(2, secondBlock.childCount)
+        assertSame(pages.single().contentView, secondBlock.getChildAt(0))
+        assertTrue(secondBlock.getChildAt(1) is EmbeddedBlockShimmerView)
     }
 
     @Test

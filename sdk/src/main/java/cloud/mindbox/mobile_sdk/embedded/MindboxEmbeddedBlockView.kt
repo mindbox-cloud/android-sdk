@@ -490,6 +490,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         contentController = kept
         kept.onStateChange = { newState -> state = newState }
         mindboxLogI("[EmbeddedBlock] Back on the screen (place='$place'), showing the kept content")
+        if (kept.isPageCovered) hasSettled = false
         isReclaimingContent = true
         try {
             kept.lastReportedState?.let { keptState -> state = keptState }
