@@ -90,10 +90,14 @@ public object Mindbox : MindboxLog {
 
     private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
     private val timeProvider by mindboxInject { timeProvider }
+    private val trackingIdsResolver by mindboxInject { trackingIdsResolver }
 
     internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
 
     private var pushConverters: List<PushConverter> by SingleInitDelegate()
+
+    internal val configuredTrackingIdTypes: Set<String>?
+        get() = trackingIdTypesOf(configured = pushConverters, live = pushServiceHandlers)
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
@@ -594,6 +598,8 @@ public object Mindbox : MindboxLog {
             val checkResult = checkConfig(configuration)
             val validatedConfiguration = validateConfiguration(configuration)
             DbManager.saveConfigurations(Configuration(configuration))
+            MindboxPreferences.shouldCollectTrackingIds =
+                !validatedConfiguration.disableTrackingIds
             logI("init. checkResult: $checkResult")
             if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
                 logI("init. softReinitialization")
@@ -647,9 +653,10 @@ public object Mindbox : MindboxLog {
         lifecycleManager?.callbacks = object : LifecycleManager.Callbacks {
             override fun onActivityStarted(activity: Activity) {
                 UuidCopyManager.onAppMovedToForeground(activity)
+                val appContext = activity.applicationContext
                 mindboxScope.launch {
                     if (!MindboxPreferences.isFirstInitialize) {
-                        updateAppInfo(activity.applicationContext)
+                        updateAppInfo(appContext)
                     }
                 }
             }
@@ -1266,6 +1273,7 @@ public object Mindbox : MindboxLog {
         )
 
         val timezone = TimeZone.getDefault().id.takeIf { configuration.shouldCreateCustomer }
+        val trackingIds = trackingIdsResolver.resolve(context)
         val initData = InitData(
             installationId = configuration.previousInstallationId,
             externalDeviceUUID = configuration.previousDeviceUUID,
@@ -1274,6 +1282,7 @@ public object Mindbox : MindboxLog {
             instanceId = instanceId,
             ianaTimeZone = timezone,
             tokens = pushTokens.toTokenData(),
+            trackingIds = trackingIds,
         )
 
         MindboxPreferences.pushTokens = pushTokens.mapValues {
@@ -1288,6 +1297,7 @@ public object Mindbox : MindboxLog {
         }
 
         MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
+        trackingIdsResolver.markSent(trackingIds)
 
         deliverDeviceUuid(deviceUuid)
         deliverToken(pushTokens)
@@ -1311,22 +1321,31 @@ public object Mindbox : MindboxLog {
 
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
-            if (pushTokens == savedPushTokens && isNotificationEnabled == savedIsNotificationEnabled) {
+            val trackingIds = trackingIdsResolver.resolve(context)
+            val isTrackingIdsChanged = trackingIdsResolver.hasChanged(trackingIds)
+
+            if (pushTokens == savedPushTokens &&
+                isNotificationEnabled == savedIsNotificationEnabled &&
+                !isTrackingIdsChanged
+            ) {
                 return@loggingRunCatchingSuspending
             }
 
             mindboxLogI(
                 "updateAppInfo. pushToken: $pushTokens, isNotificationEnabled: $isNotificationEnabled, " +
-                    "old isNotificationEnabled: $savedIsNotificationEnabled"
+                    "old isNotificationEnabled: $savedIsNotificationEnabled, " +
+                    "isTrackingIdsChanged: $isTrackingIdsChanged"
             )
             val initData = UpdateData(
                 isNotificationsEnabled = isNotificationEnabled,
                 instanceId = MindboxPreferences.instanceId,
                 version = MindboxPreferences.infoUpdatedVersion,
                 tokens = pushTokens.toTokenData(),
+                trackingIds = trackingIds,
             )
 
             MindboxEventManager.appInfoUpdate(context, initData)
+            trackingIdsResolver.markSent(trackingIds)
 
             if (isNotificationEnabled != savedIsNotificationEnabled) {
                 MindboxPreferences.isNotificationEnabled = isNotificationEnabled

@@ -35,6 +35,22 @@ internal class MindboxConfigurationTest {
     }
 
     @Test
+    fun `tracking ids are collected unless the integrator turns them off`() {
+        val configuration = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT).build()
+
+        assertFalse(configuration.disableTrackingIds)
+    }
+
+    @Test
+    fun `disableTrackingIds turns the collection off`() {
+        val configuration = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT)
+            .disableTrackingIds(true)
+            .build()
+
+        assertTrue(configuration.disableTrackingIds)
+    }
+
+    @Test
     fun `versionCode is read from PackageInfo by default`() {
         val configuration = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT).build()
 

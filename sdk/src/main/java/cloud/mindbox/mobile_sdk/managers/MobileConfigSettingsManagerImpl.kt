@@ -10,14 +10,15 @@ import cloud.mindbox.mobile_sdk.models.toTokenData
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
-import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import java.util.Date
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class MobileConfigSettingsManagerImpl(
     private val appContext: Context,
     private val sessionStorageManager: SessionStorageManager,
-    private val timeProvider: TimeProvider
+    private val timeProvider: TimeProvider,
+    private val trackingIdsResolver: TrackingIdsResolver,
 ) : MobileConfigSettingsManager {
 
     override fun saveSessionTime(config: InAppConfigResponse) {
@@ -29,7 +30,7 @@ internal class MobileConfigSettingsManagerImpl(
             } ?: mindboxLogI("SessionTime is not set")
     }
 
-    override fun checkPushTokenKeepalive(config: InAppConfigResponse): Unit = loggingRunCatching {
+    override suspend fun checkPushTokenKeepalive(config: InAppConfigResponse): Unit = loggingRunCatchingSuspending {
         config.settings?.slidingExpiration?.pushTokenKeepalive?.interval
             ?.takeIf { it > 0 }
             ?.let { pushTokenKeepalive ->
@@ -44,7 +45,7 @@ internal class MobileConfigSettingsManagerImpl(
                             "lastInfoUpdateTime = ${Date(lastInfoUpdateTime)}, " +
                             "pushTokenKeepalive = ${pushTokenKeepalive.milliseconds}"
                     )
-                    return@loggingRunCatching
+                    return@loggingRunCatchingSuspending
                 }
 
                 sendAppKeepalive(pushTokenKeepalive)
@@ -52,19 +53,22 @@ internal class MobileConfigSettingsManagerImpl(
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    internal fun sendAppKeepalive(pushTokenKeepalive: Long) {
+    internal suspend fun sendAppKeepalive(pushTokenKeepalive: Long) {
         val pushTokens = MindboxPreferences.pushTokens
         val savedPushTokens = pushTokens.mapValues { it.value.token }
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(appContext)
         val infoUpdatedVersion = MindboxPreferences.infoUpdatedVersion
 
+        val trackingIds = trackingIdsResolver.resolve(appContext)
         val updateData = UpdateData(
             isNotificationsEnabled = isNotificationEnabled,
             instanceId = MindboxPreferences.instanceId,
             version = infoUpdatedVersion,
             tokens = savedPushTokens.toTokenData(),
+            trackingIds = trackingIds,
         )
         MindboxEventManager.appKeepalive(appContext, updateData)
+        trackingIdsResolver.markSent(trackingIds)
 
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
 

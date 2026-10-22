@@ -39,9 +39,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
       - name: Setup Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        with:
+          packages: 'platform-tools'
       - name: lint check
         run: ./gradlew --no-daemon lintDebug
 
@@ -58,9 +59,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
       - name: Setup Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        with:
+          packages: 'platform-tools'
       - name: unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
@@ -78,7 +80,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
       - name: build project
         run: ./gradlew --no-daemon assembleDebug
 
@@ -123,7 +124,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
       - name: Prepare to publish
         env:
           GPGKEYCONTENTS: ${{ secrets.GPGKEYCONTENTS }}

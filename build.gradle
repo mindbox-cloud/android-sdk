@@ -4,7 +4,7 @@ buildscript {
         mavenCentral()
         maven { url "https://plugins.gradle.org/m2/" }
         maven { url "https://developer.huawei.com/repo/" }
-        maven { url "https://artifactory-external.vkpartner.ru/artifactory/maven" }
+        maven { url "https://nexus-external.rustore.ru/repository/maven-rustore-exposed" }
     }
     dependencies {
         classpath libs.bundles.buildscript.plugins
@@ -16,9 +16,26 @@ allprojects {
         google()
         mavenCentral()
         maven { url "https://developer.huawei.com/repo/" }
-        maven { url "https://artifactory-external.vkpartner.ru/artifactory/maven" }
+        maven { url "https://nexus-external.rustore.ru/repository/maven-rustore-exposed" }
         maven { url "https://central.sonatype.com/repository/maven-snapshots/" }
         mavenLocal()
+    }
+}
+
+project(':mindbox-common') {
+    apply plugin: 'io.gitlab.arturbosch.detekt'
+
+    detekt {
+        buildUponDefaultConfig = true
+        config.setFrom(rootProject.files("detekt.yml"))
+    }
+
+    dependencies {
+        detektPlugins project(path: ':detekt-rules', configuration: 'runtimeElements')
+    }
+
+    tasks.register('detektDebug') {
+        dependsOn 'detektAndroidDebug'
     }
 }
 
