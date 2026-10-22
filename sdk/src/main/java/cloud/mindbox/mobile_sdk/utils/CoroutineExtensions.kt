@@ -12,7 +12,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal suspend fun <T> Collection<Deferred<T>>.awaitAllWithTimeout(timeMillis: Long): List<T> =
+internal suspend fun <T> Collection<Deferred<T>>.awaitAllWithTimeout(
+    timeMillis: Long,
+    onCancel: (Deferred<T>) -> Unit = {},
+): List<T> =
     withTimeoutOrNull(timeMillis.milliseconds) {
         awaitAll()
     } ?: filter { it.isCompleted && !it.isCancelled }
@@ -21,6 +24,7 @@ internal suspend fun <T> Collection<Deferred<T>>.awaitAllWithTimeout(timeMillis:
             forEach { deferred ->
                 if (!deferred.isCompleted) {
                     deferred.cancel()
+                    onCancel(deferred)
                 }
             }
         }
