@@ -230,6 +230,14 @@ class EmbeddedBlockWebViewHolderTest {
     }
 
     @Test
+    fun `block webview has native scroll bars disabled`() {
+        startAndAwaitPageLoad()
+
+        assertFalse(webView.isHorizontalScrollBarEnabled)
+        assertFalse(webView.isVerticalScrollBarEnabled)
+    }
+
+    @Test
     fun `ready response contains items as json array not string`() {
         startAndAwaitPageLoad()
 

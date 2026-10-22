@@ -410,6 +410,8 @@ internal class EmbeddedBlockWebViewHolder(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
+        controller.view.isHorizontalScrollBarEnabled = false
+        controller.view.isVerticalScrollBarEnabled = false
         controller.setEventListener(object : WebViewEventListener {
             override fun onPageFinished(url: String?) {
                 mindboxLogI("[EmbeddedBlock] onPageFinished: $url")
