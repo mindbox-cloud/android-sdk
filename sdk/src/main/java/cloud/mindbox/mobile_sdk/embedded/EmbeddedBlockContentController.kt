@@ -346,8 +346,8 @@ internal class EmbeddedBlockContentController(
 
     override fun onSessionRenewed() {
         if (isReleased) return
+        hasPendingDelivery = false
         if (isStarted) {
-            hasPendingDelivery = false
             coverPageOfEndedSession()
             dropDataSentInEndedSession()
             armCoverWaitIfNeeded()

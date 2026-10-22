@@ -1871,6 +1871,28 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a delay announced in the ended session while the block was on another screen does not stand its wait down on the block's return`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentPending()
+        controller.pause()
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+
+        controller.start()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+
+        idleFor(Duration.ofMillis(2L))
+
+        assertEquals(networkError, states.last())
+    }
+
+    @Test
     fun `a page owed a new session's data that renders after the session changed takes the data under the placeholder`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
