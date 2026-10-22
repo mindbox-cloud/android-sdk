@@ -561,6 +561,10 @@ internal class EmbeddedBlockContentController(
             return
         }
         if (isPageCovered) {
+            if (isOfEndedSession(pageSessionEpoch)) {
+                mindboxLogI("[EmbeddedBlock] The covered page of block '$placeSystemName' rendered nothing for a session that has ended, keeping it for the new session's answer")
+                return
+            }
             mindboxLogI("[EmbeddedBlock] The covered page of block '$placeSystemName' rendered nothing for the new session, collapsing it")
             forgetAppliedContent()
             report(EmbeddedBlockState.Empty)
@@ -705,7 +709,7 @@ internal class EmbeddedBlockContentController(
         val isNewSession = isNewSessionFor(answer)
         val push = DataPush(descriptor, sessionEpoch = if (isNewSession) answer.sessionEpoch else pageSessionEpoch)
         dataPush = push
-        if (isNewSession && isPageCovered) {
+        if (isPageCovered) {
             isNewDataSentToCoveredPage = true
             configBudget.reset()
             if (isStarted) readyBudget.armIfNeeded()
