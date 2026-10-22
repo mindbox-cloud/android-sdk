@@ -9,14 +9,13 @@ import cloud.mindbox.mobile_sdk.pushes.PushConverter
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.awaitAllWithTimeout
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.time.Duration.Companion.milliseconds
 
 private const val READ_TRACKING_IDS_TIMEOUT = 5000L
 
@@ -53,15 +52,18 @@ internal class TrackingIdsResolverImpl(
             return emptyList()
         }
 
-        val reading = scope().async(ioDispatcher) {
-            pushServiceHandlers().map { handler -> handler.tryGetTrackingId(context) }
+        val readings = pushServiceHandlers().associateBy { handler ->
+            scope().async(ioDispatcher) { handler.tryGetTrackingId(context) }
         }
-        val results = withTimeoutOrNull(timeoutMillis.milliseconds) { reading.await() }
-        if (results == null) {
-            reading.cancel()
-            mindboxLogI("Timed out reading tracking id providers, repeating the last reported set")
-            return lastSentOfConfiguredProviders()
-        }
+        val results = readings.keys.awaitAllWithTimeout(
+            timeMillis = timeoutMillis,
+            onCancel = { reading ->
+                val handler = readings.getValue(reading)
+                mindboxLogI(
+                    "Timed out reading ${handler.trackingIdType} from ${handler.notificationProvider}, " +
+                        "keeping its last reported value",
+                )
+            })
 
         return results.mergeWithLastSent()
     }
