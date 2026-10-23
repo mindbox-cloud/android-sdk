@@ -54,7 +54,7 @@ internal interface EmbeddedBlockHandle {
     @MainThread
     fun onContentResolved(content: InAppType.Embedded?, answer: EmbeddedPlaceAnswer)
 
-    fun onContentPending() {}
+    fun onContentPending(sessionEpoch: SessionEpoch) {}
 
     @MainThread
     fun onConfigUnavailable(answer: EmbeddedPlaceAnswer)
@@ -653,7 +653,7 @@ internal class EmbeddedBlocksRegistryImpl(
                     "waiting out its delay, keeping the running timer and its selection time for the fresh content"
             )
             running.winner = winner
-            notifyPending(place)
+            notifyPending(place, answer.sessionEpoch)
             return
         }
         running?.job?.cancel()
@@ -661,7 +661,7 @@ internal class EmbeddedBlocksRegistryImpl(
             "[EmbeddedBlock] Winner ${winner.inAppId} for place '$place' waits its " +
                 "delayTime of ${delayTime.interval} ms before the delivery"
         )
-        notifyPending(place)
+        notifyPending(place, answer.sessionEpoch)
         val job = scopeProvider().launch {
             delay(delayTime.interval)
             inAppInteractor.awaitReturnChecked()
@@ -696,7 +696,7 @@ internal class EmbeddedBlocksRegistryImpl(
             ?.takeIf { pending -> pending.isRunningIn(answer.sessionEpoch) }
             ?: return false
         mindboxLogI("[EmbeddedBlock] $what while winner ${running.winner.inAppId} waits out its delay, keeping the running timer")
-        notifyPending(place)
+        notifyPending(place, running.answer.sessionEpoch)
         return true
     }
 
@@ -720,9 +720,9 @@ internal class EmbeddedBlocksRegistryImpl(
         }
     }
 
-    private fun notifyPending(place: PlaceKey) {
+    private fun notifyPending(place: PlaceKey, sessionEpoch: SessionEpoch) {
         liveHandles(place).forEach { handle ->
-            loggingRunCatching { handle.onContentPending() }
+            loggingRunCatching { handle.onContentPending(sessionEpoch) }
         }
     }
 

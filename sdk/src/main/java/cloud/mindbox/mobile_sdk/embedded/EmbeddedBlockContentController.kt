@@ -174,7 +174,10 @@ internal class EmbeddedBlockContentController(
 
     private var attemptStartTick: Milliseconds? = null
 
-    private var hasPendingDelivery = false
+    private var pendingDeliverySession: SessionEpoch? = null
+
+    private val hasPendingDelivery: Boolean
+        get() = pendingDeliverySession != null
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -346,7 +349,7 @@ internal class EmbeddedBlockContentController(
 
     override fun onSessionRenewed() {
         if (isReleased) return
-        hasPendingDelivery = false
+        if (pendingDeliverySession?.let(::isOfEndedSession) == true) pendingDeliverySession = null
         if (isStarted) {
             coverPageOfEndedSession()
             dropDataSentInEndedSession()
@@ -476,10 +479,10 @@ internal class EmbeddedBlockContentController(
         return true
     }
 
-    override fun onContentPending() {
+    override fun onContentPending(sessionEpoch: SessionEpoch) {
         if (isReleased || hasGivenUp) return
         configBudget.reset()
-        hasPendingDelivery = true
+        pendingDeliverySession = sessionEpoch
     }
 
     override fun onConfigUnavailable(answer: EmbeddedPlaceAnswer) {
@@ -587,7 +590,7 @@ internal class EmbeddedBlockContentController(
             return false
         }
         configBudget.reset()
-        hasPendingDelivery = false
+        pendingDeliverySession = null
         return true
     }
 

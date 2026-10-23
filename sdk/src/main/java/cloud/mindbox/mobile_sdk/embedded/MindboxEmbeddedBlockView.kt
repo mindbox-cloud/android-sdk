@@ -729,6 +729,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             content?.alpha = 1f
             return
         }
+        content.bringToFront()
         fadingOutView = cover
         fadeAnimator = revealAnimation.crossfade(content, cover) {
             fadeAnimator = null

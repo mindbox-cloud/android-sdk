@@ -80,7 +80,7 @@ class EmbeddedBlocksRegistryTest {
             answers.add(answer)
         }
 
-        override fun onContentPending() {
+        override fun onContentPending(sessionEpoch: SessionEpoch) {
             pendingCount++
         }
 

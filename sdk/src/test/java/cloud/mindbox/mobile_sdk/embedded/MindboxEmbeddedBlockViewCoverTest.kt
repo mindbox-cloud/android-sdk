@@ -338,6 +338,29 @@ class MindboxEmbeddedBlockViewCoverTest {
     }
 
     @Test
+    fun `taps during the fade-out of a clickable host placeholder reach the page, not the placeholder`() {
+        val crossfade = HeldCrossfade()
+        val (view, page) = coveredPage(crossfade)
+        var placeholderTaps = 0
+        val placeholder = View(activity).apply { setOnClickListener { placeholderTaps++ } }
+        view.setPlaceholderView(placeholder)
+        assertSame(placeholder, view.getChildAt(1))
+
+        renderNewSessionData(page)
+
+        assertEquals(2, view.childCount)
+        assertSame(page.contentView, view.getChildAt(1))
+        tap(view)
+        assertEquals(1, page.touches)
+        assertEquals(0, placeholderTaps)
+
+        crossfade.finish()
+
+        assertEquals(1, view.childCount)
+        assertSame(page.contentView, view.getChildAt(0))
+    }
+
+    @Test
     fun `a block collapsing while the placeholder fades out leaves no placeholder behind`() {
         val crossfade = HeldCrossfade()
         val (view, page) = coveredPage(crossfade)

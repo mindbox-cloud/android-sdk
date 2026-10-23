@@ -330,7 +330,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = controller(configTimeout = Milliseconds(30_000L))
         controller.start()
 
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         idleFor(Duration.ofMillis(30_001L))
 
         assertEquals(EmbeddedBlockState.Loading, states.last())
@@ -349,7 +349,7 @@ class EmbeddedBlockContentControllerTest {
         )
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(null)
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         controller.pause()
         clock = Milliseconds(45_000L)
         controller.start()
@@ -391,7 +391,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         controller.pause()
 
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         clock = Milliseconds(20_000L)
         blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(250L))
         clock = Milliseconds(45_000L)
@@ -521,7 +521,7 @@ class EmbeddedBlockContentControllerTest {
             failureTracker = { tracker },
         ).apply { onStateChange = { state -> states.add(state) } }
         controller.start()
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
 
         controller.pause()
         controller.start()
@@ -538,7 +538,7 @@ class EmbeddedBlockContentControllerTest {
         idleFor(Duration.ofMillis(30_001L))
         assertEquals(networkError, states.last())
 
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         blocksRegistry.pushContent("main-screen-top", content)
 
         assertEquals(networkError, states.last())
@@ -1670,7 +1670,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         controller.onSessionRenewed()
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         isAppInForeground = false
         controller.pause()
         isAppInForeground = true
@@ -1838,7 +1838,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         controller.onSessionRenewed()
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
 
         providers.single().render()
         idleFor(Duration.ofMillis(60_000L))
@@ -1856,7 +1856,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = sessionAwareController(providers)
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
 
         controller.onSessionRenewed()
@@ -1871,12 +1871,36 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
+    fun `a delay the new session announced before its signal reached the block keeps standing the wait down through that signal`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(1L))
+
+        controller.onSessionRenewed()
+        idleFor(Duration.ofMillis(60_000L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
     fun `a delay announced in the ended session while the block was on another screen does not stand its wait down on the block's return`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         controller.pause()
         blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         controller.onSessionRenewed()
@@ -1994,7 +2018,7 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
         controller.onSessionRenewed()
 
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         idleFor(Duration.ofMillis(60_000L))
 
         assertEquals(EmbeddedBlockState.Loading, states.last())
