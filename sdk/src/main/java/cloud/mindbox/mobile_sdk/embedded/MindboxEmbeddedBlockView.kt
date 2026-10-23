@@ -145,6 +145,8 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var isHostVisible = true
     private var isReleased = false
     private var shownContent: View? = null
+    private var coverView: View? = null
+    private var coveredPageFocusability: Pair<Boolean, Boolean>? = null
     private var fadingOutView: View? = null
     private var fadeAnimator: Animator? = null
     private var growthAnimator: Animator? = null
@@ -235,9 +237,8 @@ public class MindboxEmbeddedBlockView internal constructor(
      */
     public fun setPlaceholderView(view: View?) {
         placeholderView = view
-        if (shownAppearance == MindboxEmbeddedBlockAppearance.PLACEHOLDER) {
-            showContent(currentPlaceholder())
-        }
+        if (shownAppearance != MindboxEmbeddedBlockAppearance.PLACEHOLDER) return
+        if (coverView != null) cover(currentPlaceholder()) else showContent(currentPlaceholder())
     }
 
     /**
@@ -289,7 +290,10 @@ public class MindboxEmbeddedBlockView internal constructor(
         right: Int,
         bottom: Int
     ) {
-        withContentFrame(right - left, bottom - top) { frame -> shownContent?.measureTo(frame) }
+        withContentFrame(right - left, bottom - top) { frame ->
+            shownContent?.measureTo(frame)
+            coverView?.measureTo(frame)
+        }
         super.onLayout(changed, left, top, right, bottom)
     }
 
@@ -300,7 +304,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         bottom: Int
     ) {
         super.setPadding(left, top, right, bottom)
-        shownContent?.let(::placeContentInFrame)
+        placeShownViewsInFrame()
     }
 
     override fun setPaddingRelative(
@@ -310,7 +314,12 @@ public class MindboxEmbeddedBlockView internal constructor(
         bottom: Int
     ) {
         super.setPaddingRelative(start, top, end, bottom)
+        placeShownViewsInFrame()
+    }
+
+    private fun placeShownViewsInFrame() {
         shownContent?.let(::placeContentInFrame)
+        coverView?.let(::placeContentInFrame)
     }
 
     override fun onAttachedToWindow() {
@@ -321,7 +330,7 @@ public class MindboxEmbeddedBlockView internal constructor(
             findScreenOwner(explicitOwner = screenOwner, fragment = hostFragment)
         }
         reclaimRetainedContent()
-        shownContent?.let(::placeContentInFrame)
+        placeShownViewsInFrame()
         observeHostDestruction()
         isWindowVisible = windowVisibility == VISIBLE
         isScreenHidden = hostFragment.isHiddenWithParents()
@@ -481,6 +490,7 @@ public class MindboxEmbeddedBlockView internal constructor(
         contentController = kept
         kept.onStateChange = { newState -> state = newState }
         mindboxLogI("[EmbeddedBlock] Back on the screen (place='$place'), showing the kept content")
+        if (kept.isPageCovered) hasSettled = false
         isReclaimingContent = true
         try {
             kept.lastReportedState?.let { keptState -> state = keptState }
@@ -494,6 +504,7 @@ public class MindboxEmbeddedBlockView internal constructor(
     private var touchDownY = 0f
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (coverView != null) return true
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 touchDownX = ev.x
@@ -537,12 +548,21 @@ public class MindboxEmbeddedBlockView internal constructor(
 
         when (appearance) {
             MindboxEmbeddedBlockAppearance.PLACEHOLDER -> {
-                mindboxLogI("[EmbeddedBlock] Content loading, showing the placeholder")
-                showContent(currentPlaceholder())
+                val coveredPage = contentController.contentView?.takeIf { contentController.isPageCovered }
+                if (coveredPage != null) {
+                    mindboxLogI("[EmbeddedBlock] Covering the page of block '$placeSystemName' with the placeholder")
+                    showContent(coveredPage)
+                    cover(currentPlaceholder())
+                } else {
+                    mindboxLogI("[EmbeddedBlock] Content loading, showing the placeholder")
+                    showContent(currentPlaceholder())
+                }
             }
             MindboxEmbeddedBlockAppearance.CONTENT -> {
                 mindboxLogI("[EmbeddedBlock] Content ready")
-                contentController.contentView?.let { showContent(it, animated) }
+                contentController.contentView?.let { content ->
+                    if (content === shownContent) uncover(animated) else showContent(content, animated)
+                }
             }
             MindboxEmbeddedBlockAppearance.ERROR -> {
                 if (state is EmbeddedBlockState.Loading) {
@@ -646,6 +666,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun showContent(content: View, animated: Boolean = false): Unit = loggingRunCatching {
         if (content === shownContent) return@loggingRunCatching
+        removeCover()
         val previous = shownContent
         shownContent = content
         (content.parent as? ViewGroup)?.removeView(content)
@@ -657,6 +678,60 @@ public class MindboxEmbeddedBlockView internal constructor(
         }
         fadingOutView = previous
         fadeAnimator = revealAnimation.crossfade(content, previous) {
+            fadeAnimator = null
+            settleFadingContent()
+        }
+    }
+
+    private fun cover(placeholder: View): Unit = loggingRunCatching {
+        if (placeholder === coverView) return@loggingRunCatching
+        removeCover()
+        coverView = placeholder
+        shownContent?.let { content ->
+            content.alpha = 0f
+            content.importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+            coveredPageFocusability = content.isFocusable to content.isFocusableInTouchMode
+            content.clearFocus()
+            content.isFocusableInTouchMode = false
+            content.isFocusable = false
+        }
+        (placeholder.parent as? ViewGroup)?.removeView(placeholder)
+        addView(placeholder, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        placeContentInFrame(placeholder)
+    }
+
+    private fun removeCover() {
+        val cover = coverView ?: return
+        coverView = null
+        removeView(cover)
+        shownContent?.let { content ->
+            content.alpha = 1f
+            letPageInteract(content)
+        }
+    }
+
+    private fun letPageInteract(content: View) {
+        content.importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_AUTO
+        coveredPageFocusability?.let { (isFocusable, isFocusableInTouchMode) ->
+            content.isFocusableInTouchMode = isFocusableInTouchMode
+            content.isFocusable = isFocusable
+        }
+        coveredPageFocusability = null
+    }
+
+    private fun uncover(animated: Boolean) {
+        val cover = coverView ?: return
+        coverView = null
+        val content = shownContent
+        content?.let(::letPageInteract)
+        if (!animated || content == null) {
+            removeView(cover)
+            content?.alpha = 1f
+            return
+        }
+        content.bringToFront()
+        fadingOutView = cover
+        fadeAnimator = revealAnimation.crossfade(content, cover) {
             fadeAnimator = null
             settleFadingContent()
         }
@@ -695,6 +770,7 @@ public class MindboxEmbeddedBlockView internal constructor(
 
     private fun clearContent() {
         cancelRevealAnimation()
+        removeCover()
         shownContent?.let { removeView(it) }
         shownContent = null
     }

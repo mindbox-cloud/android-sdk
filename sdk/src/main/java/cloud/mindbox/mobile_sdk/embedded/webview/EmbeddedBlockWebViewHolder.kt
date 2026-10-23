@@ -137,7 +137,7 @@ internal class EmbeddedBlockWebViewHolder(
 
             override val hostInAppId: String get() = inAppId
             override val isRequesterActive: Boolean
-                get() = this@EmbeddedBlockWebViewHolder.isUserPresent && hostActivity?.isFinishing != true
+                get() = this@EmbeddedBlockWebViewHolder.isUserPresent && !isCovered && hostActivity?.isFinishing != true
 
             override fun sendToPage(message: BridgeMessage.Request, onError: (String?) -> Unit) {
                 val controller = webViewController ?: return
@@ -151,6 +151,10 @@ internal class EmbeddedBlockWebViewHolder(
                 if (lastState != EmbeddedBlockState.Loading && lastState != EmbeddedBlockState.Ready) {
                     mindboxLogI("[EmbeddedBlock] Refused a show request from a block that is not shown")
                     throw BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, "The block is not shown: $lastState")
+                }
+                if (isCovered) {
+                    mindboxLogI("[EmbeddedBlock] Refused a show request from a page covered until the new session answers")
+                    throw BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, "The block is covered until the new session answers")
                 }
             }
         })
@@ -308,6 +312,15 @@ internal class EmbeddedBlockWebViewHolder(
 
     override val isDataPushAbandoned: Boolean
         get() = pendingAckJob?.isCancelled == true
+
+    override val hasRenderedLastData: Boolean
+        get() = didReportShownContent
+
+    @Volatile private var isCovered = false
+
+    override fun setCovered(isCovered: Boolean) {
+        this.isCovered = isCovered
+    }
 
     override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
         pendingAckJob?.cancel()

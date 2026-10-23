@@ -30,7 +30,9 @@ internal class RecordingBlocksRegistry : EmbeddedBlocksRegistry {
 
     override fun onBlockContentDropped(placeSystemName: PlaceKey) = Unit
 
-    override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = true
+    var endedSessions = setOf<SessionEpoch>()
+
+    override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean = sessionEpoch !in endedSessions
 
     override fun deferUntilReturnChecked(): Boolean = false
 

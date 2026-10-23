@@ -151,6 +151,10 @@ class EmbeddedBlockContentControllerTest {
 
         override var onRendersNothing: (() -> Unit)? = null
 
+        override val hasRenderedLastData: Boolean = true
+
+        override fun setCovered(isCovered: Boolean) = Unit
+
         override fun refreshMetricsSnapshot(frequency: cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency, tags: Map<String, String>?) = Unit
 
         override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) = onResult(DataPushOutcome.CONFIRMED)
@@ -211,7 +215,7 @@ class EmbeddedBlockContentControllerTest {
             }
 
         override fun start() {
-            if (rendersOnStart) render()
+            if (rendersOnStart) onStateChange?.invoke(EmbeddedBlockState.Ready)
         }
 
         override fun release() {
@@ -220,9 +224,18 @@ class EmbeddedBlockContentControllerTest {
 
         override var isDataPushAbandoned = false
 
+        override var hasRenderedLastData = true
+
+        val coverChanges = mutableListOf<Boolean>()
+
+        override fun setCovered(isCovered: Boolean) {
+            coverChanges.add(isCovered)
+        }
+
         override fun updateParams(params: Map<String, String>, onResult: (DataPushOutcome) -> Unit) {
             paramUpdates.add(params)
             isDataPushAbandoned = false
+            hasRenderedLastData = false
             pushResult = onResult
         }
 
@@ -239,7 +252,12 @@ class EmbeddedBlockContentControllerTest {
             sessionRefreshParams.add(params)
             check(!crashesOnSessionRefresh) { "the page crashed on the session refresh" }
             isDataPushAbandoned = false
+            hasRenderedLastData = false
             pushResult = onResult
+        }
+
+        fun renderWhilePaused() {
+            hasRenderedLastData = true
         }
 
         override fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds) {
@@ -257,6 +275,7 @@ class EmbeddedBlockContentControllerTest {
         }
 
         fun render() {
+            hasRenderedLastData = true
             onStateChange?.invoke(EmbeddedBlockState.Ready)
         }
     }
@@ -268,6 +287,8 @@ class EmbeddedBlockContentControllerTest {
         selectionTimes: MutableList<Milliseconds> = mutableListOf(),
         hostActivity: () -> Activity? = { null },
         readyTimeout: Milliseconds = Milliseconds(7_000L),
+        tracker: InAppFailureTracker? = null,
+        hasConfig: () -> Boolean = { false },
     ) = EmbeddedBlockContentController(
         placeSystemName = "main-screen-top",
         configTimeout = Milliseconds(30_000L),
@@ -278,6 +299,8 @@ class EmbeddedBlockContentControllerTest {
         },
         blocksRegistry = { blocksRegistry },
         monotonicNow = monotonicNow,
+        failureTracker = { tracker },
+        hasConfig = hasConfig,
         isAppInForeground = { isAppInForeground },
         hostActivity = hostActivity,
     ).apply { onStateChange = { state -> states.add(state) } }
@@ -307,7 +330,7 @@ class EmbeddedBlockContentControllerTest {
         val controller = controller(configTimeout = Milliseconds(30_000L))
         controller.start()
 
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         idleFor(Duration.ofMillis(30_001L))
 
         assertEquals(EmbeddedBlockState.Loading, states.last())
@@ -326,7 +349,7 @@ class EmbeddedBlockContentControllerTest {
         )
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(null)
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         controller.pause()
         clock = Milliseconds(45_000L)
         controller.start()
@@ -368,7 +391,7 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         controller.pause()
 
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         clock = Milliseconds(20_000L)
         blocksRegistry.pushContent("main-screen-top", content, selectionTime = Milliseconds(250L))
         clock = Milliseconds(45_000L)
@@ -498,7 +521,7 @@ class EmbeddedBlockContentControllerTest {
             failureTracker = { tracker },
         ).apply { onStateChange = { state -> states.add(state) } }
         controller.start()
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
 
         controller.pause()
         controller.start()
@@ -515,7 +538,7 @@ class EmbeddedBlockContentControllerTest {
         idleFor(Duration.ofMillis(30_001L))
         assertEquals(networkError, states.last())
 
-        blocksRegistry.lastHandle?.onContentPending()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
         blocksRegistry.pushContent("main-screen-top", content)
 
         assertEquals(networkError, states.last())
@@ -1522,7 +1545,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a new session's same content refreshes the page in place once, with the same params`() {
+    fun `a new session's same content refreshes the page in place once, with the same params, under the placeholder until it renders`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
@@ -1535,11 +1558,19 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(listOf((content.layers.single() as Layer.WebViewLayer).params), providers.single().sessionRefreshParams)
         assertTrue(providers.single().paramUpdates.isEmpty())
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
         assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
+        assertEquals(0, providers.single().releaseCount)
     }
 
     @Test
-    fun `a page taking a new session's data in place keeps its block shown however long it takes to render again`() {
+    fun `a page taking a new session's data in place stays with its block, covered until it renders again`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
         controller.start()
@@ -1547,13 +1578,610 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
 
-        idleFor(Duration.ofMillis(60_000L))
+        idleFor(Duration.ofMillis(6_999L))
+        assertEquals(EmbeddedBlockState.Loading, states.last())
         providers.single().render()
 
         assertEquals(EmbeddedBlockState.Ready, states.last())
         assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
         assertEquals(1, providers.size)
         assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a page that never renders the new session's data it took fails its block within the ready budget`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+
+        idleFor(Duration.ofMillis(7_001L))
+
+        assertEquals(internalError, states.last())
+        assertEquals(1, providers.single().releaseCount)
+        assertFalse(controller.isPageCovered)
+    }
+
+    @Test
+    fun `a page covered for a new session waits for that session's answer for the wait budget, then fails with a network error`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L), tracker = tracker, hasConfig = { true })
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+
+        controller.onSessionRenewed()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+        assertTrue(controller.isPageCovered)
+        assertEquals(0, providers.single().releaseCount)
+        verify(exactly = 0) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+
+        idleFor(Duration.ofMillis(2L))
+
+        assertEquals(networkError, states.last())
+        assertFalse(controller.isPageCovered)
+        assertEquals(1, providers.single().releaseCount)
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+        verify(exactly = 1) {
+            tracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
+        }
+    }
+
+    @Test
+    fun `a page covered again after taking a new session's data waits the whole budget for the next session's answer`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        providers.single().render()
+        idleFor(Duration.ofMillis(30_001L))
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L), SessionEpoch(1L))
+
+        controller.onSessionRenewed()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a covered page back from background during the new session's delay keeps waiting beyond the wait budget`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
+        isAppInForeground = false
+        controller.pause()
+        isAppInForeground = true
+
+        controller.start()
+        idleFor(Duration.ofMillis(60_000L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+    }
+
+    @Test
+    fun `the wait budget of a covered page does not tick while the app is in background`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+        idleFor(Duration.ofMillis(20_000L))
+        isAppInForeground = false
+        controller.pause()
+        idleFor(Duration.ofMillis(60_000L))
+        isAppInForeground = true
+
+        controller.start()
+        idleFor(Duration.ofMillis(9_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+
+        idleFor(Duration.ofMillis(2L))
+
+        assertEquals(networkError, states.last())
+    }
+
+    @Test
+    fun `a page refusing a refresh past the end of its session waits for the next session's answer within the wait budget`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerWithRefreshOutlivingItsSession(providers)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
+        shadowOf(Looper.getMainLooper()).idle()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+
+        idleFor(Duration.ofMillis(2L))
+
+        assertEquals(networkError, states.last())
+        assertEquals(1, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `the page is told when it is covered and when the cover comes off`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+
+        controller.onSessionRenewed()
+
+        assertEquals(listOf(true), providers.single().coverChanges)
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(listOf(true, false), providers.single().coverChanges)
+    }
+
+    @Test
+    fun `a new session begun while the page is on screen covers it with the placeholder, keeping the page`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+
+        controller.onSessionRenewed()
+
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready, EmbeddedBlockState.Loading), states)
+        assertTrue(controller.isPageCovered)
+        assertEquals(0, providers.single().releaseCount)
+        assertTrue(controller.contentView != null)
+        assertTrue(controller.isRetainable)
+    }
+
+    @Test
+    fun `a covered page that reports itself shown again before taking the new session's data stays covered`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+        isAppInForeground = false
+        controller.pause()
+        isAppInForeground = true
+
+        controller.start()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+    }
+
+    @Test
+    fun `a covered page that rendered the new session's data while its block was paused is shown again on the block's return`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        isAppInForeground = false
+        controller.pause()
+        providers.single().renderWhilePaused()
+        isAppInForeground = true
+
+        controller.start()
+        idleFor(Duration.ofMillis(60_000L))
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a page of an ended session that renders after the session changed is covered instead of shown`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, rendersOnStart = false, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+
+        providers.single().render()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Loading, EmbeddedBlockState.Loading), states)
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
+    }
+
+    @Test
+    fun `a page of an ended session that renders during the new session's delay is covered without the wait budget`() {
+        val tracker = mockk<InAppFailureTracker>(relaxed = true)
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, rendersOnStart = false, tracker = tracker, hasConfig = { true })
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
+
+        providers.single().render()
+        idleFor(Duration.ofMillis(60_000L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+        assertEquals(0, providers.single().releaseCount)
+        verify(exactly = 0) { tracker.sendPlaceWaitBudgetExceeded(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a delay announced in the ended session does not stand the covered page's wait for the new session down`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+
+        controller.onSessionRenewed()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+
+        idleFor(Duration.ofMillis(2L))
+
+        assertEquals(networkError, states.last())
+    }
+
+    @Test
+    fun `a delay the new session announced before its signal reached the block keeps standing the wait down through that signal`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(1L))
+
+        controller.onSessionRenewed()
+        idleFor(Duration.ofMillis(60_000L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a delay announced in the ended session while the block was on another screen does not stand its wait down on the block's return`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
+        controller.pause()
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+
+        controller.start()
+        idleFor(Duration.ofMillis(29_999L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+
+        idleFor(Duration.ofMillis(2L))
+
+        assertEquals(networkError, states.last())
+    }
+
+    @Test
+    fun `a page owed a new session's data that renders after the session changed takes the data under the placeholder`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, rendersOnStart = false)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
+
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
+    }
+
+    @Test
+    fun `a new session's nothing to show collapses the page it covers at once`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.single().releaseCount)
+        assertTrue(providers.single().withheldShows.isEmpty())
+        assertEquals(listOf("main-screen-top"), blocksRegistry.droppedPlaces)
+        assertFalse(controller.isPageCovered)
+    }
+
+    @Test
+    fun `an answer the SDK could not give in a new session collapses the page it covers at once`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+
+        blocksRegistry.lastHandle?.onConfigUnavailable(placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
+        assertEquals(networkError, states.last())
+        assertEquals(1, providers.single().releaseCount)
+        assertTrue(providers.single().withheldShows.isEmpty())
+    }
+
+    @Test
+    fun `a new session's refusal parked while the block was in background collapses it on its return before its first frame`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        isAppInForeground = false
+        controller.pause()
+        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        isAppInForeground = true
+        val reportedBeforeReturn = states.size
+
+        controller.start()
+
+        assertEquals(listOf<EmbeddedBlockState>(EmbeddedBlockState.Empty), states.drop(reportedBeforeReturn))
+        assertEquals(1, providers.single().releaseCount)
+        assertTrue(providers.single().withheldShows.isEmpty())
+    }
+
+    @Test
+    fun `a new session's other winner replaces the covered page`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+
+        blocksRegistry.lastHandle?.onContentResolved(content.copy(inAppId = "other-winner"), placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
+        assertEquals(2, providers.size)
+        assertEquals(1, providers.first().releaseCount)
+        assertEquals(listOf(SessionEpoch(1L)), providers.last().confirmedSessions)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
+    }
+
+    @Test
+    fun `a new session's delayed winner keeps the page covered through the delay`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+
+        blocksRegistry.lastHandle?.onContentPending(SessionEpoch(0L))
+        idleFor(Duration.ofMillis(60_000L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a covered page is kept for its screen like a shown one, and release lets it go`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L))
+        controller.onSessionRenewed()
+        assertTrue(controller.isRetainable)
+
+        controller.release()
+
+        assertEquals(1, providers.single().releaseCount)
+        assertFalse(controller.isPageCovered)
+    }
+
+    @Test
+    fun `a page covered again by a later session before it draws the previous session's data stays covered until the later session's data draws`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L), SessionEpoch(1L))
+        controller.onSessionRenewed()
+
+        providers.single().render()
+        idleFor(Duration.ofMillis(7_001L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(2L)), providers.single().sessionRefreshes)
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a page that drew the previous session's data while its block was paused stays covered on the block's return in a later session`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        isAppInForeground = false
+        controller.pause()
+        providers.single().renderWhilePaused()
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L), SessionEpoch(1L))
+        isAppInForeground = true
+
+        controller.start()
+        idleFor(Duration.ofMillis(7_001L))
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertTrue(states.none { state -> state is EmbeddedBlockState.Failed })
+    }
+
+    @Test
+    fun `params of the new session whose push to the covered page was abandoned lift the cover once sent again and rendered`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        val refreshed = contentWithParams(mapOf("items" to "[]"))
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.ABANDONED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
+        assertEquals(listOf(mapOf("items" to "[]"), mapOf("items" to "[]")), providers.single().paramUpdates)
+        assertTrue(controller.isPageCovered)
+
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
+        assertEquals(0, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a covered page that renders nothing for the data of an ended session stays covered for the new session's answer`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        blocksRegistry.endedSessions = setOf(SessionEpoch(0L), SessionEpoch(1L))
+        controller.onSessionRenewed()
+
+        providers.single().rendersNothing = true
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertEquals(0, providers.single().releaseCount)
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        shadowOf(Looper.getMainLooper()).idle()
+        providers.single().rendersNothing = false
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
+    }
+
+    @Test
+    fun `a covered page that does not confirm the new session's data within the ready budget fails its block as presentation_failed`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers, readyTimeout = Milliseconds(7_000L))
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
+        idleFor(Duration.ofMillis(6_999L))
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        idleFor(Duration.ofMillis(2L))
+
+        assertEquals(internalError, states.last())
+        assertEquals(1, providers.single().releaseCount)
+    }
+
+    @Test
+    fun `a page on screen through the app's background and return within its session is not covered`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = sessionAwareController(providers)
+        controller.start()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+        isAppInForeground = false
+        controller.pause()
+        isAppInForeground = true
+
+        controller.start()
+        controller.onReturnChecked()
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
+
+        assertEquals(listOf(EmbeddedBlockState.Loading, EmbeddedBlockState.Ready), states)
+        assertFalse(controller.isPageCovered)
+        assertTrue(providers.single().sessionRefreshes.isEmpty())
     }
 
     @Test
@@ -1648,22 +2276,25 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a new session's params the page could not take while a collapse is held are sent again once the same content clears the hold`() {
+    fun `a new session's content with new params covers the page until it renders them`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         val refreshed = contentWithParams(mapOf("items" to "[]"))
-        blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
-        blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
-        shadowOf(Looper.getMainLooper()).idle()
         blocksRegistry.lastHandle?.onContentResolved(refreshed, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+        assertEquals(listOf(mapOf("items" to "[]")), providers.single().sessionRefreshParams)
+
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
         assertEquals(1, providers.size)
-        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(1L)), providers.single().sessionRefreshes)
-        assertEquals(listOf(mapOf("items" to "[]"), mapOf("items" to "[]")), providers.single().sessionRefreshParams)
     }
 
     @Test
@@ -1772,7 +2403,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a new session's refresh due while the page loads is not sent to a page whose collapse is held, and goes once content clears the hold`() {
+    fun `a new session's nothing to show arriving while its refresh is due collapses the page at once, and its content later rebuilds it`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
@@ -1780,17 +2411,21 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         blocksRegistry.isReturnCheckPending = true
         providers.single().render()
+
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.first().releaseCount)
+        assertTrue(providers.first().sessionRefreshes.isEmpty())
+        assertFalse(providers.first().withheldShows.contains(true))
 
         blocksRegistry.isReturnCheckPending = false
         controller.onReturnChecked()
-
-        assertTrue(providers.single().sessionRefreshes.isEmpty())
-
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
-        assertEquals(false, providers.single().withheldShows.last())
+        assertEquals(2, providers.size)
+        assertEquals(listOf(SessionEpoch(1L)), providers.last().confirmedSessions)
+        assertTrue(providers.last().sessionRefreshes.isEmpty())
     }
 
     @Test
@@ -1835,7 +2470,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a new session's refresh due while the page loads is dropped when that session ended before the page rendered`() {
+    fun `a new session's refresh due while the page loads is dropped when that session ended before the page rendered, the page staying covered for the next session`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, rendersOnStart = false)
         controller.start()
@@ -1846,11 +2481,20 @@ class EmbeddedBlockContentControllerTest {
         providers.single().render()
 
         assertTrue(providers.single().sessionRefreshes.isEmpty())
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+
+        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(listOf(SessionEpoch(2L)), providers.single().sessionRefreshes)
         assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(0, providers.single().releaseCount)
     }
 
     @Test
-    fun `a new session's refresh that the page could not take rebuilds the page for that session`() {
+    fun `a new session's refresh the page could not take fails its block as presentation_failed instead of rebuilding the page`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
@@ -1860,12 +2504,14 @@ class EmbeddedBlockContentControllerTest {
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(2, providers.size)
-        assertEquals(listOf(SessionEpoch(1L)), providers.last().confirmedSessions)
+        assertEquals(internalError, states.last())
+        assertEquals(1, providers.size)
+        assertEquals(1, providers.single().releaseCount)
+        assertFalse(controller.isPageCovered)
     }
 
     @Test
-    fun `a new session's data push the SDK abandoned rebuilds nothing and is sent again by the session's next answer`() {
+    fun `a new session's data push the SDK abandoned rebuilds nothing, keeps the page covered and is sent again by the session's next answer`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
@@ -1877,7 +2523,8 @@ class EmbeddedBlockContentControllerTest {
 
         assertEquals(1, providers.size)
         assertEquals(0, providers.single().releaseCount)
-        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
 
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
@@ -1920,16 +2567,17 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a new session's refresh left unconfirmed past the end of that session keeps the page for the next session's answer`() {
+    fun `a new session's refresh left unconfirmed past the end of that session keeps the page covered for the next session's answer`() {
         val providers = mutableListOf<SessionAwareProvider>()
-        controllerWithRefreshOutlivingItsSession(providers)
+        val controller = controllerWithRefreshOutlivingItsSession(providers)
 
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, providers.size)
         assertEquals(0, providers.single().releaseCount)
-        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
 
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(2L)))
 
@@ -1937,7 +2585,20 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `the next session's refusal is held by the page whose refresh was left unconfirmed past the end of its session`() {
+    fun `a page rendering late the data of a refresh it refused past the end of that session stays covered`() {
+        val providers = mutableListOf<SessionAwareProvider>()
+        val controller = controllerWithRefreshOutlivingItsSession(providers)
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
+    }
+
+    @Test
+    fun `the next session's refusal collapses the page whose refresh was left unconfirmed past the end of its session`() {
         val providers = mutableListOf<SessionAwareProvider>()
         controllerWithRefreshOutlivingItsSession(providers)
         providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
@@ -1945,8 +2606,9 @@ class EmbeddedBlockContentControllerTest {
 
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(2L)))
 
-        assertEquals(true, providers.first().withheldShows.last())
-        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.first().releaseCount)
+        assertFalse(providers.first().withheldShows.contains(true))
     }
 
     @Test
@@ -1972,6 +2634,8 @@ class EmbeddedBlockContentControllerTest {
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
 
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         assertEquals(true, providers.single().withheldShows.last())
@@ -2065,20 +2729,27 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a session refresh the page could not take while a collapse is held is sent again once content clears the hold`() {
+    fun `a new session's nothing to show arriving while the page takes that session's data collapses the block at once, and content again rebuilds the page`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
+
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        providers.single().pushResult?.invoke(DataPushOutcome.REFUSED)
+        assertEquals(EmbeddedBlockState.Empty, states.last())
+        assertEquals(1, providers.first().releaseCount)
+        assertFalse(providers.first().withheldShows.contains(true))
+
+        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
         shadowOf(Looper.getMainLooper()).idle()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
 
-        assertEquals(1, providers.size)
-        assertEquals(listOf(SessionEpoch(1L), SessionEpoch(1L)), providers.single().sessionRefreshes)
+        assertEquals(2, providers.size)
+        assertEquals(listOf(SessionEpoch(1L)), providers.first().sessionRefreshes)
+        assertTrue(providers.last().sessionRefreshes.isEmpty())
+        assertEquals(EmbeddedBlockState.Ready, states.last())
     }
 
     @Test
@@ -2246,39 +2917,6 @@ class EmbeddedBlockContentControllerTest {
         assertEquals(listOf(networkError), states.drop(reportedBeforeReturn))
         assertEquals(1, createdProviders.single().releaseCount)
         assertEquals(listOf("main-screen-top", "main-screen-top"), blocksRegistry.appearedPlaces)
-    }
-
-    @Test
-    fun `a page rebuilt after its new session's refresh failed carries the new session's selection time`() {
-        val selectionTimes = mutableListOf<Milliseconds>()
-        val providers = mutableListOf<SessionAwareProvider>()
-        val controller = sessionAwareController(providers, selectionTimes = selectionTimes)
-        controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L), selectionTime = Milliseconds(100L)))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(400L)))
-
-        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
-        shadowOf(Looper.getMainLooper()).idle()
-
-        assertEquals(2, providers.size)
-        assertEquals(listOf(Milliseconds(100L), Milliseconds(400L)), selectionTimes)
-    }
-
-    @Test
-    fun `a page rebuilt after its new session's refresh failed carries the time the failed page counted for that session`() {
-        val selectionTimes = mutableListOf<Milliseconds>()
-        val providers = mutableListOf<SessionAwareProvider>()
-        val controller = sessionAwareController(providers, selectionTimes = selectionTimes)
-        controller.start()
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L), selectionTime = Milliseconds(100L)))
-        blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), selectionTime = Milliseconds(400L)))
-        providers.first().timeToDisplayBySession[SessionEpoch(1L)] = Milliseconds(7_400L)
-
-        providers.first().pushResult?.invoke(DataPushOutcome.REFUSED)
-        shadowOf(Looper.getMainLooper()).idle()
-
-        assertEquals(2, providers.size)
-        assertEquals(listOf(Milliseconds(100L), Milliseconds(7_400L)), selectionTimes)
     }
 
     @Test
@@ -2598,7 +3236,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a new session's content parked over a page that rendered nothing in background keeps the block when the app comes back on another screen, and its return refreshes the page in place`() {
+    fun `a new session's content parked over a page that rendered nothing in background keeps the block when the app comes back on another screen, and its return refreshes the page in place under the placeholder`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = controllerWithEmptiedPageThroughBackground(providers)
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L)))
@@ -2615,12 +3253,19 @@ class EmbeddedBlockContentControllerTest {
         isAppInForeground = true
         controller.start()
 
-        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertEquals(EmbeddedBlockState.Loading, states.last())
+        assertTrue(controller.isPageCovered)
         assertEquals(1, providers.size)
         assertEquals(0, providers.single().releaseCount)
         assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
         assertEquals(listOf(true, false), providers.single().withheldShows)
         assertEquals(listOf(content.inAppId to SessionEpoch(1L)), blocksRegistry.reservedShows)
+
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
+        providers.single().render()
+
+        assertEquals(EmbeddedBlockState.Ready, states.last())
+        assertFalse(controller.isPageCovered)
     }
 
     @Test
@@ -2703,23 +3348,20 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a shown page that renders nothing after an operation's new-session data keeps its block until the block leaves the screen`() {
+    fun `a shown page that renders nothing after an operation's new-session data collapses its block at once`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers)
         controller.start()
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(0L)))
         blocksRegistry.lastHandle?.onContentResolved(content, placeAnswer(sessionEpoch = SessionEpoch(1L), isByOperation = true))
         assertEquals(listOf(SessionEpoch(1L)), providers.single().sessionRefreshes)
+        providers.single().pushResult?.invoke(DataPushOutcome.CONFIRMED)
 
         providers.single().rendersNothing = true
 
-        assertEquals(EmbeddedBlockState.Ready, states.last())
-        assertEquals(0, providers.single().releaseCount)
-
-        controller.pause()
-
         assertEquals(EmbeddedBlockState.Empty, states.last())
         assertEquals(1, providers.single().releaseCount)
+        assertFalse(controller.isPageCovered)
     }
 
     @Test
@@ -2917,7 +3559,7 @@ class EmbeddedBlockContentControllerTest {
     }
 
     @Test
-    fun `a block back on its screen after the app came back on another one drops an answer parked in the ended session and holds the new session's refusal on its kept page`() {
+    fun `a block back on its screen after the app came back on another one drops an answer parked in the ended session and collapses on the new session's refusal`() {
         val providers = mutableListOf<SessionAwareProvider>()
         val controller = sessionAwareController(providers, hostActivity = { blockScreen })
         controller.start()
@@ -2934,14 +3576,9 @@ class EmbeddedBlockContentControllerTest {
         blocksRegistry.lastHandle?.onContentResolved(null, placeAnswer(sessionEpoch = SessionEpoch(1L)))
         controller.onReturnChecked()
 
-        assertEquals(EmbeddedBlockState.Ready, states.last())
-        assertEquals(0, providers.single().releaseCount)
-        assertEquals(listOf(true), providers.single().withheldShows)
-
-        controller.pause()
-
         assertEquals(EmbeddedBlockState.Empty, states.last())
         assertEquals(1, providers.single().releaseCount)
+        assertTrue(providers.single().withheldShows.isEmpty())
     }
 
     @Test

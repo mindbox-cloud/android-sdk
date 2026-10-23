@@ -29,6 +29,12 @@ internal interface EmbeddedUpdatableContentProvider : EmbeddedContentProvider {
     val isDataPushAbandoned: Boolean
         get() = false
 
+    @get:MainThread
+    val hasRenderedLastData: Boolean
+
+    @MainThread
+    fun setCovered(isCovered: Boolean)
+
     @MainThread
     fun scheduleSessionRefresh(sessionEpoch: SessionEpoch, selectionTime: Milliseconds)
 
