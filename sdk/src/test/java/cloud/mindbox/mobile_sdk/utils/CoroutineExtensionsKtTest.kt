@@ -75,6 +75,26 @@ class CoroutineExtensionsKtTest {
         assertTrue(jobs.last().isCancelled)
     }
 
+    @Test
+    fun `awaitAllWithTimeout reports only the jobs it cancelled`() = runTest {
+        val jobs = listOf(100L, 180_000L, 200_000L).map { async { delayedOperation(it) } }
+        val cancelled = mutableListOf<Deferred<String>>()
+
+        jobs.awaitAllWithTimeout(1_000) { cancelled += it }
+
+        assertEquals(jobs.drop(1), cancelled)
+    }
+
+    @Test
+    fun `awaitAllWithTimeout reports nothing when every job finishes in time`() = runTest {
+        val jobs = listOf(100L, 200L).map { async { delayedOperation(it) } }
+        var cancelled = 0
+
+        jobs.awaitAllWithTimeout(1_000) { cancelled++ }
+
+        assertEquals(0, cancelled)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `awaitAllWithTimeout does not delay parent completion when a job hangs`() = runTest {
