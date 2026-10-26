@@ -5,7 +5,11 @@ import kotlinx.coroutines.SupervisorJob
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import android.os.Looper
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.test.core.app.ApplicationProvider
@@ -71,6 +75,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -94,6 +99,9 @@ class EmbeddedBlockWebViewHolderTest {
     private val inAppMessageManager: InAppMessageManager = mockk(relaxUnitFun = true)
     private val webPageRegistry: MindboxWebPageRegistry = mockk(relaxUnitFun = true)
     private val inAppFailureTracker: InAppFailureTracker = mockk(relaxed = true)
+    private val webViewCachePolicy: InAppWebViewCachePolicy = mockk {
+        every { isCacheEnabled } returns false
+    }
 
     private var elapsed = 0L
     private val timeProvider: SystemTimeProvider = mockk {
@@ -123,9 +131,7 @@ class EmbeddedBlockWebViewHolderTest {
             every { appContext } returns application
             every { inAppFailureTracker } returns this@EmbeddedBlockWebViewHolderTest.inAppFailureTracker
             every { timeProvider } returns this@EmbeddedBlockWebViewHolderTest.timeProvider
-            every { webViewCachePolicy } returns mockk<InAppWebViewCachePolicy> {
-                every { isCacheEnabled } returns false
-            }
+            every { webViewCachePolicy } returns this@EmbeddedBlockWebViewHolderTest.webViewCachePolicy
             every { inAppMessageManager } returns this@EmbeddedBlockWebViewHolderTest.inAppMessageManager
             every { webPageRegistry } returns this@EmbeddedBlockWebViewHolderTest.webPageRegistry
             stubBridgeHelpers(application)
@@ -220,6 +226,18 @@ class EmbeddedBlockWebViewHolderTest {
     private fun lastOutgoingPayload(): JsonObject? =
         lastOutgoingMessage()?.get("payload")?.asString?.let { JsonParser.parseString(it).asJsonObject }
 
+    private fun receiveScriptHttpError() {
+        val request = mockk<WebResourceRequest> {
+            every { url } returns Uri.parse("https://cdn.local/runtime.js")
+            every { isForMainFrame } returns false
+        }
+        val response = mockk<WebResourceResponse> {
+            every { statusCode } returns 404
+        }
+        shadowOf(webView).webViewClient.onReceivedHttpError(webView, request, response)
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+
     @Test
     fun `a show requested just before the page was covered is refused at its final check`() {
         givenShowPathCapturesRequester()
@@ -261,6 +279,37 @@ class EmbeddedBlockWebViewHolderTest {
 
         assertFalse(webView.isHorizontalScrollBarEnabled)
         assertFalse(webView.isVerticalScrollBarEnabled)
+    }
+
+    @Test
+    fun `block webview uses the http cache when the cache toggle is on`() {
+        every { webViewCachePolicy.isCacheEnabled } returns true
+
+        startAndAwaitPageLoad()
+
+        assertEquals(WebSettings.LOAD_DEFAULT, webView.settings.cacheMode)
+    }
+
+    @Test
+    fun `block webview bypasses the http cache when the cache toggle is off`() {
+        startAndAwaitPageLoad()
+
+        assertEquals(WebSettings.LOAD_NO_CACHE, webView.settings.cacheMode)
+    }
+
+    @Test
+    fun `a script error before the page answers reloads the page once with the cache bypassed`() {
+        every { webViewCachePolicy.isCacheEnabled } returns true
+        startAndAwaitPageLoad()
+        val firstLoad = shadowOf(webView).lastLoadDataWithBaseURL
+
+        receiveScriptHttpError()
+
+        val reload = shadowOf(webView).lastLoadDataWithBaseURL
+        assertNotSame(firstLoad, reload)
+        assertEquals("<html>block</html>", reload?.data)
+        assertEquals(WebSettings.LOAD_NO_CACHE, webView.settings.cacheMode)
+        coVerify(exactly = 1) { gatewayManager.fetchWebViewContent(any()) }
     }
 
     @Test
