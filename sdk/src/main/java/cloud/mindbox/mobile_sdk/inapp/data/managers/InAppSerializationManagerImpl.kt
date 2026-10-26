@@ -2,10 +2,10 @@ package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppSerializationManager
-import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppFailuresWrapper
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppErrorsWrapper
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppClickRequest
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowRequest
-import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowError
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppTargetingRequest
 import cloud.mindbox.mobile_sdk.toJsonTyped
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -54,11 +54,11 @@ internal class InAppSerializationManagerImpl(private val gson: Gson) : InAppSeri
         }
     }
 
-    override fun serializeToInAppShowFailuresString(
-        inAppShowFailures: List<InAppShowFailure>
+    override fun serializeToInAppShowErrorsString(
+        inAppShowErrors: List<InAppShowError>
     ): String {
         return loggingRunCatching("") {
-            gson.toJsonTyped<InAppFailuresWrapper>(InAppFailuresWrapper(inAppShowFailures))
+            gson.toJsonTyped<InAppErrorsWrapper>(InAppErrorsWrapper(inAppShowErrors))
         }
     }
 

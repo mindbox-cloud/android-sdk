@@ -133,6 +133,20 @@ import java.util.Map;
  * }</pre>
  */
 public final class RuntimeTypeAdapterFactory<T> implements TypeAdapterFactory {
+
+    public static final class UnknownSubtypeException extends JsonParseException {
+        private final String label;
+
+        UnknownSubtypeException(Class<?> baseType, String label) {
+            super("cannot deserialize " + baseType + " subtype named "
+                    + label + "; did you forget to register a subtype?");
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
     private final Class<?> baseType;
     private final String typeFieldName;
     private final Map<String, Class<?>> labelToSubtype = new LinkedHashMap<>();
@@ -254,8 +268,7 @@ public final class RuntimeTypeAdapterFactory<T> implements TypeAdapterFactory {
                 @SuppressWarnings("unchecked") // registration requires that subtype extends T
                 TypeAdapter<R> delegate = (TypeAdapter<R>) labelToDelegate.get(label);
                 if (delegate == null) {
-                    throw new JsonParseException("cannot deserialize " + baseType + " subtype named "
-                            + label + "; did you forget to register a subtype?");
+                    throw new UnknownSubtypeException(baseType, label);
                 }
                 return delegate.fromJsonTree(jsonElement);
             }

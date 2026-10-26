@@ -1,16 +1,22 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation
 
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import android.util.Log
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.managers.UserVisitManager
 import cloud.mindbox.mobile_sdk.models.InAppStub
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.Timestamp
+import com.google.gson.JsonPrimitive
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.sortByPriority
@@ -31,6 +37,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -52,7 +60,8 @@ internal class InAppMessageManagerTest {
     @MockK
     private lateinit var monitoringRepository: MonitoringInteractor
 
-    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true)
+    private val sessionState = SessionState()
+    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true) { every { state } returns sessionState }
 
     private val userVisitManager = mockk<UserVisitManager>()
 
@@ -60,7 +69,10 @@ internal class InAppMessageManagerTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    private val timeProvider = mockk<SystemTimeProvider>()
+    private val timeProvider = mockk<SystemTimeProvider> {
+        every { monotonicMillis() } returns Milliseconds(0L)
+        every { monotonicElapsedSince(any()) } returns Milliseconds(0L)
+    }
 
     private val featureToggleManager = mockk<FeatureToggleManager>()
 
@@ -115,7 +127,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws non network error`() = runTest {
+    fun `a config fetch failing outside the network is logged as an error and stores nothing itself`() = runTest {
         mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -139,8 +151,8 @@ internal class InAppMessageManagerTest {
         verify(exactly = 1) {
             MindboxLoggerImpl.e(InAppMessageManagerImpl::class, "Failed to get config", error)
         }
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
+        verify(exactly = 0) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value any<String>()
         }
     }
 
@@ -149,7 +161,7 @@ internal class InAppMessageManagerTest {
         val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
         val inApp = InAppStub.getInApp()
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
-        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageInteractor.reserveOverlayShow(any()) } returns ShowReservationOutcome.GRANTED
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
         every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
             this@runTest.launch {
@@ -187,7 +199,7 @@ internal class InAppMessageManagerTest {
     fun `in app messages success message not shown when inApp already active`() = runTest {
         val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
         val inApp = InAppStub.getInApp()
-        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageInteractor.reserveOverlayShow(any()) } returns ShowReservationOutcome.GRANTED
         every { inAppMessageViewDisplayer.isInAppActive() } returns true
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -224,76 +236,6 @@ internal class InAppMessageManagerTest {
         verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any(), any()) }
     }
 
-    @Test
-    fun `in app messages success message not shown when inApp frequency or limits not allowed`() = runTest {
-        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
-        val inApp = InAppStub.getInApp()
-        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns false
-        every { inAppMessageViewDisplayer.isInAppActive() } returns false
-        inAppMessageManager = InAppMessageManagerImpl(
-            inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            testDispatcher,
-            monitoringRepository,
-            sessionStorageManager,
-            userVisitManager,
-            inAppMessageDelayedManager,
-            timeProvider,
-            featureToggleManager
-        )
-        coEvery {
-            inAppMessageInteractor.listenToTargetingEvents()
-        } just runs
-        coEvery {
-            inAppMessageInteractor.processEventAndConfig()
-        }.answers {
-            flow {
-                emit(inApp to Milliseconds(0L))
-            }
-        }
-        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
-        every { inAppMessageDelayedManager.process(inApp, any()) } answers {
-            this@runTest.launch {
-                inAppToShowFlow.emit(inApp to Milliseconds(0L))
-            }
-        }
-
-        inAppMessageManager.listenEventAndInApp()
-        advanceUntilIdle()
-        verify(exactly = 1) { inAppMessageDelayedManager.process(inApp, any()) }
-        coVerify(exactly = 1) { inAppMessageInteractor.listenToTargetingEvents() }
-        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(inApp.form.variants.first(), any(), any(), any()) }
-    }
-
-    @Test
-    fun `in app messages error message`() = runTest {
-        inAppMessageManager = InAppMessageManagerImpl(
-            inAppMessageViewDisplayer,
-            inAppMessageInteractor,
-            testDispatcher,
-            monitoringRepository,
-            sessionStorageManager,
-            userVisitManager,
-            inAppMessageDelayedManager,
-            timeProvider,
-            featureToggleManager
-        )
-        coEvery {
-            inAppMessageInteractor.processEventAndConfig()
-        } returns flow {
-            throw Error("test error")
-        }
-        try {
-            inAppMessageManager.listenEventAndInApp()
-            advanceUntilIdle()
-        } catch (e: Error) {
-            e.printStackTrace()
-        }
-        coVerify(exactly = 1) {
-            inAppMessageInteractor.listenToTargetingEvents()
-        }
-    }
-
     private fun (() -> Any?).shouldNotThrow() = try {
         invoke()
     } catch (ex: Exception) {
@@ -301,7 +243,7 @@ internal class InAppMessageManagerTest {
     }
 
     @Test
-    fun `in-app config throws network error non 404`() = runTest {
+    fun `a config fetch failing on the network is logged as an error and stores nothing itself`() = runTest {
         mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -325,19 +267,21 @@ internal class InAppMessageManagerTest {
         }.answers {
             "test"
         }
+        val error = VolleyError(networkResponse)
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
-        }.throws(VolleyError(networkResponse))
+        }.throws(error)
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
-        verify(exactly = 1) { sessionStorageManager.configFetchingError = true }
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value "test"
+        verify(exactly = 1) { MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error) }
+        assertFalse(sessionStorageManager.state.configFetchingError)
+        verify(exactly = 0) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value any<String>()
         }
     }
 
     @Test
-    fun `in app config throws network error 404`() = runTest {
+    fun `a config fetch answered with 404 is logged as a warning and stores nothing itself`() = runTest {
         mockPreferencesConfigSetter()
         inAppMessageManager = InAppMessageManagerImpl(
             inAppMessageViewDisplayer,
@@ -356,14 +300,16 @@ internal class InAppMessageManagerTest {
             isAccessible = true
             setInt(networkResponse, 404)
         }
+        val error = VolleyError(networkResponse)
         coEvery {
             inAppMessageInteractor.fetchMobileConfig()
-        }.throws(VolleyError(networkResponse))
+        }.throws(error)
         inAppMessageManager.requestConfig()
         advanceUntilIdle()
-        verify(exactly = 0) { sessionStorageManager.configFetchingError = true }
-        verify(exactly = 1) {
-            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value ""
+        verify(exactly = 1) { MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error) }
+        assertFalse(sessionStorageManager.state.configFetchingError)
+        verify(exactly = 0) {
+            MindboxPreferences setProperty MindboxPreferences::inAppConfig.name value any<String>()
         }
     }
 
@@ -393,7 +339,7 @@ internal class InAppMessageManagerTest {
         var capturedTags: Map<String, String>? = null
         every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns true
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
-        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageInteractor.reserveOverlayShow(any()) } returns ShowReservationOutcome.GRANTED
         every { inAppMessageInteractor.sendInAppClicked(any(), any()) } just runs
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
         every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
@@ -435,7 +381,7 @@ internal class InAppMessageManagerTest {
         var capturedTags: Map<String, String>? = mapOf("sentinel" to "value")
         every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false
         every { inAppMessageViewDisplayer.isInAppActive() } returns false
-        every { inAppMessageInteractor.areShowAndFrequencyLimitsAllowed(any()) } returns true
+        every { inAppMessageInteractor.reserveOverlayShow(any()) } returns ShowReservationOutcome.GRANTED
         every { inAppMessageInteractor.sendInAppClicked(any(), any()) } just runs
         every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
         every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
@@ -466,5 +412,366 @@ internal class InAppMessageManagerTest {
         assertEquals(null, capturedTags)
         capturedCallbacks!!.onInAppClick.onClick()
         verify(exactly = 1) { inAppMessageInteractor.sendInAppClicked(inAppMessage.inAppId, null) }
+    }
+
+    private fun TestScope.createManager(): InAppMessageManagerImpl = InAppMessageManagerImpl(
+        inAppMessageViewDisplayer,
+        inAppMessageInteractor,
+        StandardTestDispatcher(testScheduler),
+        monitoringRepository,
+        sessionStorageManager,
+        userVisitManager,
+        inAppMessageDelayedManager,
+        timeProvider,
+        featureToggleManager
+    )
+
+    @Test
+    fun `a new session begins even when the overlay on screen cannot be dismissed`() = runTest {
+        every { inAppMessageViewDisplayer.dismissCurrentInApp() } throws IllegalStateException("the overlay could not be dismissed")
+        every { inAppMessageInteractor.beginNewSession() } just runs
+        every { userVisitManager.saveUserVisit() } just runs
+        every { inAppMessageDelayedManager.clearSession() } just runs
+
+        createManager().handleSessionExpiration()
+        advanceUntilIdle()
+
+        verify(exactly = 1) { inAppMessageInteractor.beginNewSession() }
+        verify(exactly = 1) { inAppMessageDelayedManager.clearSession() }
+    }
+
+    @Test
+    fun `the new session's config is requested even when a step after the session wipe fails`() = runTest {
+        every { inAppMessageViewDisplayer.dismissCurrentInApp() } just runs
+        every { inAppMessageInteractor.beginNewSession() } just runs
+        every { userVisitManager.saveUserVisit() } throws IllegalStateException("the visit could not be saved")
+        every { inAppMessageDelayedManager.clearSession() } just runs
+        coEvery { inAppMessageInteractor.fetchMobileConfig() } just runs
+
+        createManager().handleSessionExpiration()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { inAppMessageInteractor.fetchMobileConfig() }
+    }
+
+    @Test
+    fun `showInAppById presents the variant now with its tags and the caller params`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id", tags = mapOf("key" to "value"))
+        val variant = inApp.form.variants.first()
+        val extraParams = mapOf("title" to JsonPrimitive("Сториз 1"))
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
+        } just runs
+
+        createManager().showInAppById("tap-id", extraParams, requesterIsActive = { true }) {}
+        advanceUntilIdle()
+
+        verify(exactly = 1) {
+            inAppMessageViewDisplayer.showInAppMessageNow(
+                variant,
+                any(),
+                any(),
+                mapOf("key" to "value"),
+                extraParams
+            )
+        }
+    }
+
+    @Test
+    fun `showInAppById wires the ordinary show and dismiss accounting`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any(), any()) } just runs
+        every { inAppMessageInteractor.sendInAppClicked(any(), any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+
+        createManager().showInAppById("tap-id", emptyMap(), requesterIsActive = { true }) {}
+        advanceUntilIdle()
+
+        callbacks.captured.onInAppShown.onShown()
+        verify(exactly = 1) { inAppMessageInteractor.saveShownInApp(variant.inAppId, 100L, any(), null) }
+        callbacks.captured.onInAppDismiss.onDismiss()
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp, Timestamp(100L)) }
+        callbacks.captured.onInAppClick.onClick()
+        verify(exactly = 1) { inAppMessageInteractor.sendInAppClicked(variant.inAppId, null) }
+    }
+
+    @Test
+    fun `showInAppById for an id nothing resolves shows nothing and answers unknown_inapp`() = runTest {
+        coEvery { inAppMessageInteractor.getInAppToShowById("missing") } returns null
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("missing", emptyMap(), requesterIsActive = { true }) { outcomes.add(it) }
+        advanceUntilIdle()
+
+        verify(exactly = 0) {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any())
+        }
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.UNKNOWN_INAPP)), outcomes)
+    }
+
+    @Test
+    fun `showInAppById answers shown once the window is on screen, and a later dismiss is not a second answer`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any(), any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap(), requesterIsActive = { true }) { outcomes.add(it) }
+        advanceUntilIdle()
+        assertTrue(outcomes.isEmpty())
+
+        callbacks.captured.onInAppShown.onShown()
+        assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
+
+        callbacks.captured.onInAppDismiss.onDismiss()
+        assertEquals(listOf(ShowInAppOutcome.Shown), outcomes)
+    }
+
+    @Test
+    fun `showInAppById answers show_failed when the lookup itself blows up`() = runTest {
+        coEvery { inAppMessageInteractor.getInAppToShowById("boom") } throws IllegalStateException("boom")
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("boom", emptyMap(), requesterIsActive = { true }) { outcomes.add(it) }
+        advanceUntilIdle()
+
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED)), outcomes)
+        verify(exactly = 0) { inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `showInAppById answers show_failed once when the show never happens`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap(), requesterIsActive = { true }) { outcomes.add(it) }
+        advanceUntilIdle()
+
+        callbacks.captured.onInAppNotShown.onNotShown()
+        callbacks.captured.onInAppNotShown.onNotShown()
+        callbacks.captured.onInAppShown.onShown()
+
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED)), outcomes)
+    }
+
+    @Test
+    fun `showInAppById from a requester gone by the main step shows nothing and answers not_visible`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        var isRequesterActive = true
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } coAnswers {
+            isRequesterActive = false
+            InAppToShow(inApp, variant)
+        }
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap(), requesterIsActive = { isRequesterActive }) { outcomes.add(it) }
+        advanceUntilIdle()
+
+        assertEquals(listOf(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE)), outcomes)
+        verify(exactly = 0) { inAppMessageViewDisplayer.showInAppMessageNow(any(), any(), any(), any(), any()) }
+    }
+
+    private fun TestScope.managerWithCapturedCallbacks(
+        inApp: InApp,
+        hold: ShowReservationOutcome = ShowReservationOutcome.GRANTED,
+    ): () -> InAppActionCallbacks {
+        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
+        var captured: InAppActionCallbacks? = null
+        every { featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE) } returns false
+        every { inAppMessageViewDisplayer.isInAppActive() } returns false
+        every { inAppMessageInteractor.reserveOverlayShow(any()) } returns hold
+        every { inAppMessageInteractor.releaseOverlayShow(any()) } just runs
+        every { inAppMessageInteractor.saveInAppDismissTime(any(), any()) } just runs
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        every { timeProvider.currentTimestamp() } returns Timestamp(1_000L)
+        every { timeProvider.currentTimeMillis() } returns 1_000L
+        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
+        every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
+            this@managerWithCapturedCallbacks.launch { inAppToShowFlow.emit(inApp to Milliseconds(0L)) }
+        }
+        every { inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any()) } answers {
+            captured = arg(1)
+        }
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            testDispatcher,
+            monitoringRepository,
+            sessionStorageManager,
+            userVisitManager,
+            inAppMessageDelayedManager,
+            timeProvider,
+            featureToggleManager
+        )
+        coEvery { inAppMessageInteractor.processEventAndConfig() } answers { flow { emit(inApp to Milliseconds(0L)) } }
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+        return { captured!! }
+    }
+
+    @Test
+    fun `a candidate refused by the budgets is not handed to the displayer`() = runTest {
+        val inAppToShowFlow = MutableSharedFlow<Pair<InApp, Milliseconds>>()
+        val inApp = InAppStub.getInApp()
+        every { inAppMessageViewDisplayer.isInAppActive() } returns false
+        every { inAppMessageInteractor.reserveOverlayShow(any()) } returns ShowReservationOutcome.REFUSED
+        every { inAppMessageDelayedManager.inAppToShowFlow } returns inAppToShowFlow
+        every { inAppMessageDelayedManager.process(inApp, any()) } coAnswers {
+            this@runTest.launch { inAppToShowFlow.emit(inApp to Milliseconds(0L)) }
+        }
+        inAppMessageManager = InAppMessageManagerImpl(
+            inAppMessageViewDisplayer,
+            inAppMessageInteractor,
+            testDispatcher,
+            monitoringRepository,
+            sessionStorageManager,
+            userVisitManager,
+            inAppMessageDelayedManager,
+            timeProvider,
+            featureToggleManager
+        )
+        coEvery { inAppMessageInteractor.processEventAndConfig() } answers { flow { emit(inApp to Milliseconds(0L)) } }
+
+        inAppMessageManager.listenEventAndInApp()
+        advanceUntilIdle()
+
+        verify(exactly = 1) { inAppMessageInteractor.reserveOverlayShow(inApp) }
+        verify(exactly = 0) { inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a candidate the displayer will never present gives its hold back`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppNotShown.onNotShown()
+
+        verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
+    }
+
+    @Test
+    fun `a dismiss before any show gives the hold back, a dismiss after the show does not`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppDismiss.onDismiss()
+        verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
+
+        val shown = managerWithCapturedCallbacks(inApp)
+        shown().onInAppShown.onShown()
+        shown().onInAppDismiss.onDismiss()
+        verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
+    }
+
+    @Test
+    fun `a dismiss before any show does not move the cooldown, a dismiss after the show does`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppDismiss.onDismiss()
+        verify(exactly = 0) { inAppMessageInteractor.saveInAppDismissTime(any(), any()) }
+
+        val shown = managerWithCapturedCallbacks(inApp)
+        shown().onInAppShown.onShown()
+        shown().onInAppDismiss.onDismiss()
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp, Timestamp(1_000L)) }
+    }
+
+    @Test
+    fun `a dismiss hands over the moment of the show, not the moment of the dismiss`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        every { timeProvider.currentTimestamp() } returns Timestamp(4_000L)
+        callbacks().onInAppShown.onShown()
+        every { timeProvider.currentTimestamp() } returns Timestamp(9_000L)
+        callbacks().onInAppDismiss.onDismiss()
+
+        verify(exactly = 1) { inAppMessageInteractor.saveInAppDismissTime(inApp, Timestamp(4_000L)) }
+    }
+
+    @Test
+    fun `a candidate that found the hold already standing is shown but never gives it back`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+        val secondCandidate = managerWithCapturedCallbacks(inApp, hold = ShowReservationOutcome.ALREADY_HELD)
+
+        secondCandidate().onInAppNotShown.onNotShown()
+        secondCandidate().onInAppDismiss.onDismiss()
+
+        verify(exactly = 0) { inAppMessageInteractor.releaseOverlayShow(any()) }
+        verify(atLeast = 1) { inAppMessageViewDisplayer.tryShowInAppMessage(any(), any(), any(), any()) }
+        callbacks().onInAppNotShown.onNotShown()
+        verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
+    }
+
+    @Test
+    fun `a show reported after the candidate was told it will not be shown writes nothing`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppNotShown.onNotShown()
+        callbacks().onInAppShown.onShown()
+
+        verify(exactly = 0) { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) }
+        verify(exactly = 1) { inAppMessageInteractor.releaseOverlayShow(inApp.id) }
+    }
+
+    @Test
+    fun `a second show report of the same candidate, from a paused and a restored holder, is not counted again`() = runTest {
+        val inApp = InAppStub.getInApp()
+        val callbacks = managerWithCapturedCallbacks(inApp)
+
+        callbacks().onInAppShown.onShown()
+        callbacks().onInAppShown.onShown()
+
+        verify(exactly = 1) { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a not-shown report after the show neither gives the hold back nor answers the requester`() = runTest {
+        val inApp = InAppStub.getInApp().copy(id = "tap-id")
+        val variant = inApp.form.variants.first()
+        coEvery { inAppMessageInteractor.getInAppToShowById("tap-id") } returns InAppToShow(inApp, variant)
+        every { timeProvider.currentTimestamp() } returns Timestamp(100L)
+        every { inAppMessageInteractor.saveShownInApp(any(), any(), any(), any()) } just runs
+        every { inAppMessageInteractor.releaseOverlayShow(any()) } just runs
+        val callbacks = slot<InAppActionCallbacks>()
+        every {
+            inAppMessageViewDisplayer.showInAppMessageNow(any(), capture(callbacks), any(), any(), any())
+        } just runs
+        val outcomes = mutableListOf<ShowInAppOutcome>()
+
+        createManager().showInAppById("tap-id", emptyMap(), requesterIsActive = { true }) { outcomes.add(it) }
+        advanceUntilIdle()
+        callbacks.captured.onInAppShown.onShown()
+        callbacks.captured.onInAppNotShown.onNotShown()
+
+        assertEquals(listOf<ShowInAppOutcome>(ShowInAppOutcome.Shown), outcomes)
+        verify(exactly = 0) { inAppMessageInteractor.releaseOverlayShow(any()) }
     }
 }

@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -456,6 +457,60 @@ internal class InAppABTestLogicTest {
             threeInapps.toSet(),
             calculateInApps(mixer99and99, abtests, threeInapps)
         )
+    }
+
+    @Test
+    fun `pool is calculated once while the config stays the same`() = runTest {
+        val abtests = listOf(abtest.copy(variants = listOf(variant)))
+        val repository: MobileConfigRepository = mockk {
+            coEvery { getABTests() } returns abtests
+        }
+        val mixer: CustomerAbMixer = mockk {
+            every { stringModulusHash(any(), any()) } returns 50
+        }
+        val logic = InAppABTestLogic(mixer, repository)
+
+        val first = logic.getInAppsPool(threeInapps)
+        val second = logic.getInAppsPool(threeInapps)
+
+        assertEquals(first, second)
+        verify(exactly = 1) { mixer.stringModulusHash(any(), any()) }
+    }
+
+    @Test
+    fun `pool is recalculated when abtests change`() = runTest {
+        val repository: MobileConfigRepository = mockk {
+            coEvery { getABTests() } returnsMany listOf(
+                listOf(abtest.copy(salt = "salt1", variants = listOf(variant))),
+                listOf(abtest.copy(salt = "salt2", variants = listOf(variant)))
+            )
+        }
+        val mixer: CustomerAbMixer = mockk {
+            every { stringModulusHash(any(), any()) } returns 50
+        }
+        val logic = InAppABTestLogic(mixer, repository)
+
+        logic.getInAppsPool(threeInapps)
+        logic.getInAppsPool(threeInapps)
+
+        verify(exactly = 2) { mixer.stringModulusHash(any(), any()) }
+    }
+
+    @Test
+    fun `pool is recalculated when the inapp list changes`() = runTest {
+        val abtests = listOf(abtest.copy(variants = listOf(variant)))
+        val repository: MobileConfigRepository = mockk {
+            coEvery { getABTests() } returns abtests
+        }
+        val mixer: CustomerAbMixer = mockk {
+            every { stringModulusHash(any(), any()) } returns 50
+        }
+        val logic = InAppABTestLogic(mixer, repository)
+
+        logic.getInAppsPool(threeInapps)
+        logic.getInAppsPool(fourInapps)
+
+        verify(exactly = 2) { mixer.stringModulusHash(any(), any()) }
     }
 
     private suspend fun calculateInApps(

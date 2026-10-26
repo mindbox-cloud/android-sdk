@@ -3,16 +3,22 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.gatedTags
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppClick
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppDismiss
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
+import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppNotShown
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OnInAppShown
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.BridgeErrorCode
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
@@ -21,10 +27,13 @@ import cloud.mindbox.mobile_sdk.millisToTimeSpan
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.monitoring.domain.interfaces.MonitoringInteractor
-import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
 import com.android.volley.VolleyError
+import com.google.gson.JsonElement
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -85,63 +94,150 @@ internal class InAppMessageManagerImpl(
                     return@withContext
                 }
 
-                if (!inAppInteractor.areShowAndFrequencyLimitsAllowed(inApp)) {
+                val inAppMessage = inApp.firstOverlayVariant()
+                if (inAppMessage == null) {
+                    mindboxLogI("InApp ${inApp.id} has no variant an overlay can show. Skipping.")
+                    return@withContext
+                }
+
+                val hold = inAppInteractor.reserveOverlayShow(inApp)
+                if (hold == ShowReservationOutcome.REFUSED) {
                     mindboxLogI("InApp ${inApp.id} failed final show-limits and frequency check. Skipping.")
                     return@withContext
                 }
 
-                val inAppMessage = inApp.form.variants.firstOrNull()
-                if (inAppMessage == null) {
-                    mindboxLogI("InApp ${inApp.id} has no variants to show. Skipping.")
-                    return@withContext
-                }
-
-                var renderStartTime = Timestamp(0L)
                 val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+                val callbacks = ShowCallbacks(inApp, inAppMessage, tags, preparedTimeMs, holdsBudget = hold == ShowReservationOutcome.GRANTED)
 
                 inAppMessageViewDisplayer.tryShowInAppMessage(
                     inAppType = inAppMessage,
-                    onRenderStart = { renderStartTime = timeProvider.currentTimestamp() },
+                    onRenderStart = callbacks.onRenderStart,
                     tags = tags,
-                    inAppActionCallbacks = object : InAppActionCallbacks {
-                        override val onInAppClick = OnInAppClick {
-                            inAppInteractor.sendInAppClicked(inAppMessage.inAppId, tags)
-                        }
-                        override val onInAppShown = OnInAppShown {
-                            handleInAppShown(renderStartTime, preparedTimeMs, inAppMessage, tags)
-                        }
-                        override val onInAppDismiss = OnInAppDismiss {
-                            inAppInteractor.saveInAppDismissTime()
-                        }
-                    }
+                    inAppActionCallbacks = callbacks
                 )
             }
         }
     }
 
-    /**
-     * In case of 404 clear config
-     * In case of other network error use cached version
-     * Otherwise do nothing
-     **/
+    override fun showInAppById(
+        inAppId: String,
+        extraParams: Map<String, JsonElement>,
+        requesterIsActive: () -> Boolean,
+        onOutcome: OnShowInAppOutcome,
+    ) {
+        val tapTick = timeProvider.monotonicMillis()
+        val outcome = TerminalOutcome(onOutcome)
+        inAppScope.launch {
+            runCatching { showRequestedInApp(inAppId, extraParams, requesterIsActive, tapTick, outcome) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    MindboxLoggerImpl.e(this@InAppMessageManagerImpl, "Showing in-app $inAppId on request failed", error)
+                    outcome.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED))
+                }
+        }
+    }
+
+    private suspend fun showRequestedInApp(
+        inAppId: String,
+        extraParams: Map<String, JsonElement>,
+        requesterIsActive: () -> Boolean,
+        tapTick: Milliseconds,
+        outcome: TerminalOutcome,
+    ) {
+        val inAppToShow = inAppInteractor.getInAppToShowById(inAppId) ?: run {
+            mindboxLogI("Nothing to show for in-app $inAppId")
+            outcome.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.UNKNOWN_INAPP))
+            return
+        }
+        val (inApp, variant) = inAppToShow
+        val tags = inApp.gatedTags(featureToggleManager.isEnabled(SEND_INAPP_TAGS_FEATURE))
+        val callbacks = ShowCallbacks(
+            inApp,
+            variant,
+            tags,
+            preparedTime = timeProvider.monotonicElapsedSince(tapTick),
+            outcome = outcome,
+        )
+        withContext(Dispatchers.Main) {
+            if (!requesterIsActive()) {
+                mindboxLogI("The page that asked for in-app $inAppId is gone, showing nothing")
+                outcome.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.NOT_VISIBLE))
+                return@withContext
+            }
+            inAppMessageViewDisplayer.showInAppMessageNow(
+                inAppType = variant,
+                onRenderStart = callbacks.onRenderStart,
+                tags = tags,
+                extraParams = extraParams,
+                inAppActionCallbacks = callbacks
+            )
+        }
+    }
+
+    private inner class ShowCallbacks(
+        inApp: InApp,
+        private val variant: InAppType,
+        tags: Map<String, String>?,
+        preparedTime: Milliseconds,
+        private val holdsBudget: Boolean = false,
+        private val outcome: TerminalOutcome? = null,
+    ) : InAppActionCallbacks {
+
+        private var renderStartTime = Timestamp(0L)
+
+        private val state = AtomicReference<ShowState>(ShowState.Pending)
+
+        val onRenderStart: () -> Unit = { renderStartTime = timeProvider.currentTimestamp() }
+
+        override val onInAppClick = OnInAppClick {
+            inAppInteractor.sendInAppClicked(variant.inAppId, tags)
+        }
+        override val onInAppShown = OnInAppShown {
+            val shown = ShowState.Shown(at = timeProvider.currentTimestamp())
+            if (!state.compareAndSet(ShowState.Pending, shown)) return@OnInAppShown
+            outcome?.settle(ShowInAppOutcome.Shown)
+            handleInAppShown(shown.at, renderStartTime, preparedTime, variant, tags)
+        }
+        override val onInAppDismiss = OnInAppDismiss {
+            when (val current = state.get()) {
+                is ShowState.Shown -> inAppInteractor.saveInAppDismissTime(inApp, current.at)
+                else -> settleAsNotShown()
+            }
+        }
+        override val onInAppNotShown = OnInAppNotShown { settleAsNotShown() }
+
+        private fun settleAsNotShown() {
+            if (!state.compareAndSet(ShowState.Pending, ShowState.NotShown)) return
+            if (holdsBudget) inAppInteractor.releaseOverlayShow(variant.inAppId)
+            outcome?.settle(ShowInAppOutcome.NotShown(BridgeErrorCode.SHOW_FAILED))
+        }
+    }
+
+    private sealed interface ShowState {
+        data object Pending : ShowState
+
+        data class Shown(val at: Timestamp) : ShowState
+
+        data object NotShown : ShowState
+    }
+
+    private class TerminalOutcome(private val listener: OnShowInAppOutcome) {
+        private val settled = AtomicBoolean(false)
+
+        fun settle(outcome: ShowInAppOutcome) {
+            if (!settled.compareAndSet(false, true)) return
+            loggingRunCatching { listener.onOutcome(outcome) }
+        }
+    }
+
     override fun requestConfig(): Job {
         return inAppScope.launch(CoroutineExceptionHandler { _, error ->
             if (error is VolleyError) {
                 when (error.networkResponse?.statusCode) {
-                    CONFIG_NOT_FOUND -> {
-                        MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error)
-                        MindboxPreferences.inAppConfig = ""
-                    }
-
-                    else -> {
-                        sessionStorageManager.configFetchingError = true
-                        // needed to trigger flow event
-                        MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
-                        MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error)
-                    }
+                    MobileConfigRepository.CONFIG_NOT_FOUND -> MindboxLoggerImpl.w(InAppMessageManagerImpl, "Config not found", error)
+                    else -> MindboxLoggerImpl.e(InAppMessageManagerImpl, "Failed to get config", error)
                 }
             } else {
-                MindboxPreferences.inAppConfig = MindboxPreferences.inAppConfig
                 MindboxLoggerImpl.e(
                     this@InAppMessageManagerImpl::class,
                     "Failed to get config",
@@ -187,36 +283,36 @@ internal class InAppMessageManagerImpl(
 
     override fun handleSessionExpiration() {
         inAppScope.launch {
-            withContext(Dispatchers.Main) {
-                inAppMessageViewDisplayer.dismissCurrentInApp()
+            loggingRunCatchingSuspending {
+                withContext(Dispatchers.Main) {
+                    inAppMessageViewDisplayer.dismissCurrentInApp()
+                }
             }
             processingJob?.cancel()
-            inAppInteractor.resetInAppConfigAndEvents()
-            sessionStorageManager.clearSessionData()
-            userVisitManager.saveUserVisit()
-            inAppMessageDelayedManager.clearSession()
-            InitializeLock.reset(InitializeLock.State.APP_STARTED)
-            listenEventAndInApp()
-            initLogs()
-            MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted())
+            mindboxLogI("──────────────── [New session] ────────────────")
+            inAppInteractor.beginNewSession()
+            loggingRunCatching { userVisitManager.saveUserVisit() }
+            loggingRunCatching { inAppMessageDelayedManager.clearSession() }
+            loggingRunCatching { InitializeLock.reset(InitializeLock.State.APP_STARTED) }
+            loggingRunCatching { listenEventAndInApp() }
+            loggingRunCatching { initLogs() }
+            loggingRunCatchingSuspending { MindboxEventManager.eventFlow.emit(MindboxEventManager.appStarted()) }
             requestConfig().join()
         }
     }
 
     private fun handleInAppShown(
+        shownTime: Timestamp,
         renderStartTime: Timestamp,
         preparedTimeMs: Milliseconds,
         inAppMessage: InAppType,
         tags: Map<String, String>?
     ) {
-        val shownTime = timeProvider.currentTimestamp()
         val renderTime = shownTime - renderStartTime
         mindboxLogI("Render time is ${renderTime.ms}ms, prepared time is ${preparedTimeMs.interval}ms")
         val timeToDisplay = (preparedTimeMs.interval + renderTime.ms).millisToTimeSpan()
         inAppInteractor.saveShownInApp(inAppMessage.inAppId, shownTime.ms, timeToDisplay, tags)
     }
 
-    companion object {
-        const val CONFIG_NOT_FOUND = 404
-    }
+    companion object
 }

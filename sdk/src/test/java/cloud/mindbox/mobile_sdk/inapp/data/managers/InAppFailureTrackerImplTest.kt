@@ -1,8 +1,13 @@
 package cloud.mindbox.mobile_sdk.inapp.data.managers
 
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.operation.request.EmbeddedBlockShowFailure
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
+import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowError
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
@@ -24,13 +29,16 @@ internal class InAppFailureTrackerImplTest {
     private val currentTimeMillis = 1707523200000L
     private val expectedTimestamp = "2024-02-10T00:00:00Z"
 
+    private fun List<InAppShowError>.asFailures(): List<InAppShowFailure> = filterIsInstance<InAppShowFailure>()
+
     @Before
     fun onTestStart() {
         every { timeProvider.currentTimeMillis() } returns currentTimeMillis
         inAppFailureTracker = InAppFailureTrackerImpl(
             timeProvider = timeProvider,
             inAppRepository = inAppRepository,
-            featureToggleManager = featureToggleManager
+            featureToggleManager = featureToggleManager,
+            sessionStorageManager = SessionStorageManager(timeProvider),
         )
     }
 
@@ -44,13 +52,13 @@ internal class InAppFailureTrackerImplTest {
             errorDetails = "error"
         )
 
-        verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
     }
 
     @Test
     fun `sendFailure sends immediately when feature toggle is enabled`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.sendFailure(
             inAppId = inAppId,
@@ -58,8 +66,8 @@ internal class InAppFailureTrackerImplTest {
             errorDetails = "error"
         )
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        val captured = slot.captured
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        val captured = slot.captured.asFailures()
         assertEquals(1, captured.size)
         assertEquals(inAppId, captured[0].inAppId)
         assertEquals(FailureReason.PRESENTATION_FAILED, captured[0].failureReason)
@@ -77,13 +85,13 @@ internal class InAppFailureTrackerImplTest {
             errorDetails = "error"
         )
 
-        verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
     }
 
     @Test
     fun `collectFailure does not add duplicate when same inAppId already tracked`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.collectFailure(
             inAppId = inAppId,
@@ -97,17 +105,38 @@ internal class InAppFailureTrackerImplTest {
         )
         inAppFailureTracker.sendCollectedFailures()
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        val captured = slot.captured
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        val captured = slot.captured.asFailures()
         assertEquals(1, captured.size)
         assertEquals(FailureReason.PRESENTATION_FAILED, captured[0].failureReason)
+    }
+
+    @Test
+    fun `the same failure collected in a later pass is not reported twice a session`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+
+        inAppFailureTracker.collectFailure(
+            inAppId = inAppId,
+            failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+            errorDetails = "first pass"
+        )
+        inAppFailureTracker.sendCollectedFailures()
+
+        inAppFailureTracker.collectFailure(
+            inAppId = inAppId,
+            failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+            errorDetails = "second pass"
+        )
+        inAppFailureTracker.sendCollectedFailures()
+
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(any()) }
     }
 
     @Test
     fun `sendFailure truncates errorDetails to 1000 chars`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val longErrorDetails = "a".repeat(1500)
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.sendFailure(
             inAppId = inAppId,
@@ -115,15 +144,15 @@ internal class InAppFailureTrackerImplTest {
             errorDetails = longErrorDetails
         )
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        assertEquals("a".repeat(1000), slot.captured[0].errorDetails)
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        assertEquals("a".repeat(1000), slot.captured.asFailures()[0].errorDetails)
     }
 
     @Test
     fun `collectFailure truncates errorDetails to 1000 chars`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val longErrorDetails = "a".repeat(1500)
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.collectFailure(
             inAppId = inAppId,
@@ -132,14 +161,14 @@ internal class InAppFailureTrackerImplTest {
         )
         inAppFailureTracker.sendCollectedFailures()
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        assertEquals("a".repeat(1000), slot.captured[0].errorDetails)
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        assertEquals("a".repeat(1000), slot.captured.asFailures()[0].errorDetails)
     }
 
     @Test
     fun `sendCollectedFailures sends all failures when feature toggle is enabled`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.collectFailure(
             inAppId = "inApp1",
@@ -153,8 +182,8 @@ internal class InAppFailureTrackerImplTest {
         )
 
         inAppFailureTracker.sendCollectedFailures()
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        val captured = slot.captured
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        val captured = slot.captured.asFailures()
         assertEquals(2, captured.size)
         assertEquals(1, captured.count { it.inAppId == "inApp1" && it.failureReason == FailureReason.PRESENTATION_FAILED })
         assertEquals(1, captured.count { it.inAppId == "inApp2" && it.failureReason == FailureReason.IMAGE_DOWNLOAD_FAILED })
@@ -172,7 +201,7 @@ internal class InAppFailureTrackerImplTest {
         inAppFailureTracker.sendCollectedFailures()
         inAppFailureTracker.sendCollectedFailures()
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(any()) }
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(any()) }
     }
 
     @Test
@@ -186,7 +215,7 @@ internal class InAppFailureTrackerImplTest {
         )
         inAppFailureTracker.sendCollectedFailures()
 
-        verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
     }
 
     @Test
@@ -201,14 +230,14 @@ internal class InAppFailureTrackerImplTest {
         inAppFailureTracker.clearFailures()
         inAppFailureTracker.sendCollectedFailures()
 
-        verify(exactly = 0) { inAppRepository.sendInAppShowFailure(any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
     }
 
     @Test
     fun `sendFailure forwards tags to the failure`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
         val tags = mapOf("templateType" to "Popup")
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.sendFailure(
             inAppId = inAppId,
@@ -217,14 +246,14 @@ internal class InAppFailureTrackerImplTest {
             tags = tags
         )
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        assertEquals(tags, slot.captured[0].tags)
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        assertEquals(tags, slot.captured.asFailures()[0].tags)
     }
 
     @Test
     fun `collectFailure keeps each failures own tags`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.collectFailure(
             inAppId = "inApp1",
@@ -240,8 +269,8 @@ internal class InAppFailureTrackerImplTest {
         )
         inAppFailureTracker.sendCollectedFailures()
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        val captured = slot.captured
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        val captured = slot.captured.asFailures()
         assertEquals(mapOf("templateType" to "Popup"), captured.first { it.inAppId == "inApp1" }.tags)
         assertEquals(null, captured.first { it.inAppId == "inApp2" }.tags)
     }
@@ -249,7 +278,7 @@ internal class InAppFailureTrackerImplTest {
     @Test
     fun `sendFailure with null errorDetails`() {
         every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
-        val slot = slot<List<InAppShowFailure>>()
+        val slot = slot<List<InAppShowError>>()
 
         inAppFailureTracker.sendFailure(
             inAppId = inAppId,
@@ -257,8 +286,105 @@ internal class InAppFailureTrackerImplTest {
             errorDetails = null
         )
 
-        verify(exactly = 1) { inAppRepository.sendInAppShowFailure(capture(slot)) }
-        assertEquals(null, slot.captured[0].errorDetails)
-        assertEquals(inAppId, slot.captured[0].inAppId)
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(capture(slot)) }
+        assertEquals(null, slot.captured.asFailures()[0].errorDetails)
+        assertEquals(inAppId, slot.captured.asFailures()[0].inAppId)
+    }
+
+    @Test
+    fun `sendPlaceWaitBudgetExceeded ships the place-named fact once per place a session`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val sent = mutableListOf<List<InAppShowError>>()
+
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("another-place"), Milliseconds(30_000L), WaitBudgetPhase.RESOLVE_PENDING)
+
+        verify(exactly = 2) { inAppRepository.sendInAppShowErrors(capture(sent)) }
+        val first = sent.first().single() as EmbeddedBlockShowFailure
+        assertEquals("main-screen-top", first.placeSystemName)
+        assertEquals("phase=config_missing; waited=00:00:30.0000000", first.errorDetails)
+        val failure = sent.last().single() as EmbeddedBlockShowFailure
+        assertEquals("another-place", failure.placeSystemName)
+        assertEquals(FailureReason.WAIT_BUDGET_EXCEEDED, failure.failureReason)
+        assertEquals("phase=resolve_pending; waited=00:00:30.0000000", failure.errorDetails)
+        assertEquals(expectedTimestamp, failure.dateTimeUtc)
+    }
+
+    @Test
+    fun `sendPlaceWaitBudgetExceeded respects the feature toggle`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
+
+        inAppFailureTracker.sendPlaceWaitBudgetExceeded(PlaceKey.of("main-screen-top"), Milliseconds(30_000L), WaitBudgetPhase.CONFIG_MISSING)
+
+        verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
+    }
+
+    private fun blockFailureTracker(sessionStorageManager: SessionStorageManager): InAppFailureTrackerImpl =
+        InAppFailureTrackerImpl(
+            timeProvider = timeProvider,
+            inAppRepository = inAppRepository,
+            featureToggleManager = featureToggleManager,
+            sessionStorageManager = sessionStorageManager,
+        )
+
+    @Test
+    fun `a block's failure is sent once a session for each in-app and reason`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val tracker = blockFailureTracker(SessionStorageManager(timeProvider))
+        val sent = mutableListOf<List<InAppShowError>>()
+
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page again")
+        tracker.sendBlockFailure("block-inapp", FailureReason.PRESENTATION_FAILED, "silent page")
+        tracker.sendBlockFailure("another-block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        verify(exactly = 3) { inAppRepository.sendInAppShowErrors(capture(sent)) }
+        assertEquals(
+            listOf(
+                "block-inapp" to FailureReason.UNKNOWN_ERROR,
+                "block-inapp" to FailureReason.PRESENTATION_FAILED,
+                "another-block-inapp" to FailureReason.UNKNOWN_ERROR,
+            ),
+            sent.map { errors -> errors.asFailures().single().let { failure -> failure.inAppId to failure.failureReason } },
+        )
+        assertEquals("no page", sent.first().asFailures().single().errorDetails)
+    }
+
+    @Test
+    fun `a block's failure sent in a session that has ended is sent again in the new one`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val sessions = SessionStorageManager(timeProvider)
+        val tracker = blockFailureTracker(sessions)
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        sessions.clearSessionData()
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        verify(exactly = 2) { inAppRepository.sendInAppShowErrors(any()) }
+    }
+
+    @Test
+    fun `a block's failure not sent while the feature is off is not counted as sent for the session`() {
+        val tracker = blockFailureTracker(SessionStorageManager(timeProvider))
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns false
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+        verify(exactly = 0) { inAppRepository.sendInAppShowErrors(any()) }
+
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        tracker.sendBlockFailure("block-inapp", FailureReason.UNKNOWN_ERROR, "no page")
+
+        verify(exactly = 1) { inAppRepository.sendInAppShowErrors(any()) }
+    }
+
+    @Test
+    fun `an overlay's failure is sent every time it happens`() {
+        every { featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE) } returns true
+        val tracker = blockFailureTracker(SessionStorageManager(timeProvider))
+
+        tracker.sendFailure("overlay-inapp", FailureReason.PRESENTATION_FAILED, "crashed")
+        tracker.sendFailure("overlay-inapp", FailureReason.PRESENTATION_FAILED, "crashed")
+
+        verify(exactly = 2) { inAppRepository.sendInAppShowErrors(any()) }
     }
 }

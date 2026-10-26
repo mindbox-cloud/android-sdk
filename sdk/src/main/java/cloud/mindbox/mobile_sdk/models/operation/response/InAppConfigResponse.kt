@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.FeatureTogglesDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppIsPriorityDeserializer
+import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.NullSafeJsonObjectDeserializer
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
@@ -148,7 +149,20 @@ internal data class InAppDto(
     val form: FormDto?,
     @SerializedName(InAppTagsDeserializer.TAGS)
     val tags: Map<String, String>?,
+    @SerializedName("displayConditions")
+    val displayConditions: DisplayConditionsDto? = null,
 )
+
+internal sealed class DisplayConditionsDto {
+    internal data class DirectCallDto(
+        @SerializedName("${"$"}type")
+        val type: String?,
+    ) : DisplayConditionsDto() {
+        internal companion object {
+            const val DIRECT_CALL_JSON_NAME = "directCall"
+        }
+    }
+}
 
 internal sealed class FrequencyDto {
     internal data class FrequencyOnceDto(
@@ -180,6 +194,15 @@ internal sealed class FrequencyDto {
             const val FREQUENCY_UNIT_MINUTES = "MINUTES"
             const val FREQUENCY_UNIT_DAYS = "DAYS"
             const val FREQUENCY_UNIT_SECONDS = "SECONDS"
+        }
+    }
+
+    internal data class FrequencyUnlimitedDto(
+        @SerializedName("${"$"}type")
+        val type: String,
+    ) : FrequencyDto() {
+        internal companion object {
+            const val FREQUENCY_UNLIMITED_JSON_NAME = "unlimited"
         }
     }
 }
@@ -244,5 +267,8 @@ internal data class InAppConfigResponseBlank(
         @SerializedName("tags")
         @JsonAdapter(InAppTagsDeserializer::class)
         val tags: Map<String, String>?,
+        @SerializedName("displayConditions")
+        @JsonAdapter(NullSafeJsonObjectDeserializer::class)
+        val displayConditions: JsonObject? = null,
     )
 }

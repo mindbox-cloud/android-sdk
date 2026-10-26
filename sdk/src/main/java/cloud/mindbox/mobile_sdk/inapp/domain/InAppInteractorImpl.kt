@@ -2,25 +2,45 @@ package cloud.mindbox.mobile_sdk.inapp.domain
 
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
+import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
+import cloud.mindbox.mobile_sdk.inapp.domain.models.EmbeddedPlaceEvent
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppToShow
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppEventManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFilteringManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFrequencyManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.isAllowedByFrequency
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
+import cloud.mindbox.mobile_sdk.millisToTimeSpan
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
+import cloud.mindbox.mobile_sdk.countsShows
+import cloud.mindbox.mobile_sdk.firstOverlayVariant
 import cloud.mindbox.mobile_sdk.sortByPriority
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
-import cloud.mindbox.mobile_sdk.utils.allAllow
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 
@@ -32,26 +52,48 @@ internal class InAppInteractorImpl(
     private val inAppProcessingManager: InAppProcessingManager,
     private val inAppABTestLogic: InAppABTestLogic,
     private val inAppFrequencyManager: InAppFrequencyManager,
-    private val maxInappsPerSessionLimitChecker: Checker,
-    private val maxInappsPerDayLimitChecker: Checker,
-    private val minIntervalBetweenShowsLimitChecker: Checker,
+    private val showBudgetManager: ShowBudgetManager,
     private val timeProvider: TimeProvider,
-    private val sessionStorageManager: SessionStorageManager
+    private val sessionStorageManager: SessionStorageManager,
+    private val inAppFailureTracker: InAppFailureTracker,
 ) : InAppInteractor, MindboxLog {
 
     private val inAppTargetingChannel = Channel<InAppEventType>(Channel.UNLIMITED)
+
+    override val sessionEpoch: SessionEpoch
+        get() = sessionStorageManager.sessionEpoch
+
+    override fun isLiveSession(sessionEpoch: SessionEpoch): Boolean =
+        !sessionStorageManager.isSessionEnding && sessionEpoch == sessionStorageManager.sessionEpoch
+
+    override fun listenSessionEpoch(): StateFlow<SessionEpoch> = sessionStorageManager.listenSessionEpoch()
+
+    override val returnCheckPending: StateFlow<Boolean>
+        get() = sessionStorageManager.returnCheckPending
+
+    override suspend fun awaitReturnChecked() {
+        sessionStorageManager.awaitReturnChecked()
+    }
 
     override suspend fun processEventAndConfig(): Flow<Pair<InApp, Milliseconds>> {
         val inApps: List<InApp> = mobileConfigRepository.getInAppsSection()
             .let { inApps ->
                 inAppRepository.saveCurrentSessionInApps(inApps)
                 for (inApp in inApps) {
-                    for (operation in inApp.targeting.getOperationsSet()) {
+                    val operations = inApp.targeting.getOperationsSet()
+                    if (inApp.displayConditions == DisplayConditions.DIRECT_CALL && operations.isNotEmpty()) {
+                        logW(
+                            "In-app ${inApp.id} is direct-call only but its targeting listens to " +
+                                "operations $operations: a dead combination — it never shows by " +
+                                "the operation and never sends its targeting"
+                        )
+                    }
+                    for (operation in operations) {
                         inAppRepository.saveOperationalInApp(operation.lowercase(), inApp)
                     }
                 }
-                val inAppIds = inAppABTestLogic.getInAppsPool(inApps.map { it.id })
-                inAppFilteringManager.filterABTestsInApps(inApps, inAppIds).also { filteredInApps ->
+                abTestFilteredInApps(inApps).also { filteredInApps ->
+                    logInAppsFilteredByABTests(logLabel = "Config", candidates = inApps, showable = filteredInApps)
                     logI("InApps after abtest logic ${filteredInApps.map { it.id }}")
                 }
             }.also { unShownInApps ->
@@ -68,22 +110,29 @@ internal class InAppInteractorImpl(
                 mindboxLogD("Event triggered: ${event.name}")
             }.map { event ->
                 val triggerTimeMillis = timeProvider.currentTimestamp()
-                val filteredInApps = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event).let {
-                    inAppFrequencyManager.filterInAppsFrequency(it)
+                val candidates = inAppFilteringManager.filterUnShownInAppsByEvent(inApps, event)
+                    .let { inAppFilteringManager.filterOutNonOverlayInApps(it) }
+                val inApp: InApp? = chooseAmongCandidates(
+                    logLabel = "Event '${event.name}'",
+                    candidates = candidates,
+                    triggerEvent = event,
+                    selectVariant = { candidate -> candidate.firstOverlayVariant() }
+                )?.also { winner ->
+                    inAppProcessingManager.sendTargetedInApp(winner, event)
+                    inAppRepository.saveTargetedInAppWithEvent(
+                        inAppId = winner.id,
+                        event.hashCode()
+                    )
                 }
-                mindboxLogI("Event: ${event.name} combined with $filteredInApps")
-                val prioritySortedInApps = filteredInApps.sortByPriority()
-                val inApp: InApp? = inAppProcessingManager.chooseInAppToShow(
-                    prioritySortedInApps,
-                    event
-                ).also {
-                    inAppTargetingChannel.send(event)
-                    if (event == InAppEventType.AppStartup) {
-                        InitializeLock.complete(InitializeLock.State.APP_STARTED)
-                    }
+                inAppTargetingChannel.send(event)
+                if (event == InAppEventType.AppStartup) {
+                    InitializeLock.complete(InitializeLock.State.APP_STARTED)
                 }
                 inApp?.let {
-                    sessionStorageManager.inAppTriggerEvent = event
+                    sessionStorageManager.state.inAppTriggerEvent = event
+                }
+                if (inApp?.overlayHostsWebPage() == true) {
+                    inAppProcessingManager.prefetchTargetingDependencies(inAppRepository.getCurrentSessionInApps())
                 }
                 inApp?.let { inapp -> inapp to timeProvider.elapsedSince(triggerTimeMillis) }
             }
@@ -94,17 +143,308 @@ internal class InAppInteractorImpl(
             .filterNotNull()
     }
 
-    override fun areShowAndFrequencyLimitsAllowed(inApp: InApp): Boolean {
-        val isAllowedByFrequency = inAppFrequencyManager.filterInAppsFrequency(listOf(inApp)).isNotEmpty()
-        if (!isAllowedByFrequency) {
-            return false
+    override suspend fun selectInAppForPlace(
+        placeSystemName: PlaceKey,
+        triggerEvent: InAppEventType,
+    ): EmbeddedResolveOutcome = selectInAppForPlace(placeSystemName, triggerEvent, isRetryAfterSessionReset = false)
+
+    private suspend fun selectInAppForPlace(
+        placeSystemName: PlaceKey,
+        triggerEvent: InAppEventType,
+        isRetryAfterSessionReset: Boolean,
+    ): EmbeddedResolveOutcome {
+        val section = mobileConfigRepository.getInAppsSectionIfAvailable(placeSystemName)
+        val configVersion = section.configVersion
+        val inApps = section.inApps ?: run {
+            logI("Place '$placeSystemName': the config is unavailable, the SDK has no answer for the place")
+            return EmbeddedResolveOutcome.ConfigUnavailable(configVersion)
         }
-        return inApp.isPriority || allAllow(
-            maxInappsPerSessionLimitChecker,
-            maxInappsPerDayLimitChecker,
-            minIntervalBetweenShowsLimitChecker
-        )
+        val session = sessionStorageManager.state
+        inAppRepository.saveCurrentSessionInApps(inApps)
+        val trigger = placeTrigger(placeSystemName, triggerEvent)
+        val candidates = inAppFilteringManager.filterEmbeddedInAppsByPlace(inApps, placeSystemName)
+            .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
+        if (candidates.isNotEmpty()) {
+            inAppProcessingManager.prefetchTargetingDependencies(inApps)
+            if (sessionStorageManager.state !== session && !isRetryAfterSessionReset) {
+                return resolveAgainForNewSession(placeSystemName, "while its targeting dependencies were fetched")
+            }
+        }
+        val matched = candidates.filter { candidate ->
+            inAppProcessingManager.matchesTargeting(candidate, trigger)
+        }
+        logI("Place '$placeSystemName': ${matched.size} of ${candidates.size} candidate(s) matched targeting")
+        val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { inApp -> inApp.id })
+        val winner = inAppFilteringManager.filterABTestsInApps(matched, inAppsPool)
+            .also { showable -> logInAppsFilteredByABTests(logLabel = "Place '$placeSystemName'", candidates = matched, showable = showable) }
+            .let { inAppFrequencyManager.filterInAppsFrequency(it) }
+            .sortByPriority()
+            .firstOrNull { candidate -> candidate.embeddedVariantFor(placeSystemName) != null }
+        if (sessionStorageManager.state !== session && !isRetryAfterSessionReset) {
+            return resolveAgainForNewSession(placeSystemName, "while its candidates were checked")
+        }
+
+        sendPlaceTargetings(placeSystemName, matched, winner)
+        if (winner == null) {
+            logI("Place '$placeSystemName': nothing to show")
+            inAppFailureTracker.sendCollectedFailures()
+            return EmbeddedResolveOutcome.Empty(configVersion)
+        }
+        inAppFailureTracker.clearFailures()
+        val variant = winner.embeddedVariantFor(placeSystemName) ?: return EmbeddedResolveOutcome.Empty(configVersion)
+        val delayTime = winner.delayTime?.takeIf { delay ->
+            delay.interval > 0 && waitedOutDelayKey(placeSystemName, winner.id) !in sessionStorageManager.state.embeddedDelaysWaitedOut
+        }
+        if (winner.delayTime != null && delayTime == null) {
+            logI("Place '$placeSystemName': in-app ${winner.id} waits no delay (already waited out this session or zero)")
+        }
+        return EmbeddedResolveOutcome.Content(variant = variant, delayTime = delayTime, configVersion = configVersion)
     }
+
+    private suspend fun resolveAgainForNewSession(placeSystemName: PlaceKey, moment: String): EmbeddedResolveOutcome {
+        logI("Place '$placeSystemName': the session was reset $moment, resolving again as a place request of the new session")
+        inAppFailureTracker.clearFailures()
+        return selectInAppForPlace(placeSystemName, InAppEventType.EmbeddedPlaceRequested(placeSystemName), isRetryAfterSessionReset = true)
+    }
+
+    private fun placeTrigger(place: PlaceKey, triggerEvent: InAppEventType): InAppEventType {
+        if (triggerEvent is InAppEventType.OrdinalEvent) {
+            sessionStorageManager.state.embeddedLastOperationByPlace[place] = triggerEvent
+            return triggerEvent
+        }
+        val remembered = sessionStorageManager.state.embeddedLastOperationByPlace[place] ?: return triggerEvent
+        logI("Place '$place': resolving as if operation '${remembered.name}' were still in effect this session")
+        return remembered
+    }
+
+    override fun markEmbeddedDelayWaitedOut(placeSystemName: PlaceKey, inAppId: String, sessionEpoch: SessionEpoch): Boolean =
+        withinLiveSession(sessionEpoch) { state ->
+            state.embeddedDelaysWaitedOut.add(waitedOutDelayKey(placeSystemName, inAppId))
+        } != null
+
+    private fun waitedOutDelayKey(place: PlaceKey, inAppId: String): String = "$place|$inAppId"
+
+    private fun sendPlaceTargetings(place: PlaceKey, matched: List<InApp>, winner: InApp?) {
+        for (inApp in matched) {
+            if (inApp.id == winner?.id) {
+                if (sessionStorageManager.state.embeddedLastTargetedByPlace.put(place, inApp.id) == inApp.id) {
+                    logI("Place '$place': winner ${inApp.id} is the last targeted here, no second targeting")
+                } else {
+                    sessionStorageManager.state.placeTargetingReportedInSession.add(inApp.id)
+                    inAppProcessingManager.sendTargetedInApp(inApp)
+                }
+            } else {
+                if (sessionStorageManager.state.placeTargetingReportedInSession.add(inApp.id)) {
+                    inAppProcessingManager.sendTargetedInApp(inApp)
+                } else {
+                    logI("Place '$place': in-app ${inApp.id} already sent its targeting this session")
+                }
+            }
+        }
+    }
+
+    private fun InApp.overlayHostsWebPage(): Boolean {
+        val layers = when (val variant = firstOverlayVariant()) {
+            is InAppType.WebView -> variant.layers
+            is InAppType.ModalWindow -> variant.layers
+            is InAppType.Snackbar -> variant.layers
+            else -> return false
+        }
+        return layers.any { layer -> layer is Layer.WebViewLayer }
+    }
+
+    private fun InApp.embeddedVariantFor(place: PlaceKey): InAppType.Embedded? =
+        form.variants
+            .filterIsInstance<InAppType.Embedded>()
+            .firstOrNull { variant -> variant.placeSystemName == place }
+
+    private suspend fun abTestFilteredInApps(inApps: List<InApp>): List<InApp> =
+        inAppFilteringManager.filterABTestsInApps(inApps, inAppABTestLogic.getInAppsPool(inApps.map { it.id }))
+
+    private fun logInAppsFilteredByABTests(logLabel: String, candidates: List<InApp>, showable: List<InApp>) {
+        val showableIds = showable.mapTo(HashSet()) { inApp -> inApp.id }
+        for (inApp in candidates) {
+            if (inApp.id !in showableIds) logI("$logLabel: in-app ${inApp.id} is filtered by ab-tests, cutting it")
+        }
+    }
+
+    private suspend fun chooseAmongCandidates(
+        logLabel: String,
+        candidates: List<InApp>,
+        triggerEvent: InAppEventType,
+        selectVariant: (InApp) -> InAppType?,
+    ): InApp? {
+        val showable = inAppFilteringManager.filterOutDirectCallInApps(candidates)
+            .let { inAppFrequencyManager.filterInAppsFrequency(it) }
+        logI("$logLabel: ${showable.size} candidate(s) after filtering: ${showable.map { it.id }}")
+        return inAppProcessingManager.chooseInAppToShow(showable.sortByPriority(), triggerEvent, selectVariant)
+    }
+
+    override fun listenConfigVersions(): Flow<ConfigVersion> = mobileConfigRepository.listenConfigVersions()
+
+    override fun listenEmbeddedPlaceEvents(): Flow<EmbeddedPlaceEvent> = flow {
+        inAppRepository.listenLiveInAppEvents()
+            .filter { event ->
+                event is InAppEventType.OrdinalEvent && inAppEventManager.isValidInAppEvent(event)
+            }
+            .collect { event ->
+                inAppRepository.getOperationalInAppsByOperation(event.name)
+                    .flatMap { inApp -> inApp.form.variants.filterIsInstance<InAppType.Embedded>() }
+                    .map { variant -> variant.placeSystemName }
+                    .toSet()
+                    .forEach { place ->
+                        logI("Operation '${event.name}' matched embedded place '$place'")
+                        emit(EmbeddedPlaceEvent(placeSystemName = place, triggerEvent = event))
+                    }
+            }
+    }
+
+    override suspend fun getInAppToShowById(inAppId: String): InAppToShow? {
+        val inApp = findInAppById(inAppId)
+            ?: run {
+                logI("No in-app with id $inAppId to resolve content for")
+                return null
+            }
+        val variant = inApp.firstOverlayVariant() ?: run {
+            logE("In-app $inAppId is drawn inside the host layout and is never shown as an overlay")
+            return null
+        }
+        return InAppToShow(inApp, variant)
+    }
+
+    override suspend fun filterShowableInAppIds(hostInAppId: String, inAppIds: List<String>): List<String>? {
+        if (inAppIds.isEmpty()) return emptyList()
+        val sessionEpoch = sessionStorageManager.sessionEpoch
+        val pageConfig = mobileConfigRepository.getConfigForPageIfAvailable() ?: run {
+            logI("The page of $hostInAppId asked which in-apps it may show, but the SDK has no config to answer from")
+            return null
+        }
+        val inApps = pageConfig.config.inApps
+        val isSaved = !pageConfig.isOfEndedSession &&
+            withinLiveSession(sessionEpoch) { inAppRepository.saveCurrentSessionInApps(inApps) } != null
+        if (!isSaved) {
+            logI("The page of $hostInAppId is answered from a config of an ended session, its in-apps are not saved into the new session")
+        }
+        val inAppsPool = inAppABTestLogic.getInAppsPool(inApps.map { it.id }, pageConfig.config.abtests)
+        val showableIds = inAppFilteringManager.filterABTestsInApps(inApps, inAppsPool)
+            .map { inApp -> inApp.id }
+            .toSet()
+        val fullById = inApps.distinctBy { inApp -> inApp.id }.associateBy { inApp -> inApp.id }
+        val matchedById = mutableMapOf<String, Boolean>()
+        for (id in inAppIds.distinct()) {
+            val inApp = fullById[id]
+            if (inApp == null) {
+                logI("Requested id $id is not in the config (or filtered by sdkVersion), cutting it")
+                continue
+            }
+            if (inApp.firstOverlayVariant() == null) {
+                logI("Requested id $id has no overlay variant to draw, cutting it")
+                continue
+            }
+            matchedById[id] = matchesRequestedTargeting(inApp)
+        }
+        sendRequestedTargetings(hostInAppId, fullById, matchedById)
+        return inAppIds.filter { id ->
+            if (matchedById[id] != true) return@filter false
+            if (id !in showableIds) {
+                logI("Requested id $id is filtered by ab-tests, cutting it")
+                return@filter false
+            }
+            if (!inAppFrequencyManager.isAllowedByFrequency(fullById.getValue(id))) {
+                logI("Requested id $id is blocked by its frequency, cutting it")
+                return@filter false
+            }
+            true
+        }
+    }
+
+    private fun sendRequestedTargetings(hostInAppId: String, fullById: Map<String, InApp>, matchedById: Map<String, Boolean>) {
+        for ((id, matches) in matchedById) {
+            if (!matches) continue
+            if (sessionStorageManager.state.requestedInAppTargetingReportedInSession.add("$hostInAppId|$id")) {
+                inAppProcessingManager.sendTargetedInApp(fullById.getValue(id))
+            }
+        }
+    }
+
+    private suspend fun matchesRequestedTargeting(inApp: InApp): Boolean =
+        inAppProcessingManager.matchesRequestedTargeting(inApp)
+            .also { matches -> if (!matches) logI("Requested id ${inApp.id} targeting did not match, cutting it") }
+
+    override fun reservePlaceShow(
+        placeSystemName: PlaceKey,
+        content: InAppType.Embedded,
+        sessionEpoch: SessionEpoch,
+    ): PlaceShowReservation = withinLiveSession(sessionEpoch) { state ->
+        if (state.embeddedLastShownByPlace[placeSystemName] == content.inAppId) {
+            logI("Place '$placeSystemName' already shows in-app ${content.inAppId}, no new show to reserve")
+            showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
+            return@withinLiveSession PlaceShowReservation.RESERVED
+        }
+        if (showBudgetManager.holds(ShowBudgetOwner.Place(placeSystemName), content.inAppId)) {
+            logI("Place '$placeSystemName' still holds the show of in-app ${content.inAppId}, no new show to reserve")
+            return@withinLiveSession PlaceShowReservation.RESERVED
+        }
+        if (!isAllowedByFrequency(content.inAppId)) {
+            logI("Place '$placeSystemName': in-app ${content.inAppId} is blocked by its frequency since it was picked")
+            return@withinLiveSession PlaceShowReservation.REFUSED
+        }
+        val outcome = showBudgetManager.reserve(ShowBudgetOwner.Place(placeSystemName), content.inAppId, content.frequency, content.isPriority)
+        if (outcome == ShowReservationOutcome.REFUSED) PlaceShowReservation.REFUSED else PlaceShowReservation.RESERVED
+    } ?: PlaceShowReservation.STALE
+
+    private fun isAllowedByFrequency(inAppId: String): Boolean {
+        val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == inAppId } ?: return true
+        return inAppFrequencyManager.isAllowedByFrequency(inApp)
+    }
+
+    override fun releasePlaceShow(placeSystemName: PlaceKey) {
+        showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName))
+    }
+
+    override fun releasePlaceShow(placeSystemName: PlaceKey, sessionEpoch: SessionEpoch): Boolean =
+        withinLiveSession(sessionEpoch) { showBudgetManager.release(ShowBudgetOwner.Place(placeSystemName)) } != null
+
+    override fun reserveOverlayShow(inApp: InApp): ShowReservationOutcome {
+        if (!inAppFrequencyManager.isAllowedByFrequency(inApp)) return ShowReservationOutcome.REFUSED
+        return showBudgetManager.reserve(ShowBudgetOwner.Overlay(inApp.id), inApp.id, inApp.frequency, inApp.isPriority)
+    }
+
+    override fun releaseOverlayShow(inAppId: String) {
+        showBudgetManager.release(ShowBudgetOwner.Overlay(inAppId))
+    }
+
+    private suspend fun findInAppById(inAppId: String): InApp? =
+        mobileConfigRepository.getInAppsSection().firstOrNull { inApp -> inApp.id == inAppId }
+
+    override fun recordBlockShow(
+        placeSystemName: PlaceKey,
+        inAppId: String,
+        frequency: Frequency,
+        timeToDisplay: Milliseconds,
+        tags: Map<String, String>?,
+        sessionEpoch: SessionEpoch,
+    ): Boolean {
+        val isNewShow = withinLiveSession(sessionEpoch) { state ->
+            if (state.embeddedLastShownByPlace.put(placeSystemName, inAppId) == inAppId) {
+                logI("Place '$placeSystemName': the block re-drew in-app $inAppId it already showed, nothing to report")
+                return@withinLiveSession false
+            }
+            showBudgetManager.commit(ShowBudgetOwner.Place(placeSystemName), inAppId, frequency, timeProvider.currentTimestamp())
+            true
+        } ?: run {
+            logI("Place '$placeSystemName': in-app $inAppId was confirmed in a session that has ended, its show is not counted")
+            false
+        }
+        if (!isNewShow) return false
+        inAppRepository.sendInAppShown(inAppId, timeToDisplay.interval.millisToTimeSpan(), tags)
+        return true
+    }
+
+    private inline fun <T> withinLiveSession(sessionEpoch: SessionEpoch, action: (SessionState) -> T): T? =
+        synchronized(sessionStorageManager.showBudgetLock) {
+            if (isLiveSession(sessionEpoch)) action(sessionStorageManager.state) else null
+        }
 
     override fun saveShownInApp(
         id: String,
@@ -112,10 +452,14 @@ internal class InAppInteractorImpl(
         timeToDisplay: String,
         tags: Map<String, String>?
     ) {
-        inAppRepository.setInAppShown(id)
         inAppRepository.sendInAppShown(id, timeToDisplay, tags)
-        inAppRepository.saveShownInApp(id, timeStamp)
-        inAppRepository.saveInAppStateChangeTime(timeStamp.toTimestamp())
+        val inApp = inAppRepository.getCurrentSessionInApps().firstOrNull { it.id == id }
+            ?: run {
+                logI("No in-app with id $id in the current session to count a show for")
+                showBudgetManager.release(ShowBudgetOwner.Overlay(id))
+                return
+            }
+        showBudgetManager.commit(ShowBudgetOwner.Overlay(id), id, inApp.frequency, timeStamp.toTimestamp())
     }
 
     override fun sendInAppClicked(inAppId: String, tags: Map<String, String>?) {
@@ -129,6 +473,8 @@ internal class InAppInteractorImpl(
         logI("InApps that has already sent targeting ${inAppsMap.entries}")
         inAppTargetingChannel.receiveAsFlow().collect { event ->
             val filteredInApps = inAppFilteringManager.filterInAppsByEvent(inApps, event)
+                .let { inAppFilteringManager.filterOutDirectCallInApps(it) }
+                .let { inAppFilteringManager.filterOutNonOverlayInApps(it) }
             logI("inapps for event $event are = $filteredInApps")
             for (inApp in filteredInApps) {
                 if (inAppsMap[inApp.id]?.contains(event.hashCode()) != true) {
@@ -138,26 +484,28 @@ internal class InAppInteractorImpl(
         }
     }
 
-    override fun setInAppShown(inAppId: String) {
-        inAppRepository.setInAppShown(inAppId)
-    }
-
     override suspend fun fetchMobileConfig() {
         mobileConfigRepository.fetchMobileConfig()
     }
 
-    override fun resetInAppConfigAndEvents() {
-        mobileConfigRepository.resetCurrentConfig()
-        inAppRepository.clearInAppEvents()
+    override fun beginNewSession() {
+        loggingRunCatching { mobileConfigRepository.resetCurrentConfig() }
+        loggingRunCatching { inAppRepository.clearInAppEvents() }
+        sessionStorageManager.clearSessionData()
+        logI("Session ${sessionStorageManager.sessionEpoch.number} started")
     }
 
     override fun isTimeDelayInapp(inAppId: String): Boolean {
         return inAppRepository.isTimeDelayInapp(inAppId)
     }
 
-    override fun saveInAppDismissTime() {
+    override fun saveInAppDismissTime(inApp: InApp, shownAt: Timestamp) {
         val timeStamp = timeProvider.currentTimestamp()
-        mindboxLogI("Last in-app display duration ${(timeStamp - inAppRepository.getLastInappDismissTime()).ms} ms")
-        inAppRepository.saveInAppStateChangeTime(timeStamp = timeStamp)
+        mindboxLogI("Last in-app display duration ${(timeStamp - shownAt).ms} ms")
+        if (!inApp.countsShows()) {
+            logI("In-app ${inApp.id} is unlimited, the dismiss does not move the cooldown")
+            return
+        }
+        showBudgetManager.recordCooldown(inApp.frequency, timeStamp)
     }
 }

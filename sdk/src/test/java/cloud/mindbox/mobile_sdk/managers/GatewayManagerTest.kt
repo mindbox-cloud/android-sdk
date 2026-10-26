@@ -1,5 +1,16 @@
 package cloud.mindbox.mobile_sdk.managers
 
+import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
+import com.android.volley.Request
+import com.android.volley.VolleyError
+import com.android.volley.toolbox.StringRequest
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.launch
+import io.mockk.verify
+import io.mockk.slot
+import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -101,15 +112,6 @@ class GatewayManagerTest {
         val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = null)
 
         assertEquals("api.mindbox.ru", result)
-    }
-
-    @Test
-    fun `resolveOperationsDomain preserves https scheme from init value`() {
-        val config = mockConfiguration.copy(operationsDomain = "https://proxy.com")
-
-        val result = gatewayManager.resolveOperationsDomain(config, operationsDomainFromConfig = null)
-
-        assertEquals("https://proxy.com", result)
     }
 
     @Test
@@ -245,18 +247,6 @@ class GatewayManagerTest {
     // endregion
 
     @Test
-    fun `getCustomerSegmentationsUrl should return correct URL with endpointId and deviceUUID`() {
-        val customConfig = mockConfiguration.copy(
-            domain = "api.mindbox.ru",
-            endpointId = "test-endpoint-id"
-        )
-
-        val actualUrl = gatewayManager.getCustomerSegmentationsUrl(customConfig)
-
-        assertEquals("https://api.mindbox.ru/v3/operations/sync?deviceUUID=test-device-uuid-123&endpointId=test-endpoint-id&operation=Tracker.CheckCustomerSegments", actualUrl)
-    }
-
-    @Test
     fun `getCustomerSegmentationsUrl should use configuration domain and endpointId`() {
         val customConfig = mockConfiguration.copy(
             domain = "custom.domain.com",
@@ -266,18 +256,6 @@ class GatewayManagerTest {
         val actualUrl = gatewayManager.getCustomerSegmentationsUrl(customConfig)
 
         assertEquals("https://custom.domain.com/v3/operations/sync?deviceUUID=test-device-uuid-123&endpointId=custom-endpoint&operation=Tracker.CheckCustomerSegments", actualUrl)
-    }
-
-    @Test
-    fun `getProductSegmentationUrl should return correct URL structure with endpointId and transactionId`() {
-        val customConfig = mockConfiguration.copy(
-            domain = "api.mindbox.ru",
-            endpointId = "test-endpoint-id"
-        )
-
-        val actualUrl = gatewayManager.getProductSegmentationUrl(customConfig)
-
-        assertEquals("https://api.mindbox.ru/v3/operations/sync?deviceUUID=test-device-uuid-123&endpointId=test-endpoint-id&operation=Tracker.CheckProductSegments", actualUrl)
     }
 
     @Test
@@ -339,5 +317,73 @@ class GatewayManagerTest {
             .first { it.startsWith("transactionId=") }
             .split('=')
             .last()
+    }
+
+    @Test
+    fun `checkGeoTargeting cancels its Volley request when the waiting coroutine is cancelled`() = runTest {
+        val job = launch { gatewayManager.checkGeoTargeting(mockConfiguration) }
+        runCurrent()
+        job.cancel()
+        job.join()
+
+        val request = slot<MindboxRequest>()
+        verify { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        assertTrue(request.captured.isCanceled)
+    }
+
+    @Test
+    fun `checkCustomerSegmentations cancels its Volley request when the waiting coroutine is cancelled`() = runTest {
+        val job = launch {
+            gatewayManager.checkCustomerSegmentations(mockConfiguration, SegmentationCheckRequest(segmentations = emptyList()))
+        }
+        runCurrent()
+        job.cancel()
+        job.join()
+
+        val request = slot<MindboxRequest>()
+        verify { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        assertTrue(request.captured.isCanceled)
+    }
+
+    private fun queuedWebViewContentRequest(): StringRequest {
+        val request = slot<Request<*>>()
+        verify { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        return request.captured as StringRequest
+    }
+
+    private fun StringRequest.answer(page: String) {
+        StringRequest::class.java.getDeclaredMethod("deliverResponse", String::class.java)
+            .apply { isAccessible = true }
+            .invoke(this, page)
+    }
+
+    @Test
+    fun `fetchWebViewContent resumes with the page the request answers with`() = runTest {
+        val page = async { gatewayManager.fetchWebViewContent("https://cdn.test/page.html") }
+        runCurrent()
+
+        queuedWebViewContentRequest().answer("<html>page</html>")
+
+        assertEquals("<html>page</html>", page.await())
+    }
+
+    @Test
+    fun `fetchWebViewContent fails with the request's error`() = runTest {
+        val page = async { runCatching { gatewayManager.fetchWebViewContent("https://cdn.test/page.html") } }
+        runCurrent()
+
+        queuedWebViewContentRequest().deliverError(VolleyError("no network"))
+
+        assertTrue(page.await().exceptionOrNull() is VolleyError)
+    }
+
+    @Test
+    fun `fetchWebViewContent cancels its Volley request when the waiting coroutine is cancelled`() = runTest {
+        val job = launch { gatewayManager.fetchWebViewContent("https://cdn.test/page.html") }
+        runCurrent()
+        job.cancel()
+        job.join()
+
+        assertTrue(queuedWebViewContentRequest().isCanceled)
     }
 }

@@ -18,6 +18,8 @@ internal class DataManager(
             is PayloadDto.SnackbarDto -> {
                 snackBarDtoDataFiller.fillData(payloadDto)
             }
+
+            is PayloadDto.EmbeddedDto -> payloadDto
         }
     })
 

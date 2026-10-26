@@ -4,8 +4,13 @@ import cloud.mindbox.mobile_sdk.convertToString
 import cloud.mindbox.mobile_sdk.convertToZonedDateTimeAtUTC
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.FeatureToggleManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.WaitBudgetPhase
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.millisToTimeSpan
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
+import cloud.mindbox.mobile_sdk.models.operation.request.EmbeddedBlockShowFailure
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
 import cloud.mindbox.mobile_sdk.models.operation.request.InAppShowFailure
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
@@ -15,7 +20,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 internal class InAppFailureTrackerImpl(
     private val timeProvider: TimeProvider,
     private val inAppRepository: InAppRepository,
-    private val featureToggleManager: FeatureToggleManager
+    private val featureToggleManager: FeatureToggleManager,
+    private val sessionStorageManager: SessionStorageManager,
 ) : InAppFailureTracker {
 
     private val failures = CopyOnWriteArrayList<InAppShowFailure>()
@@ -32,16 +38,40 @@ internal class InAppFailureTrackerImpl(
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failures")
             return
         }
-        inAppRepository.sendInAppShowFailure(failures.toList())
+        val toSend = failures.toList()
+        inAppRepository.sendInAppShowErrors(toSend)
+        toSend.forEach { failure -> sessionStorageManager.state.reportedShowFailures.add(failure.sessionKey()) }
         failures.clear()
     }
+
+    private fun InAppShowFailure.sessionKey(): String = sessionKey(inAppId, failureReason)
+
+    private fun sessionKey(inAppId: String, failureReason: FailureReason): String = "$inAppId|${failureReason.name}"
 
     private fun sendSingleFailure(failure: InAppShowFailure) {
         if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
             mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send failure")
             return
         }
-        inAppRepository.sendInAppShowFailure(listOf(failure))
+        inAppRepository.sendInAppShowErrors(listOf(failure))
+    }
+
+    private fun newFailure(
+        inAppId: String,
+        failureReason: FailureReason,
+        errorDetails: String?,
+        tags: Map<String, String>?
+    ): InAppShowFailure {
+        val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
+            .convertToZonedDateTimeAtUTC()
+            .convertToString()
+        return InAppShowFailure(
+            inAppId = inAppId,
+            failureReason = failureReason,
+            errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
+            dateTimeUtc = timestamp,
+            tags = tags
+        )
     }
 
     override fun sendFailure(
@@ -50,19 +80,24 @@ internal class InAppFailureTrackerImpl(
         errorDetails: String?,
         tags: Map<String, String>?
     ) {
-        val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
-            .convertToZonedDateTimeAtUTC()
-            .convertToString()
+        sendSingleFailure(failure = newFailure(inAppId, failureReason, errorDetails, tags))
+    }
 
-        sendSingleFailure(
-            failure = InAppShowFailure(
-                inAppId = inAppId,
-                failureReason = failureReason,
-                errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
-                dateTimeUtc = timestamp,
-                tags = tags
-            )
-        )
+    override fun sendBlockFailure(
+        inAppId: String,
+        failureReason: FailureReason,
+        errorDetails: String?,
+        tags: Map<String, String>?
+    ) {
+        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
+            mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send block failure")
+            return
+        }
+        if (!sessionStorageManager.state.reportedShowFailures.add(sessionKey(inAppId, failureReason))) {
+            mindboxLogI("Failure $failureReason for in-app $inAppId already reported this session, not sending it again")
+            return
+        }
+        inAppRepository.sendInAppShowErrors(listOf(newFailure(inAppId, failureReason, errorDetails, tags)))
     }
 
     override fun collectFailure(
@@ -71,18 +106,11 @@ internal class InAppFailureTrackerImpl(
         errorDetails: String?,
         tags: Map<String, String>?
     ) {
-        val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
-            .convertToZonedDateTimeAtUTC()
-            .convertToString()
-        trackFailure(
-            InAppShowFailure(
-                inAppId = inAppId,
-                failureReason = failureReason,
-                errorDetails = errorDetails?.take(COUNT_OF_CHARS_IN_ERROR_DETAILS),
-                dateTimeUtc = timestamp,
-                tags = tags
-            )
-        )
+        if (sessionKey(inAppId, failureReason) in sessionStorageManager.state.reportedShowFailures) {
+            mindboxLogI("Failure $failureReason for in-app $inAppId already reported this session, not collecting it again")
+            return
+        }
+        trackFailure(newFailure(inAppId, failureReason, errorDetails, tags))
     }
 
     override fun sendCollectedFailures() {
@@ -91,6 +119,31 @@ internal class InAppFailureTrackerImpl(
 
     override fun clearFailures() {
         failures.clear()
+    }
+
+    override fun sendPlaceWaitBudgetExceeded(placeSystemName: PlaceKey, waitedFor: Milliseconds, phase: WaitBudgetPhase) {
+        if (!featureToggleManager.isEnabled(SEND_INAPP_SHOW_ERROR_FEATURE)) {
+            mindboxLogI("Feature $SEND_INAPP_SHOW_ERROR_FEATURE is off. Skip send wait budget failure")
+            return
+        }
+        if (!sessionStorageManager.state.waitBudgetReportedPlaces.add(placeSystemName)) {
+            mindboxLogI("Place '$placeSystemName' already reported its exceeded wait budget this session")
+            return
+        }
+        val timestamp = Instant.ofEpochMilli(timeProvider.currentTimeMillis())
+            .convertToZonedDateTimeAtUTC()
+            .convertToString()
+        inAppRepository.sendInAppShowErrors(
+            listOf(
+                EmbeddedBlockShowFailure(
+                    placeSystemName = placeSystemName.value,
+                    failureReason = FailureReason.WAIT_BUDGET_EXCEEDED,
+                    errorDetails = "phase=${phase.wireName}; waited=${waitedFor.interval.millisToTimeSpan()}",
+                    dateTimeUtc = timestamp,
+                )
+            )
+        )
+        mindboxLogI("Inapp.ShowFailure event sent for place '$placeSystemName': no in-app after ${waitedFor.interval.millisToTimeSpan()} (${phase.wireName})")
     }
 
     companion object {

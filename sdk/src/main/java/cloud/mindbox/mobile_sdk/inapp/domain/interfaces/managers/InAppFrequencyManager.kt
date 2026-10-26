@@ -6,3 +6,6 @@ internal interface InAppFrequencyManager {
 
     fun filterInAppsFrequency(inApps: List<InApp>): List<InApp>
 }
+
+internal fun InAppFrequencyManager.isAllowedByFrequency(inApp: InApp): Boolean =
+    filterInAppsFrequency(listOf(inApp)).isNotEmpty()

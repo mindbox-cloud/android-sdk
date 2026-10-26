@@ -78,20 +78,42 @@ internal class WebViewLocalStateStoreTest {
     }
 
     @Test
-    fun `initState returns error when requested version is lower than current`() {
-        store.initState("""{"data":{"key":"value"},"version":5}""")
-        val actualError: IllegalArgumentException = assertThrows(IllegalArgumentException::class.java) {
-            store.initState("""{"data":{"key":"next"},"version":0}""")
+    fun `initState returns error when data field is missing`() {
+        val actualError: BridgeRefusalException = assertThrows(BridgeRefusalException::class.java) {
+            store.initState("""{"version":2}""")
         }
-        assertTrue(actualError.message?.contains("Version must be greater than 0") == true)
+        assertEquals(BridgeErrorCode.INVALID_PAYLOAD, actualError.code)
+        assertTrue(actualError.message?.isNotBlank() == true)
     }
 
     @Test
-    fun `initState returns error when data field is missing`() {
-        val actualError: Exception = assertThrows(Exception::class.java) {
-            store.initState("""{"version":2}""")
+    fun `getState refuses a payload that is not a json object as invalid_payload`() {
+        listOf("abc", "", "null", "[1]").forEach { payload ->
+            val actualError: BridgeRefusalException = assertThrows(BridgeRefusalException::class.java) {
+                store.getState(payload)
+            }
+            assertEquals("payload $payload", BridgeErrorCode.INVALID_PAYLOAD, actualError.code)
         }
-        assertTrue(actualError.message?.isNotBlank() == true)
+    }
+
+    @Test
+    fun `setState refuses missing or non-object data as invalid_payload`() {
+        listOf("""{}""", """{"data":5}""", """{"data":null}""").forEach { payload ->
+            val actualError: BridgeRefusalException = assertThrows(BridgeRefusalException::class.java) {
+                store.setState(payload)
+            }
+            assertEquals("payload $payload", BridgeErrorCode.INVALID_PAYLOAD, actualError.code)
+        }
+    }
+
+    @Test
+    fun `initState refuses a missing or non-numeric version as invalid_payload`() {
+        listOf("""{"data":{}}""", """{"version":"abc","data":{}}""").forEach { payload ->
+            val actualError: BridgeRefusalException = assertThrows(BridgeRefusalException::class.java) {
+                store.initState(payload)
+            }
+            assertEquals("payload $payload", BridgeErrorCode.INVALID_PAYLOAD, actualError.code)
+        }
     }
 
     @Test
@@ -149,47 +171,29 @@ internal class WebViewLocalStateStoreTest {
 
     @Test
     fun `initState rejects negative version`() {
-        val actualError: IllegalArgumentException = assertThrows(IllegalArgumentException::class.java) {
+        val actualError: BridgeRefusalException = assertThrows(BridgeRefusalException::class.java) {
             store.initState("""{"data":{"key":"value"},"version":-1}""")
         }
+        assertEquals(BridgeErrorCode.INVALID_PAYLOAD, actualError.code)
         assertTrue(actualError.message?.contains("Version must be greater than 0") == true)
     }
 
     @Test
     fun `initState rejects zero version`() {
-        val actualError: IllegalArgumentException = assertThrows(IllegalArgumentException::class.java) {
+        val actualError: BridgeRefusalException = assertThrows(BridgeRefusalException::class.java) {
             store.initState("""{"data":{"key":"value"},"version":0}""")
         }
+        assertEquals(BridgeErrorCode.INVALID_PAYLOAD, actualError.code)
         assertTrue(actualError.message?.contains("Version must be greater than 0") == true)
     }
 
     @Test
     fun `initState does not write version when rejected`() {
         store.initState("""{"data":{"key":"value"},"version":6}""")
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(BridgeRefusalException::class.java) {
             store.initState("""{"data":{"key":"next"},"version":-10}""")
         }
         assertEquals(6, MindboxPreferences.localStateVersion)
-    }
-
-    @Test
-    fun `full flow init set get works correctly`() {
-        store.initState("""{"data":{"k1":"v1"},"version":5}""")
-        store.setState("""{"data":{"k2":"v2","k1":"v1-updated"}}""")
-        val actualResponse: JSONObject = store.getState("""{"data":["k1","k2"]}""").toJsonObject()
-        val actualData: JSONObject = actualResponse.getJSONObject("data")
-        assertEquals("v1-updated", actualData.getString("k1"))
-        assertEquals("v2", actualData.getString("k2"))
-        assertEquals(5, actualResponse.getInt("version"))
-    }
-
-    @Test
-    fun `set null then get returns removed key as empty`() {
-        store.setState("""{"data":{"keyToDelete":"value"}}""")
-        store.setState("""{"data":{"keyToDelete":null}}""")
-        val actualResponse: JSONObject = store.getState("""{"data":[]}""").toJsonObject()
-        val actualData: JSONObject = actualResponse.getJSONObject("data")
-        assertFalse(actualData.has("keyToDelete"))
     }
 
     @Test

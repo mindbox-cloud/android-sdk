@@ -67,6 +67,20 @@ internal sealed class PayloadBlankDto {
             val elements: List<JsonObject?>?
         )
     }
+
+    data class EmbeddedBlankDto(
+        @SerializedName("content")
+        val content: ContentBlankDto?,
+        @SerializedName("placeSystemName")
+        val placeSystemName: String?,
+        @SerializedName("${"$"}type")
+        val type: String?
+    ) : PayloadBlankDto() {
+        internal data class ContentBlankDto(
+            @SerializedName("background")
+            val background: BackgroundBlankDto?
+        )
+    }
 }
 
 internal data class BackgroundBlankDto(

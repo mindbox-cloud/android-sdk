@@ -2,15 +2,34 @@ package cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories
 
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationName
 import cloud.mindbox.mobile_sdk.inapp.domain.models.OperationSystemName
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
+import kotlinx.coroutines.flow.Flow
+
+internal class PageConfig(val config: InAppConfig, val isOfEndedSession: Boolean)
+
+internal class InAppsSection(val inApps: List<InApp>?, val configVersion: ConfigVersion)
 
 internal interface MobileConfigRepository {
+    fun listenConfigVersions(): Flow<ConfigVersion>
+
+    fun startListening()
+
+    fun hasConfig(): Boolean
 
     suspend fun fetchMobileConfig()
 
     suspend fun getInAppsSection(): List<InApp>
+
+    suspend fun getInAppsSectionIfAvailable(placeSystemName: PlaceKey? = null): InAppsSection
+
+    suspend fun getConfigForPageIfAvailable(): PageConfig?
+
+    fun findInAppInCurrentConfig(id: String): InApp?
 
     suspend fun getMonitoringSection(): List<LogRequest>
 
@@ -19,4 +38,10 @@ internal interface MobileConfigRepository {
     suspend fun getABTests(): List<ABTest>
 
     fun resetCurrentConfig()
+
+    fun abandonAwaitedDownload(): Boolean
+
+    companion object {
+        const val CONFIG_NOT_FOUND = 404
+    }
 }

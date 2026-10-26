@@ -7,6 +7,7 @@ include ':mindbox-firebase-starter'
 include ':mindbox-huawei-starter'
 include ':mindbox-rustore-starter'
 include ':mindbox-sdk-starter-core'
+include ':mindbox-embedded-compose'
 include ':mindbox-common'
 rootProject.name = "AndroidSdk"
 

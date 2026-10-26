@@ -79,4 +79,23 @@ internal sealed class PayloadDto {
             val elements: List<ElementDto?>?
         )
     }
+
+    data class EmbeddedDto(
+        @SerializedName("content")
+        val content: ContentDto?,
+        @SerializedName("placeSystemName")
+        val placeSystemName: String?,
+        @SerializedName("${"$"}type")
+        val type: String?
+    ) : PayloadDto() {
+
+        internal companion object {
+            const val EMBEDDED_JSON_NAME = "embedded"
+        }
+
+        internal data class ContentDto(
+            @SerializedName("background")
+            val background: BackgroundDto?
+        )
+    }
 }

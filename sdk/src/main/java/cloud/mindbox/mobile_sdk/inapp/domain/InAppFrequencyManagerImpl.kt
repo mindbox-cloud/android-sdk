@@ -13,7 +13,7 @@ internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepos
         return inApps.filter { inApp ->
             val lastShownTimeStamp =
                 shownInApps[inApp.id]?.maxOrNull() ?: run {
-                    mindboxLogI("InApp with id = ${inApp.id} was never shown before. Frequency filter won't be applied")
+                    mindboxLogI("InApp with id = ${inApp.id} has no counted shows, frequency does not restrict it")
                     return@filter true
                 }
             when (inApp.frequency.delay) {
@@ -43,6 +43,11 @@ internal class InAppFrequencyManagerImpl(private val inAppRepository: InAppRepos
                         "InApp with id = ${inApp.id} has settings one time per session. " +
                             "Result of checking whether we can show inapp ${inApp.id} in the current session = ${!result} "
                     )
+                }
+
+                Frequency.Delay.Unlimited -> {
+                    mindboxLogI("InApp with id = ${inApp.id} has unlimited frequency. Frequency does not restrict it")
+                    true
                 }
             }
         }

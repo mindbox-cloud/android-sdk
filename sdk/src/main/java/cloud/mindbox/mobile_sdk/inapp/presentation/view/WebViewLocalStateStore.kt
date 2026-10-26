@@ -20,7 +20,7 @@ internal class WebViewLocalStateStore(
         context.getSharedPreferences(LOCAL_STATE_FILE_NAME, Context.MODE_PRIVATE)
 
     fun getState(payload: String): String {
-        val requestedKeys: JSONArray = JSONObject(payload).optJSONArray(FIELD_DATA) ?: JSONArray()
+        val requestedKeys: JSONArray = readBridgePayload { JSONObject(payload).optJSONArray(FIELD_DATA) } ?: JSONArray()
         val keys: List<String> = (0..<requestedKeys.length()).map { i -> requestedKeys.getString(i) }
         val savedData: Map<String, String?> = localStatePreferences.all.mapValues { it.value?.toString() }
 
@@ -32,7 +32,7 @@ internal class WebViewLocalStateStore(
     }
 
     fun setState(payload: String): String {
-        val jsonData: JSONObject = JSONObject(payload).getJSONObject(FIELD_DATA)
+        val jsonData: JSONObject = readBridgePayload { JSONObject(payload).getJSONObject(FIELD_DATA) }
         val dataToSet = jsonData.toMap()
 
         localStatePreferences.edit {
@@ -46,8 +46,8 @@ internal class WebViewLocalStateStore(
     }
 
     fun initState(payload: String): String {
-        val version: Int = JSONObject(payload).getInt(FIELD_VERSION)
-        require(version > 0) { "Version must be greater than 0" }
+        val version: Int = readBridgePayload { JSONObject(payload).getInt(FIELD_VERSION) }
+        if (version <= 0) throw BridgeRefusalException(BridgeErrorCode.INVALID_PAYLOAD, "Version must be greater than 0")
 
         MindboxPreferences.localStateVersion = version
 

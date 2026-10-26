@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PlaceKey
 import cloud.mindbox.mobile_sdk.monitoring.domain.models.LogRequest
 
 internal data class InAppConfig(
@@ -29,7 +30,12 @@ internal data class InApp(
     val targeting: TreeTargeting,
     val form: Form,
     val tags: Map<String, String>?,
+    val displayConditions: DisplayConditions? = null,
 )
+
+internal enum class DisplayConditions {
+    DIRECT_CALL,
+}
 
 internal data class Frequency(val delay: Delay) {
     internal sealed class Delay {
@@ -38,6 +44,8 @@ internal data class Frequency(val delay: Delay) {
         data object OneTimePerSession : Delay()
 
         data class TimeDelay(val time: Long, val unit: InAppTime) : Delay()
+
+        data object Unlimited : Delay()
     }
 }
 
@@ -95,6 +103,15 @@ internal sealed class InAppType(open val inAppId: String) {
         val type: String,
         val layers: List<Layer>,
         val elements: List<Element>
+    ) : InAppType(inAppId)
+
+    internal data class Embedded(
+        override val inAppId: String,
+        val placeSystemName: PlaceKey,
+        val layers: List<Layer>,
+        val frequency: Frequency,
+        val tags: Map<String, String>?,
+        val isPriority: Boolean,
     ) : InAppType(inAppId)
 }
 

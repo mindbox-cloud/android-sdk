@@ -63,6 +63,14 @@ dependencies {
     detektPlugins project(path: ':detekt-rules', configuration: 'runtimeElements')
 }
 
+kover {
+    currentProject {
+        createVariant("coverage") {
+            add(["debug"] as String[], false)
+        }
+    }
+}
+
 mavenPublishing {
     publishToMavenCentral("CENTRAL_PORTAL")
 

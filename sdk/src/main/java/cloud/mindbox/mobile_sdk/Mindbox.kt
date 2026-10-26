@@ -14,7 +14,9 @@ import androidx.work.WorkerFactory
 import cloud.mindbox.common.MindboxCommon
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.di.mindboxInject
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppCallback
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.logger.*
@@ -111,6 +113,8 @@ public object Mindbox : MindboxLog {
     private val migrationManager: MigrationManager by mindboxInject { migrationManager }
 
     private val sessionStorageManager: SessionStorageManager by mindboxInject { sessionStorageManager }
+
+    private val embeddedBlocksRegistry: EmbeddedBlocksRegistry? by mindboxInject { embeddedBlocksRegistryIfCreated }
 
     /**
      * Allows you to specify additional components for message handling
@@ -686,8 +690,21 @@ public object Mindbox : MindboxLog {
                 inAppMessageManager.onStopCurrentActivity(activity)
             }
 
+            override fun onAppMovedToBackground() {
+                sessionStorageManager.onAppLeftForeground()
+            }
+
+            override fun onAppReturnHandled() {
+                sessionStorageManager.onReturnChecked()
+                embeddedBlocksRegistry?.onReturnCheckOver()
+            }
+
+            override fun onActivityResumedWhenNoneWas(activity: Activity) {
+                embeddedBlocksRegistry?.onAppResumedOn(activity)
+            }
+
             override fun onTrackVisitReady(source: String?, requestUrl: String?) {
-                sessionStorageManager.hasSessionExpired()
+                sessionStorageManager.onTrackVisit(source, requestUrl)
                 eventScope.launch {
                     InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG)
                     sendTrackVisitEvent(
@@ -1396,7 +1413,8 @@ public object Mindbox : MindboxLog {
         }
     }
 
-    private fun softReinitialization(
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun softReinitialization(
         context: Context,
     ) {
         MindboxDI.appModule.inAppWebViewPrewarmManager.terminate()
@@ -1405,6 +1423,18 @@ public object Mindbox : MindboxLog {
         BackgroundWorkManager.cancelAllWork(context)
         MindboxPreferences.resetAppInfoUpdated()
         mindboxScope = createMindboxScope()
+        val mobileConfigRepository = MindboxDI.appModule.mobileConfigRepositoryIfCreated
+        mobileConfigRepository?.startListening()
+        MindboxDI.appModule.embeddedBlocksRegistryIfCreated?.startListening()
+        restartAwaitedConfigDownload(mobileConfigRepository) { inAppMessageManager }
+    }
+
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun restartAwaitedConfigDownload(
+        repository: MobileConfigRepository?,
+        inAppManager: () -> InAppMessageManager,
+    ) {
+        if (repository?.abandonAwaitedDownload() == true) inAppManager().requestConfig()
     }
 
     private fun sendTrackVisitEvent(
@@ -1421,9 +1451,6 @@ public object Mindbox : MindboxLog {
                 requestUrl = requestUrl,
                 sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC
             )
-            if (source != null || requestUrl != null) {
-                sessionStorageManager.lastTrackVisitData = trackVisitData
-            }
             MindboxEventManager.appStarted(applicationContext, trackVisitData)
         }
     }

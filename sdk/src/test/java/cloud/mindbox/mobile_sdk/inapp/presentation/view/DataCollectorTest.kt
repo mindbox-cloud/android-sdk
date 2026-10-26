@@ -9,7 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.InAppEventType
-import cloud.mindbox.mobile_sdk.models.TrackVisitData
+import cloud.mindbox.mobile_sdk.models.TrackVisitOrigin
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.Constants
 import com.google.gson.Gson
@@ -70,14 +70,11 @@ class DataCollectorTest {
         every { permissionManager.getMicrophonePermissionStatus() } returns PermissionStatus.NOT_DETERMINED
         every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.RESTRICTED
         every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.LIMITED
-        sessionStorageManager.lastTrackVisitData = TrackVisitData(
-            ianaTimeZone = "Europe/Moscow",
-            endpointId = "endpoint-id",
+        sessionStorageManager.lastTrackVisitData = TrackVisitOrigin(
             source = "link",
             requestUrl = "https://mindbox.cloud/path",
-            sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
         )
-        sessionStorageManager.inAppTriggerEvent = InAppEventType.OrdinalEvent(
+        sessionStorageManager.state.inAppTriggerEvent = InAppEventType.OrdinalEvent(
             eventType = EventType.AsyncOperation("OpenScreen"),
             body = "{\"screen\":\"home\"}",
         )
@@ -86,10 +83,11 @@ class DataCollectorTest {
             sessionStorageManager = sessionStorageManager,
             permissionManager = permissionManager,
             configuration = createConfiguration(endpointId = "endpoint-id", versionName = "1.2.3"),
-            params = mapOf("customKey" to "customValue"),
+            params = DataCollector.mergedParams(mapOf("customKey" to "customValue")),
             inAppInsets = InAppInsets(left = 1, top = 2, right = 3, bottom = 4),
             gson = gson,
             inAppId = "inapp-id",
+            operation = sessionStorageManager.state.inAppTriggerEvent as? InAppEventType.OrdinalEvent,
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -116,7 +114,12 @@ class DataCollectorTest {
         assertFalse(permissionsJson.has("location"))
         assertFalse(permissionsJson.has("microphone"))
         assertFalse(permissionsJson.has("notifications"))
-        assertFalse(permissionsJson.has("photoLibrary"))
+        assertEquals("granted", getPermissionStatus(actualJson, "photoLibrary"))
+        assertEquals(
+            "limited",
+            permissionsJson.getAsJsonObject("photoLibrary").getAsJsonObject("details").get("access").asString
+        )
+        assertFalse(permissionsJson.getAsJsonObject("camera").has("details"))
         assertTrue(actualJson.has("sdkVersion"))
         assertEquals(Constants.SDK_VERSION_NUMERIC.toString(), actualJson.get("sdkVersionNumeric").asString)
     }
@@ -134,23 +137,21 @@ class DataCollectorTest {
         every { permissionManager.getMicrophonePermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.GRANTED
         every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.GRANTED
-        sessionStorageManager.inAppTriggerEvent = InAppEventType.AppStartup
-        sessionStorageManager.lastTrackVisitData = TrackVisitData(
-            ianaTimeZone = "Europe/Moscow",
-            endpointId = "endpoint-id",
+        sessionStorageManager.state.inAppTriggerEvent = InAppEventType.AppStartup
+        sessionStorageManager.lastTrackVisitData = TrackVisitOrigin(
             source = null,
             requestUrl = " ",
-            sdkVersionNumeric = Constants.SDK_VERSION_NUMERIC,
         )
         val dataCollector = DataCollector(
             appContext = appContext,
             sessionStorageManager = sessionStorageManager,
             permissionManager = permissionManager,
             configuration = createConfiguration(endpointId = "", versionName = "2.0.0"),
-            params = mapOf("endpointId" to "overridden-endpoint"),
+            params = DataCollector.mergedParams(mapOf("endpointId" to "overridden-endpoint")),
             inAppInsets = InAppInsets(),
             gson = gson,
             inAppId = "inapp-id",
+            operation = null,
         )
         val actualPayload: String = dataCollector.get()
         val actualJson: JsonObject = JsonParser.parseString(actualPayload).asJsonObject
@@ -188,7 +189,7 @@ class DataCollectorTest {
         every { permissionManager.getNotificationPermissionStatus() } returns PermissionStatus.DENIED
         every { permissionManager.getPhotoLibraryPermissionStatus() } returns PermissionStatus.DENIED
         sessionStorageManager.lastTrackVisitData = null
-        sessionStorageManager.inAppTriggerEvent = InAppEventType.AppStartup
+        sessionStorageManager.state.inAppTriggerEvent = InAppEventType.AppStartup
         val inAppInsets = InAppInsets(left = 5, top = 10, right = 15, bottom = 20)
         val dataCollector = DataCollector(
             appContext = appContext,
@@ -199,6 +200,7 @@ class DataCollectorTest {
             inAppInsets = inAppInsets,
             gson = gson,
             inAppId = "inapp-id",
+            operation = null,
         )
         val actualPayload = dataCollector.get()
         val actualJson = JsonParser.parseString(actualPayload).asJsonObject

@@ -58,7 +58,7 @@ class MobileConfigSettingsManagerImplTest {
 
         mobileConfigSettingsManager.saveSessionTime(config)
 
-        assertEquals(100L, sessionStorageManager.sessionTime.inWholeMilliseconds)
+        assertEquals(100L, sessionStorageManager.state.sessionTime.inWholeMilliseconds)
     }
 
     @Test
@@ -67,8 +67,7 @@ class MobileConfigSettingsManagerImplTest {
 
         mobileConfigSettingsManager.saveSessionTime(config)
 
-        verify(exactly = 0) { sessionStorageManager.sessionTime = any() }
-        assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
+        assertEquals(0L, sessionStorageManager.state.sessionTime.inWholeMilliseconds)
     }
 
     @Test
@@ -77,8 +76,7 @@ class MobileConfigSettingsManagerImplTest {
 
         mobileConfigSettingsManager.saveSessionTime(config)
 
-        verify(exactly = 0) { sessionStorageManager.sessionTime = any() }
-        assertEquals(0L, sessionStorageManager.sessionTime.inWholeMilliseconds)
+        assertEquals(0L, sessionStorageManager.state.sessionTime.inWholeMilliseconds)
     }
 
     @Test

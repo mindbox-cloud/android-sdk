@@ -1,0 +1,1432 @@
+package cloud.mindbox.mobile_sdk.inapp.domain
+
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.EmbeddedResolveOutcome
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.PlaceShowReservation
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import cloud.mindbox.mobile_sdk.models.PlaceKey
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowReservationOutcome
+import app.cash.turbine.test
+import cloud.mindbox.mobile_sdk.abtests.InAppABTestLogic
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppFailureTracker
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.ShowBudgetOwner
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.InAppProcessingManager
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppsSection
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.PageConfig
+import cloud.mindbox.mobile_sdk.inapp.domain.models.DisplayConditions
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Form
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ABTest
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
+import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppConfig
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.models.ConfigVersion
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.InAppEventType
+import cloud.mindbox.mobile_sdk.models.InAppStub
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.SessionEpoch
+import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import io.mockk.Called
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.coVerifyOrder
+import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
+import io.mockk.junit4.MockKRule
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.runs
+import io.mockk.unmockkObject
+import io.mockk.spyk
+import io.mockk.verify
+import io.mockk.verifyOrder
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
+
+@ExperimentalCoroutinesApi
+class EmbeddedResolveInteractorTest {
+
+    @get:Rule
+    val mockkRule = MockKRule(this)
+
+    @MockK
+    private lateinit var mobileConfigRepository: MobileConfigRepository
+
+    @RelaxedMockK
+    private lateinit var inAppRepository: InAppRepository
+
+    @MockK
+    private lateinit var inAppProcessingManager: InAppProcessingManager
+
+    @RelaxedMockK
+    private lateinit var inAppABTestLogic: InAppABTestLogic
+
+    @MockK
+    private lateinit var showBudgetManager: ShowBudgetManager
+
+    @RelaxedMockK
+    private lateinit var timeProvider: TimeProvider
+
+    @RelaxedMockK
+    private lateinit var sessionStorageManager: SessionStorageManager
+
+    private val sessionState = SessionState()
+
+    @RelaxedMockK
+    private lateinit var inAppFailureTracker: InAppFailureTracker
+
+    private lateinit var frequencyManager: InAppFrequencyManagerImpl
+
+    private lateinit var interactor: InAppInteractorImpl
+
+    private val now = Timestamp(1_000_000L)
+
+    private val place = PlaceKey.of("main-screen-top")
+
+    private val configVersion = ConfigVersion.FIRST
+
+    @Before
+    fun setUp() {
+        every { sessionStorageManager.state } returns sessionState
+        frequencyManager = spyk(InAppFrequencyManagerImpl(inAppRepository))
+        interactor = InAppInteractorImpl(
+            mobileConfigRepository = mobileConfigRepository,
+            inAppRepository = inAppRepository,
+            inAppFilteringManager = InAppFilteringManagerImpl(inAppRepository),
+            inAppEventManager = InAppEventManagerImpl(),
+            inAppProcessingManager = inAppProcessingManager,
+            inAppABTestLogic = inAppABTestLogic,
+            inAppFrequencyManager = frequencyManager,
+            showBudgetManager = showBudgetManager,
+            timeProvider = timeProvider,
+            sessionStorageManager = sessionStorageManager,
+            inAppFailureTracker = inAppFailureTracker,
+        )
+        every { timeProvider.currentTimestamp() } returns now
+        every { inAppRepository.getShownInApps() } returns emptyMap()
+        every { inAppProcessingManager.sendTargetedInApp(any()) } just runs
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns true
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } just runs
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(any()) } returns true
+        every { showBudgetManager.holds(any(), any()) } returns false
+        every { showBudgetManager.reserve(any(), any(), any(), any()) } returns ShowReservationOutcome.GRANTED
+        every { showBudgetManager.commit(any(), any(), any(), any()) } just runs
+        every { showBudgetManager.release(any()) } just runs
+        every { showBudgetManager.recordCooldown(any(), any()) } just runs
+        coEvery { inAppABTestLogic.getInAppsPool(any()) } answers { firstArg<List<String>>().toSet() }
+        every { inAppABTestLogic.getInAppsPool(any(), any()) } answers { firstArg<List<String>>().toSet() }
+        coEvery { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) } answers {
+            firstArg<List<InApp>>().firstOrNull()
+        }
+    }
+
+    private fun embeddedInApp(
+        id: String = "embedded-id",
+        placeName: PlaceKey = place,
+        isPriority: Boolean = false,
+    ): InApp = InAppStub.getInApp().copy(
+        id = id,
+        isPriority = isPriority,
+        targeting = InAppStub.getTargetingTrueNode(),
+        form = Form(variants = listOf(InAppStub.getEmbedded().copy(inAppId = id, placeSystemName = placeName)))
+    )
+
+    private fun modalInApp(id: String = "modal-id"): InApp =
+        InAppStub.getInApp().copy(id = id, targeting = InAppStub.getTargetingTrueNode())
+
+    private fun mixedInApp(id: String = "mixed-id", placeName: PlaceKey = place): InApp =
+        InAppStub.getInApp().copy(
+            id = id,
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = Form(
+                variants = listOf(
+                    InAppStub.getEmbedded().copy(inAppId = id, placeSystemName = placeName),
+                    InAppStub.getModalWindow().copy(inAppId = id)
+                )
+            )
+        )
+
+    private fun givenConfig(vararg inApps: InApp) {
+        coEvery { mobileConfigRepository.getInAppsSection() } returns inApps.toList()
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable(any()) } returns InAppsSection(inApps.toList(), configVersion)
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(configOf(*inApps), isOfEndedSession = false)
+    }
+
+    private fun configOf(vararg inApps: InApp): InAppConfig =
+        InAppConfig(inApps = inApps.toList(), monitoring = emptyList(), operations = emptyMap(), abtests = emptyList())
+
+    @Test
+    fun `selectInAppForPlace returns embedded content for known place`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp())
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        assertEquals(place, content?.placeSystemName)
+    }
+
+    @Test
+    fun `selectInAppForPlace names every in-app the ab-test branch cuts`() = runTest {
+        givenConfig(embeddedInApp(id = "other-branch"), embeddedInApp(id = "my-branch"))
+        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns setOf("my-branch")
+        mockkObject(MindboxLoggerImpl)
+        try {
+            val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+            assertEquals("my-branch", content?.inAppId)
+            verify(exactly = 1) {
+                MindboxLoggerImpl.i(any(), "Place 'main-screen-top': in-app other-branch is filtered by ab-tests, cutting it")
+            }
+            verify(exactly = 0) {
+                MindboxLoggerImpl.i(any(), match { it.startsWith("Place 'main-screen-top': in-app my-branch") })
+            }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace is empty for unknown place`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp())
+
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place"))))
+    }
+
+    @Test
+    fun `selectInAppForPlace picks first by priority on place collision`() = runTest {
+        givenConfig(
+            embeddedInApp(id = "ordinary"),
+            embeddedInApp(id = "priority", isPriority = true),
+        )
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("priority", content?.inAppId)
+    }
+
+    @Test
+    fun `selectInAppForPlace hands the winner delayTime to the caller instead of waiting`() = runTest {
+        givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
+
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
+
+        assertEquals("embedded-id", result?.variant?.inAppId)
+        assertEquals(7_200_000L, result?.delayTime?.interval)
+    }
+
+    @Test
+    fun `selectInAppForPlace hands out no delay once the winner waited it out this session`() = runTest {
+        givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
+
+        interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", SessionEpoch(0L))
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
+
+        assertEquals("embedded-id", result?.variant?.inAppId)
+        assertNull(result?.delayTime)
+    }
+
+    @Test
+    fun `a waited-out delay is per place and per in-app`() = runTest {
+        givenConfig(embeddedInApp().copy(delayTime = Milliseconds(7_200_000L)))
+
+        interactor.markEmbeddedDelayWaitedOut(PlaceKey.of("other-place"), "embedded-id", SessionEpoch(0L))
+        interactor.markEmbeddedDelayWaitedOut(place, "other-in-app", SessionEpoch(0L))
+        val result = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
+
+        assertEquals(7_200_000L, result?.delayTime?.interval)
+    }
+
+    @Test
+    fun `selectInAppForPlace skips candidate with directCall`() = runTest {
+        givenConfig(embeddedInApp().copy(displayConditions = DisplayConditions.DIRECT_CALL))
+
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+    }
+
+    @Test
+    fun `selectInAppForPlace shows nothing outside the ab pool but still sends its targeting`() = runTest {
+        givenConfig(embeddedInApp())
+        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns emptySet()
+
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "embedded-id" }) }
+    }
+
+    @Test
+    fun `selectInAppForPlace skips a candidate its frequency already blocks but still sends its targeting`() = runTest {
+        givenConfig(embeddedInApp())
+        every { inAppRepository.getShownInApps() } returns mapOf("embedded-id" to listOf(1L))
+
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace never asks the show budgets, the delivery reserves them`() = runTest {
+        givenConfig(embeddedInApp())
+
+        assertEquals("embedded-id", interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()?.inAppId)
+
+        verify { showBudgetManager wasNot Called }
+    }
+
+    @Test
+    fun `targeting catch-up never covers directCall in-apps`() = runTest {
+        val directCall = modalInApp(id = "direct-call").copy(displayConditions = DisplayConditions.DIRECT_CALL)
+        val ordinary = modalInApp(id = "ordinary")
+        givenConfig(directCall, ordinary)
+        coEvery { inAppRepository.getTargetedInApps() } returns emptyMap()
+        every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+
+        interactor.processEventAndConfig().test { cancelAndIgnoreRemainingEvents() }
+        val job = launch { interactor.listenToTargetingEvents() }
+        advanceUntilIdle()
+        job.cancel()
+
+        coVerify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(directCall, any()) }
+        coVerify(atLeast = 1) { inAppProcessingManager.sendTargetedInApp(ordinary, any()) }
+    }
+
+    @Test
+    fun `targeting catch-up never covers in-apps without an overlay variant but still covers a mixed form`() = runTest {
+        val pureEmbedded = embeddedInApp(id = "pure-embedded")
+        val mixed = mixedInApp(id = "mixed")
+        givenConfig(pureEmbedded, mixed)
+        coEvery { inAppRepository.getTargetedInApps() } returns emptyMap()
+        every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
+        coEvery { inAppProcessingManager.sendTargetedInApp(any(), any()) } just runs
+
+        interactor.processEventAndConfig().test { cancelAndIgnoreRemainingEvents() }
+        val job = launch { interactor.listenToTargetingEvents() }
+        advanceUntilIdle()
+        job.cancel()
+
+        coVerify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(pureEmbedded, any()) }
+        coVerify(atLeast = 1) { inAppProcessingManager.sendTargetedInApp(mixed, any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace sends the winner targeting once per session`() = runTest {
+        givenConfig(embeddedInApp())
+
+        val first = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
+        val second = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).contentOrNull()
+
+        assertEquals("embedded-id", first?.variant?.inAppId)
+        assertEquals("embedded-id", second?.variant?.inAppId)
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace sends targeting for the losers once per session and pairs the winner with its slot`() = runTest {
+        givenConfig(
+            embeddedInApp(id = "winner", isPriority = true),
+            embeddedInApp(id = "loser"),
+        )
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "winner" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "loser" }) }
+    }
+
+    @Test
+    fun `a winner that loses a later pass to a stronger candidate is not targeted again`() = runTest {
+        givenConfig(
+            embeddedInApp(id = "usual"),
+            embeddedInApp(id = "stronger", isPriority = true),
+        )
+        coEvery { inAppProcessingManager.matchesTargeting(match { it.id == "stronger" }, any()) } returns false
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        coEvery { inAppProcessingManager.matchesTargeting(match { it.id == "stronger" }, any()) } returns true
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "usual" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "stronger" }) }
+    }
+
+    @Test
+    fun `selectInAppForPlace targets the winner again on every change of the winner, 1 to 2 to 1`() = runTest {
+        val first = embeddedInApp(id = "first")
+        val second = embeddedInApp(id = "second")
+
+        givenConfig(first)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        givenConfig(second)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        givenConfig(first)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 2) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "first" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "second" }) }
+    }
+
+    @Test
+    fun `selectInAppForPlace sends no targeting for a candidate whose targeting did not match`() = runTest {
+        givenConfig(embeddedInApp(id = "matched"), embeddedInApp(id = "unmatched"))
+        coEvery { inAppProcessingManager.matchesTargeting(match { it.id == "unmatched" }, any()) } returns false
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "matched" }) }
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "unmatched" }) }
+    }
+
+    @Test
+    fun `selectInAppForPlace ships the collected failures only when the place stays empty`() = runTest {
+        givenConfig(embeddedInApp())
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppFailureTracker.sendCollectedFailures() }
+        verify(exactly = 0) { inAppFailureTracker.clearFailures() }
+    }
+
+    @Test
+    fun `selectInAppForPlace drops the pass failures once somebody won the place, as the overlay pass does`() = runTest {
+        givenConfig(embeddedInApp())
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        verify(exactly = 1) { inAppFailureTracker.clearFailures() }
+        verify(exactly = 0) { inAppFailureTracker.sendCollectedFailures() }
+    }
+
+    @Test
+    fun `selectInAppForPlace never evaluates a directCall candidate`() = runTest {
+        givenConfig(embeddedInApp(id = "direct").copy(displayConditions = DisplayConditions.DIRECT_CALL))
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 0) { inAppProcessingManager.matchesTargeting(any(), any()) }
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds sends targeting for the same id again for a different host`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+        interactor.filterShowableInAppIds("other-host", listOf("inapp-1"))
+
+        verify(exactly = 2) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `place resolve with an operation trigger dedups with the pull`() = runTest {
+        givenConfig(embeddedInApp())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `a pull after an operation resolves as if that operation were still in effect`() = runTest {
+        givenConfig(embeddedInApp())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), operation) }
+        coVerify(exactly = 0) { inAppProcessingManager.matchesTargeting(any(), ofType<InAppEventType.EmbeddedPlaceRequested>()) }
+    }
+
+    @Test
+    fun `a later operation replaces the one the place remembers`() = runTest {
+        givenConfig(embeddedInApp())
+        val first = InAppEventType.OrdinalEvent(EventType.AsyncOperation("first-operation"))
+        val second = InAppEventType.OrdinalEvent(EventType.AsyncOperation("second-operation"))
+
+        interactor.selectInAppForPlace(place, triggerEvent = first)
+        interactor.selectInAppForPlace(place, triggerEvent = second)
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), first) }
+        coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), second) }
+    }
+
+    @Test
+    fun `a pull with no operation behind it keeps the place request`() = runTest {
+        givenConfig(embeddedInApp())
+        val request = InAppEventType.EmbeddedPlaceRequested(place)
+        mockkObject(MindboxLoggerImpl)
+        try {
+            interactor.selectInAppForPlace(place, request)
+
+            coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), request) }
+            verify(exactly = 0) {
+                MindboxLoggerImpl.i(any(), match { it.contains("were still in effect") })
+            }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
+    }
+
+    @Test
+    fun `the remembered operation belongs to its place alone`() = runTest {
+        val otherPlace = PlaceKey.of("other-place")
+        givenConfig(embeddedInApp(id = "here"), embeddedInApp(id = "there", placeName = otherPlace))
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val otherRequest = InAppEventType.EmbeddedPlaceRequested(otherPlace)
+
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+        interactor.selectInAppForPlace(otherPlace, otherRequest)
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), operation) }
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), otherRequest) }
+    }
+
+    @Test
+    fun `an operation that found nothing to show is remembered all the same`() = runTest {
+        givenConfig(embeddedInApp())
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, triggerEvent = operation))
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 2) { inAppProcessingManager.matchesTargeting(any(), operation) }
+    }
+
+    @Test
+    fun `the remembered operation lives in the session storage and dies with it`() = runTest {
+        val memory = sessionStorageManager.state.embeddedLastOperationByPlace
+        givenConfig(embeddedInApp())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        val request = InAppEventType.EmbeddedPlaceRequested(place)
+
+        interactor.selectInAppForPlace(place, triggerEvent = operation)
+        assertEquals(operation, memory[place])
+        memory.clear()
+        interactor.selectInAppForPlace(place, request)
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), request) }
+    }
+
+    @Test
+    fun `getInAppToShowById ignores every restriction, directCall and a recorded show included`() = runTest {
+        givenConfig(
+            modalInApp(id = "restricted").copy(displayConditions = DisplayConditions.DIRECT_CALL)
+        )
+        every { inAppRepository.getShownInApps() } returns mapOf("restricted" to listOf(1L))
+
+        val content = interactor.getInAppToShowById("restricted")?.variant
+
+        assertEquals(InAppStub.getInApp().form.variants.first(), content)
+    }
+
+    @Test
+    fun `getInAppToShowById does not check ab pool`() = runTest {
+        givenConfig(modalInApp(id = "outside-pool"))
+        coEvery { inAppABTestLogic.getInAppsPool(any()) } returns emptySet()
+
+        assertEquals(
+            InAppStub.getInApp().form.variants.first(),
+            interactor.getInAppToShowById("outside-pool")?.variant
+        )
+        coVerify(exactly = 0) { inAppABTestLogic.getInAppsPool(any()) }
+    }
+
+    @Test
+    fun `getInAppToShowById does not check show limits or lock`() = runTest {
+        givenConfig(modalInApp(id = "known"))
+
+        interactor.getInAppToShowById("known")
+
+        verify { showBudgetManager wasNot Called }
+    }
+
+    @Test
+    fun `getInAppToShowById returns null for unknown id`() = runTest {
+        givenConfig(modalInApp(id = "known"))
+
+        assertNull(interactor.getInAppToShowById("unknown"))
+    }
+
+    @Test
+    fun `getInAppToShowById returns the owning in-app with its variant`() = runTest {
+        val inApp = modalInApp(id = "known")
+        givenConfig(inApp)
+
+        val toShow = interactor.getInAppToShowById("known")!!
+
+        assertEquals(inApp, toShow.inApp)
+        assertEquals(inApp.form.variants.first(), toShow.variant)
+    }
+
+    @Test
+    fun `getInAppToShowById returns null for an embedded in-app`() = runTest {
+        givenConfig(embeddedInApp(id = "embedded-id"))
+
+        assertNull(interactor.getInAppToShowById("embedded-id"))
+    }
+
+    @Test
+    fun `getInAppToShowById picks the overlay variant of a mixed form`() = runTest {
+        val modal = modalInApp(id = "mixed")
+        val embeddedVariant = embeddedInApp(id = "mixed").form.variants.first()
+        givenConfig(
+            modal.copy(form = Form(variants = listOf(embeddedVariant, modal.form.variants.first())))
+        )
+
+        assertEquals(
+            modal.form.variants.first(),
+            interactor.getInAppToShowById("mixed")?.variant
+        )
+    }
+
+    @Test
+    fun `getInAppToShowById picks the first of duplicate ids across sdkVersion ranges`() = runTest {
+        val first = modalInApp(id = "dup")
+        val second = InAppStub.getInApp().copy(
+            id = "dup",
+            form = Form(variants = listOf(InAppStub.getWebView()))
+        )
+        givenConfig(first, second)
+
+        assertEquals(first.form.variants.first(), interactor.getInAppToShowById("dup")?.variant)
+    }
+
+    @Test
+    fun `filterShowableInAppIds picks the first duplicate id like the direct call does`() = runTest {
+        givenConfig(modalInApp(id = "dup"), modalInApp(id = "dup"))
+
+        assertEquals(listOf("dup"), interactor.filterShowableInAppIds("host-form", listOf("dup")))
+    }
+
+    @Test
+    fun `filterShowableInAppIds keeps all valid ids`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"), modalInApp(id = "inapp-2"))
+
+        assertEquals(
+            listOf("inapp-1", "inapp-2"),
+            interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "inapp-2"))
+        )
+    }
+
+    @Test
+    fun `filterShowableInAppIds cuts unknown id`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("ghost")))
+    }
+
+    @Test
+    fun `filterShowableInAppIds cuts id with unmatched targeting`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" }) } returns false
+
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+    }
+
+    @Test
+    fun `filterShowableInAppIds cuts an id its frequency already blocks but still sends its targeting`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+        every { inAppRepository.getShownInApps() } returns mapOf("inapp-1" to listOf(1L))
+
+        assertEquals(emptyList<String>(), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds does not check the show limits`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify { showBudgetManager wasNot Called }
+    }
+
+    @Test
+    fun `filterShowableInAppIds cuts id of embedded in-app`() = runTest {
+        givenConfig(embeddedInApp(id = "embedded-itself"), modalInApp(id = "inapp-1"))
+
+        assertEquals(
+            listOf("inapp-1"),
+            interactor.filterShowableInAppIds("host-form", listOf("embedded-itself", "inapp-1"))
+        )
+    }
+
+    @Test
+    fun `filterShowableInAppIds does not check directCall`() = runTest {
+        givenConfig(
+            modalInApp(id = "inapp-1").copy(displayConditions = DisplayConditions.DIRECT_CALL)
+        )
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+    }
+
+    @Test
+    fun `filterShowableInAppIds sends targeting for every asked id that matches, the ab-cut included`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"), modalInApp(id = "inapp-2"), modalInApp(id = "cut"))
+        every { inAppABTestLogic.getInAppsPool(any(), any()) } returns setOf("inapp-1", "inapp-2")
+
+        val answer = interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "inapp-2", "cut"))
+
+        assertEquals(listOf("inapp-1", "inapp-2"), answer)
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "inapp-1" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "inapp-2" }) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(match<InApp> { it.id == "cut" }) }
+        verify(exactly = 3) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds sends targeting once per host and id pair a session`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds sends one targeting for a duplicated id and mirrors the duplicate`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+
+        val answer = interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "inapp-1"))
+
+        assertEquals(listOf("inapp-1", "inapp-1"), answer)
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds sends no targeting for a cut id`() = runTest {
+        givenConfig(modalInApp(id = "inapp-1"))
+        coEvery { inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" }) } returns false
+
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1", "ghost"))
+
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `saveShownInApp sends the Inapp Show and writes the counters`() {
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(modalInApp(id = "modal-1"))
+
+        interactor.saveShownInApp("modal-1", now.ms, "0:0:1", null)
+
+        verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Overlay("modal-1"), "modal-1", modalInApp(id = "modal-1").frequency, now) }
+    }
+
+    @Test
+    fun `saveShownInApp gives the hold back when the in-app left the session config`() {
+        every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
+
+        interactor.saveShownInApp("gone", now.ms, "0:0:1", null)
+
+        verify { inAppRepository.sendInAppShown("gone", "0:0:1", null) }
+        verify { showBudgetManager.release(ShowBudgetOwner.Overlay("gone")) }
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `saveShownInApp sends the Inapp Show but writes no counters for unlimited`() {
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(
+            modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited))
+        )
+
+        interactor.saveShownInApp("modal-1", now.ms, "0:0:1", null)
+
+        verify { inAppRepository.sendInAppShown("modal-1", "0:0:1", null) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Overlay("modal-1"), "modal-1", Frequency(Frequency.Delay.Unlimited), now) }
+    }
+
+    @Test
+    fun `saveInAppDismissTime moves the cooldown for a counted in-app`() {
+        interactor.saveInAppDismissTime(modalInApp(id = "modal-1"), now)
+
+        verify { showBudgetManager.recordCooldown(modalInApp(id = "modal-1").frequency, now) }
+    }
+
+    @Test
+    fun `saveInAppDismissTime leaves the cooldown alone for unlimited`() {
+        interactor.saveInAppDismissTime(
+            modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited)),
+            now
+        )
+
+        verify(exactly = 0) { showBudgetManager.recordCooldown(any(), any()) }
+    }
+
+    @Test
+    fun `saveInAppDismissTime logs how long the in-app was on screen, whatever the last counted show says`() {
+        every { inAppRepository.getLastInappDismissTime() } returns Timestamp(0L)
+        mockkObject(MindboxLoggerImpl)
+        try {
+            interactor.saveInAppDismissTime(
+                modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.Unlimited)),
+                Timestamp(now.ms - 15_288L)
+            )
+
+            verify(exactly = 1) { MindboxLoggerImpl.i(any(), "Last in-app display duration 15288 ms") }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
+        }
+    }
+
+    @Test
+    fun `recordBlockShow sends the Inapp Show, counts the show and moves the cooldown`() {
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_500L), mapOf("a" to "b"), SessionEpoch(0L))
+
+        verify { inAppRepository.sendInAppShown("embedded-id", "00:00:01.5000000", mapOf("a" to "b")) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Place(place), "embedded-id", InAppStub.getInApp().frequency, now) }
+    }
+
+    @Test
+    fun `recordBlockShow stays silent while the place slot holds the same content and speaks again on a change, 1 to 2 to 1`() {
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+
+        verify(exactly = 1) { inAppRepository.sendInAppShown(any(), any(), any()) }
+        verify(exactly = 1) { showBudgetManager.commit(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+
+        interactor.recordBlockShow(place, "embedded-2", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+        interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+
+        verify(exactly = 3) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `recordBlockShow sends the Inapp Show for an unlimited block that writes no counters`() {
+        interactor.recordBlockShow(place, "embedded-id", Frequency(Frequency.Delay.Unlimited), Milliseconds(0L), null, SessionEpoch(0L))
+
+        verify { inAppRepository.sendInAppShown(any(), any(), any()) }
+        verify { showBudgetManager.commit(ShowBudgetOwner.Place(place), "embedded-id", Frequency(Frequency.Delay.Unlimited), now) }
+    }
+
+    @Test
+    fun `recordBlockShow needs no config - the snapshot carries everything`() {
+        coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
+
+        interactor.recordBlockShow(place, "gone-from-config", InAppStub.getInApp().frequency, Milliseconds(0L), null, SessionEpoch(0L))
+
+        verify(exactly = 1) { inAppRepository.sendInAppShown("gone-from-config", any(), any()) }
+    }
+
+    @Test
+    fun `live operation matched to an embedded place emits a place event without resolving`() = runTest {
+        val embedded = embeddedInApp()
+        givenConfig(embedded)
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("block-operation"))
+        every { inAppRepository.listenLiveInAppEvents() } returns flowOf(operation)
+        every { inAppRepository.getOperationalInAppsByOperation(operation.name) } returns listOf(embedded)
+
+        interactor.listenEmbeddedPlaceEvents().test {
+            val placeEvent = awaitItem()
+            assertEquals(place, placeEvent.placeSystemName)
+            assertEquals(operation, placeEvent.triggerEvent)
+            awaitComplete()
+        }
+        coVerify(exactly = 0) { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) }
+    }
+
+    @Test
+    fun `operation with no embedded candidates emits nothing`() = runTest {
+        givenConfig(embeddedInApp())
+        val operation = InAppEventType.OrdinalEvent(EventType.AsyncOperation("plain-operation"))
+        every { inAppRepository.listenLiveInAppEvents() } returns flowOf(operation)
+        every { inAppRepository.getOperationalInAppsByOperation(operation.name) } returns emptyList()
+
+        interactor.listenEmbeddedPlaceEvents().test {
+            awaitComplete()
+        }
+        coVerify(exactly = 0) { inAppProcessingManager.chooseInAppToShow(any(), any(), any()) }
+    }
+
+    @Test
+    fun `overlay path cuts embedded-only and directCall but keeps a mixed form`() = runTest {
+        val embedded = embeddedInApp()
+        val direct = modalInApp(id = "direct").copy(displayConditions = DisplayConditions.DIRECT_CALL)
+        val ordinary = modalInApp(id = "ordinary")
+        val mixed = mixedInApp()
+        givenConfig(embedded, direct, ordinary, mixed)
+        every { inAppRepository.listenInAppEvents() } returns flowOf(InAppEventType.AppStartup)
+
+        interactor.processEventAndConfig().test {
+            awaitItem()
+            awaitComplete()
+        }
+
+        coVerify {
+            inAppProcessingManager.chooseInAppToShow(listOf(ordinary, mixed), InAppEventType.AppStartup, any())
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace hands out the embedded variant of a mixed form`() = runTest {
+        givenConfig(mixedInApp())
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("mixed-id", content?.inAppId)
+        assertEquals(place, content?.placeSystemName)
+    }
+
+    @Test
+    fun `filterShowableInAppIds keeps an id whose form also has an overlay variant`() = runTest {
+        givenConfig(mixedInApp())
+
+        val result = interactor.filterShowableInAppIds("host-form", listOf("mixed-id"))
+
+        assertEquals(listOf("mixed-id"), result)
+    }
+
+    @Test
+    fun `reservePlaceShow gives back the hold of a newcomer the place never drew when it returns to its shown content`() {
+        sessionStorageManager.state.embeddedLastShownByPlace[place] = "embedded-id"
+
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
+
+        verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `reservePlaceShow takes the place's hold and only a refusal empties the place`() {
+        val content = InAppStub.getEmbedded().copy(inAppId = "embedded-id", isPriority = true)
+        every { inAppRepository.getCurrentSessionInApps() } returns emptyList()
+        every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.ALREADY_HELD
+
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, content, SessionEpoch(0L)))
+
+        every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", content.frequency, true) } returns ShowReservationOutcome.REFUSED
+        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, content, SessionEpoch(0L)))
+    }
+
+    @Test
+    fun `reservePlaceShow re-checks the frequency at delivery, so a second place does not show a once-a-session in-app again`() {
+        val onceASession = embeddedInApp(id = "embedded-id").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
+
+        assertEquals(PlaceShowReservation.REFUSED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
+
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns listOf(onceASession)
+        every { showBudgetManager.reserve(ShowBudgetOwner.Place(place), "embedded-id", any(), false) } returns ShowReservationOutcome.GRANTED
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
+    }
+
+    @Test
+    fun `reservePlaceShow keeps the show the place still holds for the same in-app even when its frequency was spent since`() {
+        val onceASession = embeddedInApp(id = "embedded-id").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
+        every { showBudgetManager.holds(ShowBudgetOwner.Place(place), "embedded-id") } returns true
+
+        assertEquals(PlaceShowReservation.RESERVED, interactor.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L)))
+
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+    }
+
+    @Test
+    fun `reserveOverlayShow refuses on frequency before the budget is even asked`() {
+        val onceASession = modalInApp(id = "modal-1").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } returns emptyList()
+
+        assertEquals(ShowReservationOutcome.REFUSED, interactor.reserveOverlayShow(onceASession))
+
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `reserveOverlayShow hands the manager's verdict through under the overlay owner`() {
+        val inApp = modalInApp(id = "modal-1")
+        every { showBudgetManager.reserve(ShowBudgetOwner.Overlay("modal-1"), "modal-1", inApp.frequency, inApp.isPriority) } returns ShowReservationOutcome.GRANTED
+
+        assertEquals(ShowReservationOutcome.GRANTED, interactor.reserveOverlayShow(inApp))
+
+        interactor.releaseOverlayShow("modal-1")
+        verify { showBudgetManager.release(ShowBudgetOwner.Overlay("modal-1")) }
+    }
+
+    @Test
+    fun `selectInAppForPlace has no answer when the config could not be fetched and nothing is cached`() = runTest {
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable(any()) } returns InAppsSection(inApps = null, configVersion = configVersion)
+
+        val outcome = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals(EmbeddedResolveOutcome.ConfigUnavailable(configVersion), outcome)
+        verify(exactly = 0) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace answers empty when nobody matched and every targeting was evaluated`() = runTest {
+        givenConfig(embeddedInApp())
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } returns false
+
+        assertEquals(EmbeddedResolveOutcome.Empty(configVersion), interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)))
+    }
+
+    private fun EmbeddedResolveOutcome.contentOrNull(): EmbeddedResolveOutcome.Content? = this as? EmbeddedResolveOutcome.Content
+
+    @Test
+    fun `selectInAppForPlace fetches the whole config's targeting dependencies before matching the place`() = runTest {
+        val config = listOf(embeddedInApp(), modalInApp(id = "story-1"))
+        givenConfig(*config.toTypedArray())
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppProcessingManager.matchesTargeting(match { it.id == "embedded-id" }, any())
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace fetches no targeting dependencies for a place without candidates`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp())
+
+        interactor.selectInAppForPlace(PlaceKey.of("no-such-place"), InAppEventType.EmbeddedPlaceRequested(PlaceKey.of("no-such-place")))
+
+        coVerify(exactly = 0) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again for the new session when the session was reset during the prefetch`() = runTest {
+        val config = listOf(embeddedInApp(), modalInApp(id = "story-1"))
+        givenConfig(*config.toTypedArray())
+        val nextSession = SessionState()
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns nextSession
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.prefetchTargetingDependencies(config)
+            inAppProcessingManager.matchesTargeting(match { it.id == "embedded-id" }, any())
+        }
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolving again for the new session answers with the version of the config it read again`() = runTest {
+        val config = listOf(embeddedInApp())
+        givenConfig(*config.toTypedArray())
+        val newSessionsConfig = configVersion.next()
+        coEvery { mobileConfigRepository.getInAppsSectionIfAvailable(any()) } returns
+            InAppsSection(config, configVersion) andThen InAppsSection(config, newSessionsConfig)
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns SessionState()
+        }
+
+        val outcome = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        assertEquals(newSessionsConfig, outcome.configVersion)
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again only once however often the session is reset`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            every { sessionStorageManager.state } returns SessionState()
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves once while the session stays the same`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerify(exactly = 1) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+        verify(exactly = 1) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds saves the config's in-apps into the session before checking`() = runTest {
+        val config = listOf(modalInApp(id = "inapp-1"))
+        givenConfig(*config.toTypedArray())
+
+        interactor.filterShowableInAppIds("host-form", listOf("inapp-1"))
+
+        coVerifyOrder {
+            inAppRepository.saveCurrentSessionInApps(config)
+            inAppProcessingManager.matchesRequestedTargeting(match { it.id == "inapp-1" })
+        }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again when the session was reset while its candidates were checked`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val nextSession = SessionState()
+        var checks = 0
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } coAnswers {
+            if (checks++ == 0) every { sessionStorageManager.state } returns nextSession
+            true
+        }
+
+        val content = interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place)).variantOrNull()
+
+        assertEquals("embedded-id", content?.inAppId)
+        coVerify(exactly = 2) { inAppProcessingManager.prefetchTargetingDependencies(any()) }
+        verify(exactly = 1) { inAppProcessingManager.sendTargetedInApp(any()) }
+    }
+
+    @Test
+    fun `selectInAppForPlace resolves again as a plain place request, leaving the old session's operation behind`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val operation = InAppEventType.OrdinalEvent(EventType.SyncOperation("viewProduct"), null)
+        val nextSession = SessionState()
+        var prefetches = 0
+        coEvery { inAppProcessingManager.prefetchTargetingDependencies(any()) } coAnswers {
+            if (prefetches++ == 0) every { sessionStorageManager.state } returns nextSession
+        }
+
+        interactor.selectInAppForPlace(place, operation)
+
+        coVerify(exactly = 1) { inAppProcessingManager.matchesTargeting(any(), ofType<InAppEventType.EmbeddedPlaceRequested>()) }
+        coVerify(exactly = 0) { inAppProcessingManager.matchesTargeting(any(), operation) }
+        assertFalse(nextSession.embeddedLastOperationByPlace.containsKey(place))
+        assertSame(operation, sessionState.embeddedLastOperationByPlace[place])
+    }
+
+    @Test
+    fun `selectInAppForPlace drops the failures the abandoned pass collected before resolving again`() = runTest {
+        givenConfig(embeddedInApp(), modalInApp(id = "story-1"))
+        val nextSession = SessionState()
+        var checks = 0
+        coEvery { inAppProcessingManager.matchesTargeting(any(), any()) } coAnswers {
+            if (checks++ == 0) every { sessionStorageManager.state } returns nextSession
+            true
+        }
+
+        interactor.selectInAppForPlace(place, InAppEventType.EmbeddedPlaceRequested(place))
+
+        coVerifyOrder {
+            inAppProcessingManager.matchesTargeting(any(), any())
+            inAppFailureTracker.clearFailures()
+            inAppProcessingManager.prefetchTargetingDependencies(any())
+        }
+    }
+
+    private fun EmbeddedResolveOutcome.variantOrNull(): InAppType.Embedded? = contentOrNull()?.variant
+
+    @Test
+    fun `recordBlockShow answers whether the show went out`() {
+        val first = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+        val repeated = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+
+        assertTrue(first)
+        assertFalse(repeated)
+    }
+
+    @Test
+    fun `recordBlockShow of a session that has ended writes nothing, counts nothing and sends no show`() {
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
+
+        val isSent = interactor.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(1_000L), null, SessionEpoch(0L))
+
+        assertFalse(isSent)
+        assertNull(sessionState.embeddedLastShownByPlace[place])
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `the same in-app shown again in a new session counts and commits the place's hold as at cold start`() {
+        val storage = SessionStorageManager(timeProvider)
+        val interactorOverRealSession = interactorOver(storage)
+        val counting = InAppStub.getInApp().frequency
+        interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, SessionEpoch(0L))
+        storage.clearSessionData()
+
+        val isSent = interactorOverRealSession.recordBlockShow(place, "embedded-id", counting, Milliseconds(1_000L), null, SessionEpoch(1L))
+
+        assertTrue(isSent)
+        verify(exactly = 2) { showBudgetManager.commit(ShowBudgetOwner.Place(place), "embedded-id", counting, now) }
+        verify(exactly = 2) { inAppRepository.sendInAppShown("embedded-id", any(), any()) }
+    }
+
+    @Test
+    fun `reservePlaceShow for a session that has ended takes no hold`() {
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
+
+        val reservation = interactor.reservePlaceShow(place, InAppStub.getEmbedded(), SessionEpoch(0L))
+
+        assertEquals(PlaceShowReservation.STALE, reservation)
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+    }
+
+    @Test
+    fun `releasePlaceShow for a session that has ended gives back nothing`() {
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
+
+        assertFalse(interactor.releasePlaceShow(place, SessionEpoch(0L)))
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+
+        assertTrue(interactor.releasePlaceShow(place, SessionEpoch(1L)))
+        verify(exactly = 1) { showBudgetManager.release(ShowBudgetOwner.Place(place)) }
+    }
+
+    @Test
+    fun `a delay waited out in a session that has ended does not spare the new session its wait`() {
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
+
+        assertFalse(interactor.markEmbeddedDelayWaitedOut(place, "embedded-id", SessionEpoch(0L)))
+
+        assertTrue(sessionState.embeddedDelaysWaitedOut.isEmpty())
+    }
+
+    @Test
+    fun `beginNewSession resets the config before the session moves on`() {
+        every { mobileConfigRepository.resetCurrentConfig() } just runs
+
+        interactor.beginNewSession()
+
+        verifyOrder {
+            mobileConfigRepository.resetCurrentConfig()
+            inAppRepository.clearInAppEvents()
+            sessionStorageManager.clearSessionData()
+        }
+    }
+
+    @Test
+    fun `a session reset waits for a block show being recorded and leaves no trace of it in the new session`() {
+        val storage = SessionStorageManager(timeProvider)
+        val interactorOverRealSession = interactorOver(storage)
+        val entered = CountDownLatch(1)
+        val proceed = CountDownLatch(1)
+        every { showBudgetManager.commit(any(), any(), any(), any()) } answers {
+            entered.countDown()
+            proceed.await(5, TimeUnit.SECONDS)
+        }
+        val workers = Executors.newFixedThreadPool(2)
+        val record = workers.submit<Boolean> {
+            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, SessionEpoch(0L))
+        }
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        val reset = workers.submit { storage.clearSessionData() }
+        Thread.sleep(150)
+        assertFalse(reset.isDone)
+
+        proceed.countDown()
+
+        assertTrue(record.get(5, TimeUnit.SECONDS))
+        reset.get(5, TimeUnit.SECONDS)
+        assertEquals(SessionEpoch(1L), storage.sessionEpoch)
+        assertTrue(storage.state.embeddedLastShownByPlace.isEmpty())
+        workers.shutdown()
+    }
+
+    private fun interactorOver(storage: SessionStorageManager): InAppInteractorImpl = InAppInteractorImpl(
+        mobileConfigRepository = mobileConfigRepository,
+        inAppRepository = inAppRepository,
+        inAppFilteringManager = InAppFilteringManagerImpl(inAppRepository),
+        inAppEventManager = InAppEventManagerImpl(),
+        inAppProcessingManager = inAppProcessingManager,
+        inAppABTestLogic = inAppABTestLogic,
+        inAppFrequencyManager = frequencyManager,
+        showBudgetManager = showBudgetManager,
+        timeProvider = timeProvider,
+        sessionStorageManager = storage,
+        inAppFailureTracker = inAppFailureTracker,
+    )
+
+    private fun <T> onceTheLockIsFree(storage: SessionStorageManager, change: () -> Unit, action: () -> T): T {
+        val workers = Executors.newSingleThreadExecutor()
+        try {
+            val result = synchronized(storage.showBudgetLock) {
+                val result = workers.submit<T> { action() }
+                Thread.sleep(150)
+                change()
+                result
+            }
+            return result.get(5, TimeUnit.SECONDS)
+        } finally {
+            workers.shutdown()
+        }
+    }
+
+    private fun recordShowOnceTheLockIsFree(storage: SessionStorageManager, sessionChange: () -> Unit): Boolean {
+        val interactorOverRealSession = interactorOver(storage)
+        return onceTheLockIsFree(storage, sessionChange) {
+            interactorOverRealSession.recordBlockShow(place, "embedded-id", InAppStub.getInApp().frequency, Milliseconds(0L), null, SessionEpoch(0L))
+        }
+    }
+
+    @Test
+    fun `a block show waiting for the lock while the session is found over is not counted`() {
+        val storage = SessionStorageManager(timeProvider)
+        storage.addSessionExpirationListener {}
+        storage.lastTrackVisitSendTime.set(1_000L)
+        storage.state.sessionTime = 500L.milliseconds
+        every { timeProvider.currentTimeMillis() } returns 2_000L
+
+        val isSent = recordShowOnceTheLockIsFree(storage) { storage.hasSessionExpired() }
+
+        assertFalse(isSent)
+        assertTrue(storage.state.embeddedLastShownByPlace.isEmpty())
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a block show waiting for the lock while the session is reset is not counted in either session`() {
+        val storage = SessionStorageManager(timeProvider)
+
+        val isSent = recordShowOnceTheLockIsFree(storage) { storage.clearSessionData() }
+
+        assertFalse(isSent)
+        assertTrue(storage.state.embeddedLastShownByPlace.isEmpty())
+        verify(exactly = 0) { showBudgetManager.commit(any(), any(), any(), any()) }
+        verify(exactly = 0) { inAppRepository.sendInAppShown(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a show committed while a place waits for the show budget lock refuses the place's reservation on frequency`() {
+        val storage = SessionStorageManager(timeProvider)
+        val onceASession = embeddedInApp(id = "embedded-id").copy(frequency = Frequency(Frequency.Delay.OneTimePerSession))
+        var isShown = false
+        every { inAppRepository.getCurrentSessionInApps() } returns listOf(onceASession)
+        every { frequencyManager.filterInAppsFrequency(listOf(onceASession)) } answers { if (isShown) emptyList() else firstArg() }
+        val interactorOverRealSession = interactorOver(storage)
+
+        val reservation = onceTheLockIsFree(storage, change = { isShown = true }) {
+            interactorOverRealSession.reservePlaceShow(place, InAppStub.getEmbedded().copy(inAppId = "embedded-id"), SessionEpoch(0L))
+        }
+
+        assertEquals(PlaceShowReservation.REFUSED, reservation)
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a session found expired refuses the reservations, releases and delay marks of its answers`() {
+        val storage = SessionStorageManager(timeProvider).apply { addSessionExpirationListener {} }
+        storage.lastTrackVisitSendTime.set(1_000L)
+        storage.state.sessionTime = 500L.milliseconds
+        every { timeProvider.currentTimeMillis() } returns 2_000L
+        storage.hasSessionExpired()
+        val interactorOverEndingSession = interactorOver(storage)
+
+        assertEquals(PlaceShowReservation.STALE, interactorOverEndingSession.reservePlaceShow(place, InAppStub.getEmbedded(), SessionEpoch(0L)))
+        assertFalse(interactorOverEndingSession.releasePlaceShow(place, SessionEpoch(0L)))
+        assertFalse(interactorOverEndingSession.markEmbeddedDelayWaitedOut(place, "embedded-id", SessionEpoch(0L)))
+        verify(exactly = 0) { showBudgetManager.reserve(any(), any(), any(), any()) }
+        verify(exactly = 0) { showBudgetManager.release(any()) }
+    }
+
+    @Test
+    fun `beginNewSession wipes the session even when resetting the config fails`() {
+        every { mobileConfigRepository.resetCurrentConfig() } throws IllegalStateException("the config could not be reset")
+        every { inAppRepository.clearInAppEvents() } just runs
+
+        interactor.beginNewSession()
+
+        verify(exactly = 1) { sessionStorageManager.clearSessionData() }
+    }
+
+    @Test
+    fun `beginNewSession wipes the session even when clearing the in-app events fails`() {
+        every { mobileConfigRepository.resetCurrentConfig() } just runs
+        every { inAppRepository.clearInAppEvents() } throws IllegalStateException("the events could not be cleared")
+
+        interactor.beginNewSession()
+
+        verify(exactly = 1) { sessionStorageManager.clearSessionData() }
+    }
+
+    @Test
+    fun `filterShowableInAppIds refuses to answer when the config could not be fetched and nothing is cached`() = runTest {
+        coEvery { mobileConfigRepository.getInAppsSection() } returns emptyList()
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns null
+
+        assertNull(interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+    }
+
+    @Test
+    fun `a session read as ending before its epoch is not live even when the wipe lands between the two reads`() {
+        var isWiped = false
+        every { sessionStorageManager.isSessionEnding } answers { !isWiped }
+        every { sessionStorageManager.sessionEpoch } answers {
+            isWiped = true
+            SessionEpoch(0L)
+        }
+
+        assertFalse(interactor.isLiveSession(SessionEpoch(0L)))
+    }
+
+    @Test
+    fun `filterShowableInAppIds answered from the ended session's config while the new one downloads saves none of its in-apps into the new session`() = runTest {
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(configOf(modalInApp(id = "inapp-1")), isOfEndedSession = true)
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify(exactly = 0) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds saves nothing into a session that began while the page's config was read`() = runTest {
+        every { sessionStorageManager.sessionEpoch } returns SessionEpoch(0L)
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } coAnswers {
+            every { sessionStorageManager.sessionEpoch } returns SessionEpoch(1L)
+            PageConfig(configOf(modalInApp(id = "inapp-1")), isOfEndedSession = false)
+        }
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify(exactly = 0) { inAppRepository.saveCurrentSessionInApps(any()) }
+    }
+
+    @Test
+    fun `filterShowableInAppIds answers from one config, its ab-tests included`() = runTest {
+        val abtests = listOf(mockk<ABTest>())
+        coEvery { mobileConfigRepository.getConfigForPageIfAvailable() } returns PageConfig(
+            InAppConfig(inApps = listOf(modalInApp(id = "inapp-1")), monitoring = emptyList(), operations = emptyMap(), abtests = abtests),
+            isOfEndedSession = false,
+        )
+
+        assertEquals(listOf("inapp-1"), interactor.filterShowableInAppIds("host-form", listOf("inapp-1")))
+        verify(exactly = 1) { inAppABTestLogic.getInAppsPool(listOf("inapp-1"), abtests) }
+        coVerify(exactly = 0) { inAppABTestLogic.getInAppsPool(any()) }
+    }
+}

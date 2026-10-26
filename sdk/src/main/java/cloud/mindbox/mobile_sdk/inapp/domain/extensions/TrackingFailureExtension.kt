@@ -79,21 +79,25 @@ private fun parseOperationBody(operationBody: String?): Pair<String, String>? =
             ?.let { entry -> entry.key to entry.value!! }
     }
 
+private fun InAppFailureTracker.loggedFailureDetails(errorDescription: String, throwable: Throwable?): String {
+    val errorDetails = when {
+        throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
+        else -> errorDescription
+    }
+    mindboxLogE(errorDetails)
+    return errorDetails
+}
+
 internal fun InAppFailureTracker.sendPresentationFailure(
     inAppId: String,
     errorDescription: String,
     throwable: Throwable? = null,
     tags: Map<String, String>? = null
 ) {
-    val errorDetails = when {
-        throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
-        else -> errorDescription
-    }
-    mindboxLogE(errorDetails)
     sendFailure(
         inAppId = inAppId,
         failureReason = FailureReason.PRESENTATION_FAILED,
-        errorDetails = errorDetails,
+        errorDetails = loggedFailureDetails(errorDescription, throwable),
         tags = tags
     )
 }
@@ -105,15 +109,25 @@ internal fun InAppFailureTracker.sendFailureWithContext(
     throwable: Throwable? = null,
     tags: Map<String, String>? = null
 ) {
-    val errorDetails = when {
-        throwable != null -> "$errorDescription: ${throwable.message ?: "Unknown error"}"
-        else -> errorDescription
-    }
-    mindboxLogE(errorDetails)
     sendFailure(
         inAppId = inAppId,
         failureReason = failureReason,
-        errorDetails = errorDetails,
+        errorDetails = loggedFailureDetails(errorDescription, throwable),
+        tags = tags
+    )
+}
+
+internal fun InAppFailureTracker.sendBlockFailureWithContext(
+    inAppId: String,
+    failureReason: FailureReason,
+    errorDescription: String,
+    throwable: Throwable? = null,
+    tags: Map<String, String>? = null
+) {
+    sendBlockFailure(
+        inAppId = inAppId,
+        failureReason = failureReason,
+        errorDetails = loggedFailureDetails(errorDescription, throwable),
         tags = tags
     )
 }
