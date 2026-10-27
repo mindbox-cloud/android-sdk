@@ -416,7 +416,7 @@ internal class EmbeddedBlockWebViewHolder(
         val controller = WebViewController.create(
             context = context,
             isDebugEnabled = false,
-            isCacheEnabled = false,
+            isCacheEnabled = webViewCachePolicy.isCacheEnabled,
             log = { message -> mindboxLogI("[EmbeddedBlock][WebView] $message") }
         )
         controller.view.layoutParams = FrameLayout.LayoutParams(
