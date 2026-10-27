@@ -39,14 +39,6 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        <service
-            android:name=".MindboxRuStoreMessagingService"
-            android:exported="true"
-            tools:ignore="ExportedService">
-            <intent-filter>
-                <action android:name="ru.rustore.sdk.pushclient.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
 
         <activity
             android:name=".ActivityTransitionByPush"
@@ -62,9 +54,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <meta-data
-            android:name="ru.rustore.sdk.pushclient.project_id"
-            android:value="${ruStoreProjectId}" />
     </application>
 
 </manifest>

@@ -152,12 +152,12 @@ class MainActivity : AppCompatActivity() {
 
         // https://developers.mindbox.ru/docs/android-sdk-methods#subscribepushtoken-%D0%B8-disposepushtokensubscription
         var subscriptionPushToken = ""
-        subscriptionPushToken = Mindbox.subscribePushTokens { tokens ->
+        subscriptionPushToken = Mindbox.subscribePushToken { token ->
             runOnUiThread {
                 sdkInfo = sdkInfo.copy(
-                    token = tokens.orEmpty(),
+                    token = token.orEmpty(),
                     // https://developers.mindbox.ru/docs/android-sdk-methods#getpushtokensavedate
-                    tokenDate = Mindbox.getPushTokensSaveDate().toString(),
+                    tokenDate = Mindbox.getPushTokenSaveDate().orEmpty(),
                 )
             }
             Mindbox.disposePushTokenSubscription(subscriptionPushToken)
