@@ -1781,9 +1781,13 @@ class EmbeddedBlockWebViewHolderTest {
     @Test
     fun `a show waiting for the session check of the return does not go once the place lost its content meanwhile, and goes once content returns`() {
         val returnChecked = CompletableDeferred<Unit>()
+        val returnCheckAwaited = CompletableDeferred<Unit>()
         val isReturnCheckPending = MutableStateFlow(true)
         every { inAppInteractor.returnCheckPending } returns isReturnCheckPending
-        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers { returnChecked.await() }
+        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers {
+            returnCheckAwaited.complete(Unit)
+            returnChecked.await()
+        }
         val recordedSessions = ConcurrentLinkedQueue<SessionEpoch>()
         every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } answers {
             recordedSessions.add(SessionEpoch(arg(5)))
@@ -1792,6 +1796,7 @@ class EmbeddedBlockWebViewHolderTest {
         startAndAwaitPageLoad()
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
         await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        await { returnCheckAwaited.isCompleted }
 
         holder.withholdShow(true)
         isReturnCheckPending.value = false
@@ -1946,9 +1951,13 @@ class EmbeddedBlockWebViewHolderTest {
     @Test
     fun `a show waiting for the session check of the return does not go once the page renders nothing meanwhile, and goes once it renders content`() {
         val returnChecked = CompletableDeferred<Unit>()
+        val returnCheckAwaited = CompletableDeferred<Unit>()
         val isReturnCheckPending = MutableStateFlow(true)
         every { inAppInteractor.returnCheckPending } returns isReturnCheckPending
-        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers { returnChecked.await() }
+        coEvery { inAppInteractor.awaitReturnChecked() } coAnswers {
+            returnCheckAwaited.complete(Unit)
+            returnChecked.await()
+        }
         val recordedSessions = ConcurrentLinkedQueue<SessionEpoch>()
         every { inAppInteractor.recordBlockShow(any(), any(), any(), any(), any(), any()) } answers {
             recordedSessions.add(SessionEpoch(arg(5)))
@@ -1957,6 +1966,7 @@ class EmbeddedBlockWebViewHolderTest {
         startAndAwaitPageLoad()
         postFromPage(request(action = "contentRendered", payload = """{"count":3}"""))
         await { states.lastOrNull() == EmbeddedBlockState.Ready }
+        await { returnCheckAwaited.isCompleted }
         pushDataTheShownPageRendersNothingFor()
 
         isReturnCheckPending.value = false
