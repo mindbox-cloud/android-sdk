@@ -31,7 +31,7 @@ internal data class ViewProductSegmentNode(
                     )
                 }.onFailure { error ->
                     if (error is ProductSegmentationError) {
-                        sessionStorageManager.processedProductSegmentations[product] =
+                        sessionStorageManager.state.processedProductSegmentations[product] =
                             ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
                         if (error.shouldTrackTargetingError()) {
                             inAppTargetingErrorRepository.saveError(

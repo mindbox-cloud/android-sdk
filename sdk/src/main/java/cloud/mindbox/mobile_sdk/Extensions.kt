@@ -20,6 +20,7 @@ import androidx.annotation.IdRes
 import androidx.core.app.NotificationCompat
 import cloud.mindbox.mobile_sdk.Mindbox.logE
 import cloud.mindbox.mobile_sdk.Mindbox.logW
+import cloud.mindbox.mobile_sdk.inapp.domain.models.Frequency
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
@@ -41,8 +42,10 @@ import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
 import java.net.URLEncoder
 import java.nio.charset.Charset
+import java.util.Collections
 import java.util.Queue
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 
 internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingRunCatching(
@@ -175,15 +178,6 @@ internal fun ViewGroup.removeChildById(
 internal val Activity?.root: ViewGroup?
     get() = this?.window?.decorView?.rootView as ViewGroup?
 
-internal fun Activity.postDelayedAnimation(action: Runnable) {
-    val duration = try {
-        resources.getInteger(android.R.integer.config_mediumAnimTime).toLong()
-    } catch (_: Exception) {
-        window.transitionBackgroundFadeDuration
-    }
-    this.root?.postDelayed(action, duration)
-}
-
 internal inline fun <T> Queue<T>.addUnique(
     item: T,
     predicate: (T) -> Boolean = { it == item }
@@ -246,6 +240,11 @@ internal inline fun <T> Result<T>.getOrNull(runIfNull: (Throwable) -> Unit): T? 
     null
 }
 
+internal fun Context.findActivity(): Activity? =
+    generateSequence(this) { current -> current.safeAs<android.content.ContextWrapper>()?.baseContext }
+        .filterIsInstance<Activity>()
+        .firstOrNull()
+
 internal inline fun <reified T> Any?.safeAs(): T? {
     return this as? T
 }
@@ -302,13 +301,26 @@ internal fun List<InApp>.sortByPriority(): List<InApp> {
     return this.sortedByDescending { it.isPriority }
 }
 
+internal fun InApp.firstOverlayVariant(): InAppType? =
+    form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
+
+internal fun InApp.countsShows(): Boolean = frequency.countsShows()
+
+internal fun Frequency.countsShows(): Boolean = delay !is Frequency.Delay.Unlimited
+
+internal fun <T> newConcurrentSet(): MutableSet<T> =
+    Collections.newSetFromMap(ConcurrentHashMap())
+
 /**
  * Tags to attach to operations emitted by this in-app: [InApp.tags] when non-empty and the tags
  * feature is enabled, otherwise `null` (so Gson omits the `tags` key downstream). The feature-flag
  * decision is taken by the caller and passed in as [isTagsFeatureEnabled].
  */
 internal fun InApp.gatedTags(isTagsFeatureEnabled: Boolean): Map<String, String>? =
-    tags?.takeIf { it.isNotEmpty() && isTagsFeatureEnabled }
+    tags.gatedTags(isTagsFeatureEnabled)
+
+internal fun Map<String, String>?.gatedTags(isTagsFeatureEnabled: Boolean): Map<String, String>? =
+    this?.takeIf { it.isNotEmpty() && isTagsFeatureEnabled }
 
 internal inline fun <T> Queue<T>.pollIf(predicate: (T) -> Boolean): T? {
     return peek()?.takeIf(predicate)?.let { poll() }
@@ -319,6 +331,7 @@ internal fun InAppType.getImageUrl(): String? {
         is InAppType.WebView -> this.layers
         is InAppType.ModalWindow -> this.layers
         is InAppType.Snackbar -> this.layers
+        is InAppType.Embedded -> this.layers
     }
         .filterIsInstance<Layer.ImageLayer>()
         .firstOrNull()

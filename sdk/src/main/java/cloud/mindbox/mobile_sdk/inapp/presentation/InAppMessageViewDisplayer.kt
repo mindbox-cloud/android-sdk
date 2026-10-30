@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.inapp.presentation
 import android.app.Activity
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppActionCallbacks
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
+import com.google.gson.JsonElement
 
 internal interface InAppMessageViewDisplayer {
 
@@ -17,6 +18,14 @@ internal interface InAppMessageViewDisplayer {
         inAppActionCallbacks: InAppActionCallbacks,
         onRenderStart: () -> Unit = {},
         tags: Map<String, String>? = null,
+    )
+
+    fun showInAppMessageNow(
+        inAppType: InAppType,
+        inAppActionCallbacks: InAppActionCallbacks,
+        onRenderStart: () -> Unit = {},
+        tags: Map<String, String>? = null,
+        extraParams: Map<String, JsonElement> = emptyMap(),
     )
 
     fun registerCurrentActivity(activity: Activity)

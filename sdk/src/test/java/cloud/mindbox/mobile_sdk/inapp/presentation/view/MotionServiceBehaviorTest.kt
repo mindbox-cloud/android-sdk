@@ -29,6 +29,11 @@ private class FakeTimeProvider(private var nowMs: Long = 0L) : TimeProvider {
     override fun elapsedSince(startTimeMillis: Timestamp): Milliseconds =
         Milliseconds(nowMs - startTimeMillis.ms)
 
+    override fun monotonicMillis(): Milliseconds = Milliseconds(nowMs)
+
+    override fun monotonicElapsedSince(startTick: Milliseconds): Milliseconds =
+        Milliseconds(nowMs - startTick.interval)
+
     fun advanceBy(ms: Long) {
         nowMs += ms
     }

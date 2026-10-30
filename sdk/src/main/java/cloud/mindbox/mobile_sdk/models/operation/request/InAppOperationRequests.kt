@@ -25,6 +25,8 @@ internal data class InAppTargetingRequest(
     val tags: Map<String, String>? = null
 )
 
+internal sealed interface InAppShowError
+
 internal data class InAppShowFailure(
     @SerializedName("inappId")
     val inAppId: String,
@@ -35,8 +37,31 @@ internal data class InAppShowFailure(
     @SerializedName("dateTimeUtc")
     val dateTimeUtc: String,
     @SerializedName("tags")
-    val tags: Map<String, String>? = null
-)
+    val tags: Map<String, String>? = null,
+    @SerializedName("${"$"}type")
+    val type: String = INAPP_SHOW_FAILURE_TYPE
+) : InAppShowError {
+    internal companion object {
+        const val INAPP_SHOW_FAILURE_TYPE = "inappShowFailure"
+    }
+}
+
+internal data class EmbeddedBlockShowFailure(
+    @SerializedName("placeSystemName")
+    val placeSystemName: String,
+    @SerializedName("failureReason")
+    val failureReason: FailureReason,
+    @SerializedName("errorDetails")
+    val errorDetails: String?,
+    @SerializedName("dateTimeUtc")
+    val dateTimeUtc: String,
+    @SerializedName("${"$"}type")
+    val type: String = EMBEDDED_BLOCK_SHOW_FAILURE_TYPE
+) : InAppShowError {
+    internal companion object {
+        const val EMBEDDED_BLOCK_SHOW_FAILURE_TYPE = "embeddedBlockShowFailure"
+    }
+}
 
 internal enum class FailureReason(val value: String) {
     @SerializedName("image_download_failed")
@@ -59,6 +84,9 @@ internal enum class FailureReason(val value: String) {
 
     @SerializedName("webview_presentation_failed")
     WEBVIEW_PRESENTATION_FAILED("webview_presentation_failed"),
+
+    @SerializedName("wait_budget_exceeded")
+    WAIT_BUDGET_EXCEEDED("wait_budget_exceeded"),
 
     @SerializedName("unknown_error")
     UNKNOWN_ERROR("unknown_error")

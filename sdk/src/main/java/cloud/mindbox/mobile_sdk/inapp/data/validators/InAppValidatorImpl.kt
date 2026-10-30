@@ -14,7 +14,8 @@ internal class InAppValidatorImpl(
     private val sdkVersionValidator: SdkVersionValidator,
     private val modalWindowValidator: ModalWindowValidator,
     private val snackbarValidator: SnackbarValidator,
-    private val frequencyValidator: FrequencyValidator
+    private val frequencyValidator: FrequencyValidator,
+    private val embeddedVariantValidator: EmbeddedVariantValidator
 ) : InAppValidator {
 
     private fun validateInAppTargeting(id: String, targeting: TreeTargetingDto?): Boolean {
@@ -168,6 +169,12 @@ internal class InAppValidatorImpl(
                     mindboxLogD("Start checking snackbar payload of inApp with id = ${inApp.id}")
                     isValid = snackbarValidator.isValid(payloadDto)
                     mindboxLogD("Finish checking snackbar inApp with id = ${inApp.id}. InApp is valid = $isValid")
+                }
+
+                (payloadDto is PayloadDto.EmbeddedDto) -> {
+                    mindboxLogD("Start checking embedded payload of inApp with id = ${inApp.id}")
+                    isValid = embeddedVariantValidator.isValid(payloadDto)
+                    mindboxLogD("Finish checking embedded inApp with id = ${inApp.id}. InApp is valid = $isValid")
                 }
             }
         }

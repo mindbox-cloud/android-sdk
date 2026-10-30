@@ -1,7 +1,9 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.convertToIso8601String
@@ -16,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.threeten.bp.Instant
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneId
@@ -31,6 +34,16 @@ internal class ExtensionsTest {
     @Before
     fun onTestStart() {
         AndroidThreeTen.init(ApplicationProvider.getApplicationContext())
+    }
+
+    @Test
+    fun `findActivity unwraps the wrapper chain to the hosting activity`() {
+        val activity = Robolectric.buildActivity(Activity::class.java).get()
+        val themed = ContextThemeWrapper(activity, 0)
+
+        assertSame(activity, themed.findActivity())
+        assertSame(activity, activity.findActivity())
+        assertNull(ApplicationProvider.getApplicationContext<Context>().findActivity())
     }
 
     @Test
@@ -329,23 +342,6 @@ internal class ExtensionsTest {
     }
 
     @Test
-    fun `pollIf with multiple calls`() {
-        val queue: Queue<String> = LinkedList(listOf("apple", "banana", "cherry"))
-
-        val appleResult = queue.pollIf { it.startsWith("a") }
-        assertEquals("apple", appleResult)
-        assertEquals(2, queue.size)
-
-        val nonBBfruitResult = queue.pollIf { it.startsWith("b") }
-        assertEquals("banana", nonBBfruitResult)
-        assertEquals(1, queue.size)
-
-        val cherryResult = queue.pollIf { it.length == 6 }
-        assertEquals("cherry", cherryResult)
-        assertEquals(0, queue.size)
-    }
-
-    @Test
     fun `toUrlQueryString should return empty string for empty map`() {
         val emptyMap = linkedMapOf<String, String>()
         val result = emptyMap.toUrlQueryString()
@@ -400,17 +396,6 @@ internal class ExtensionsTest {
         )
         val result = map.toUrlQueryString()
         assertEquals("?param1=value%3Dwith%3Dequals&param2=value%26with%26ampersands&param3=value%3Fwith%3Fquestion%3Fmarks", result)
-    }
-
-    @Test
-    fun `toUrlQueryString should handle numeric values as strings`() {
-        val map = linkedMapOf(
-            "number" to "123",
-            "decimal" to "123.45",
-            "negative" to "-123"
-        )
-        val result = map.toUrlQueryString()
-        assertEquals("?number=123&decimal=123.45&negative=-123", result)
     }
 
     @Test

@@ -263,6 +263,7 @@ internal class InAppConstraintLayout : ConstraintLayout, BackButtonLayout {
             is InAppType.WebView -> prepareLayoutForWebView()
             is InAppType.ModalWindow -> prepareLayoutForModalWindow()
             is InAppType.Snackbar -> prepareLayoutForSnackbar(inAppType)
+            is InAppType.Embedded -> Unit
         }
     }
 

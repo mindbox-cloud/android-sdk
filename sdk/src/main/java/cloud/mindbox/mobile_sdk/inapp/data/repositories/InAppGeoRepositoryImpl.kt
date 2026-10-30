@@ -5,13 +5,19 @@ import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.GeoSerializationManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppGeoRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.GeoTargeting
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.Constants
+import com.android.volley.TimeoutError
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class InAppGeoRepositoryImpl(
     private val context: Context,
@@ -21,25 +27,35 @@ internal class InAppGeoRepositoryImpl(
     private val gatewayManager: GatewayManager
 ) : InAppGeoRepository {
 
-    override suspend fun fetchGeo() {
+    private val geoMutex = Mutex()
+
+    override suspend fun fetchGeo() = geoMutex.withLock {
+        val state = sessionStorageManager.state
+        if (state.geoFetchStatus != GeoFetchStatus.GEO_NOT_FETCHED) {
+            return@withLock
+        }
         val configuration = DbManager.listenConfigurations().first()
-        val geoTargeting = inAppMapper.mapGeoTargetingDtoToGeoTargeting(
-            geoTargetingDto = gatewayManager.checkGeoTargeting(
-                configuration = configuration
-            )
-        )
+        val geoTargetingDto = try {
+            withTimeoutOrNull(Constants.targetingFetchWaitLimit.interval) {
+                gatewayManager.checkGeoTargeting(configuration = configuration)
+            } ?: throw GeoError(TimeoutError())
+        } catch (error: GeoError) {
+            state.geoFetchStatus = GeoFetchStatus.GEO_FETCH_ERROR
+            throw error
+        }
+        val geoTargeting = inAppMapper.mapGeoTargetingDtoToGeoTargeting(geoTargetingDto = geoTargetingDto)
         MindboxPreferences.inAppGeo =
             geoSerializationManager.serializeToGeoString(geoTargeting)
-        sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
+        state.geoFetchStatus = GeoFetchStatus.GEO_FETCH_SUCCESS
     }
 
     override fun setGeoStatus(status: GeoFetchStatus) {
-        sessionStorageManager.geoFetchStatus = status
+        sessionStorageManager.state.geoFetchStatus = status
     }
 
     override fun getGeoFetchedStatus(): GeoFetchStatus {
         return LoggingExceptionHandler.runCatching(GeoFetchStatus.GEO_FETCH_ERROR) {
-            sessionStorageManager.geoFetchStatus
+            sessionStorageManager.state.geoFetchStatus
         }
     }
 

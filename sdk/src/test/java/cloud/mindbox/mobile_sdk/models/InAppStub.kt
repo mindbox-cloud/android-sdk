@@ -314,6 +314,59 @@ internal class InAppStub {
             type = "", inAppId = "", layers = listOf(), elements = listOf()
         )
 
+        fun getSnackbar() = InAppType.Snackbar(
+            inAppId = "",
+            type = "snackbar",
+            layers = listOf(),
+            elements = listOf(),
+            position = InAppType.Snackbar.Position(
+                gravity = InAppType.Snackbar.Position.Gravity(
+                    horizontal = InAppType.Snackbar.Position.Gravity.HorizontalGravity.CENTER,
+                    vertical = InAppType.Snackbar.Position.Gravity.VerticalGravity.BOTTOM,
+                ),
+                margin = InAppType.Snackbar.Position.Margin(
+                    kind = InAppType.Snackbar.Position.Margin.MarginKind.DP,
+                    top = 0,
+                    left = 0,
+                    right = 0,
+                    bottom = 0,
+                ),
+            ),
+        )
+
+        fun getEmbeddedWebViewLayer() = Layer.WebViewLayer(
+            baseUrl = "https://blocks.local/base",
+            contentUrl = "https://blocks.local/items.html",
+            type = "webview",
+            params = mapOf("items" to "[{\"inAppId\":\"inapp-1\"}]")
+        )
+
+        fun getEmbedded() = InAppType.Embedded(
+            inAppId = "embedded-id",
+            placeSystemName = PlaceKey.of("main-screen-top"),
+            layers = listOf(getEmbeddedWebViewLayer()),
+            frequency = Frequency(Frequency.Delay.Unlimited),
+            tags = null,
+            isPriority = false,
+        )
+
+        fun getEmbeddedDto() = PayloadDto.EmbeddedDto(
+            content = PayloadDto.EmbeddedDto.ContentDto(
+                background = BackgroundDto(
+                    layers = listOf(
+                        BackgroundDto.LayerDto.WebViewLayerDto(
+                            baseUrl = "https://blocks.local/base",
+                            contentUrl = "https://blocks.local/items.html",
+                            type = "webview",
+                            params = mapOf("items" to "[]")
+                        )
+                    )
+                )
+            ),
+            placeSystemName = "main-screen-top",
+            type = "embedded"
+        )
+
         fun getWebView() = InAppType.WebView(
             inAppId = "",
             type = "webview",

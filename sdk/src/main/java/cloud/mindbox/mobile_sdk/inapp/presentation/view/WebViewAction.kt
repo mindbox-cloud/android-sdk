@@ -1,8 +1,15 @@
 package cloud.mindbox.mobile_sdk.inapp.presentation.view
 
 import cloud.mindbox.mobile_sdk.annotations.InternalMindboxApi
+import cloud.mindbox.mobile_sdk.fromJson
+import cloud.mindbox.mobile_sdk.getOrNull
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CancellationException
 import java.util.UUID
 
 @InternalMindboxApi
@@ -27,12 +34,6 @@ public enum class WebViewAction {
 
     @SerializedName("log")
     LOG,
-
-    @SerializedName("alert")
-    ALERT,
-
-    @SerializedName("toast")
-    TOAST,
 
     @SerializedName("syncOperation")
     SYNC_OPERATION,
@@ -72,7 +73,27 @@ public enum class WebViewAction {
 
     @SerializedName("motion.event")
     MOTION_EVENT,
+
+    @SerializedName("filterShowableInapps")
+    FILTER_SHOWABLE_INAPPS,
+
+    @SerializedName("localState.changed")
+    LOCAL_STATE_CHANGED,
+
+    @SerializedName("contentRendered")
+    CONTENT_RENDERED,
+
+    @SerializedName("showInApp")
+    SHOW_IN_APP,
+
+    @SerializedName("initDataUpdated")
+    INIT_DATA_UPDATED,
+
+    @SerializedName(UNKNOWN_ACTION_WIRE_NAME)
+    UNKNOWN,
 }
+
+internal const val UNKNOWN_ACTION_WIRE_NAME: String = "unknown"
 
 @InternalMindboxApi
 public sealed class BridgeMessage {
@@ -114,7 +135,6 @@ public sealed class BridgeMessage {
         public const val VERSION: Int = 1
         public const val EMPTY_PAYLOAD: String = "{}"
         public const val SUCCESS_PAYLOAD: String = """{"success":true}"""
-        public const val UNKNOWN_ERROR_PAYLOAD: String = """{"error":"Unknown error"}"""
         public const val TYPE_FIELD_NAME: String = "type"
         public const val TYPE_REQUEST: String = "request"
         public const val TYPE_RESPONSE: String = "response"
@@ -132,7 +152,7 @@ public sealed class BridgeMessage {
         public fun createResponseAction(message: Request, payload: String?): Response =
             Response(
                 id = message.id,
-                version = message.version,
+                version = VERSION,
                 action = message.action,
                 payload = payload,
                 timestamp = System.currentTimeMillis(),
@@ -141,7 +161,7 @@ public sealed class BridgeMessage {
         public fun createErrorAction(message: Request, payload: String?): Error =
             Error(
                 id = message.id,
-                version = message.version,
+                version = VERSION,
                 action = message.action,
                 payload = payload,
                 timestamp = System.currentTimeMillis(),
@@ -149,11 +169,86 @@ public sealed class BridgeMessage {
     }
 }
 
+internal data class ReceivedBridgeMessage(
+    val message: BridgeMessage,
+    val sentAction: String?,
+)
+
+internal fun Gson.fromBridgeMessage(json: String): ReceivedBridgeMessage? {
+    val envelope = fromJson<JsonObject>(json).getOrNull() ?: return null
+    val payload = envelope.getOrNull("payload")
+    if (payload != null && (payload.isJsonObject || payload.isJsonArray)) {
+        envelope.addProperty("payload", payload.toString())
+    }
+    val action = envelope.getOrNull("action")
+    val sentAction = action?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+    val isKnown = sentAction != null && isActionWireName(sentAction)
+    if (!isKnown) {
+        envelope.addProperty("action", UNKNOWN_ACTION_WIRE_NAME)
+    }
+    val message = fromJson<BridgeMessage>(envelope).getOrNull() ?: return null
+    if (message is BridgeMessage.Request && sentAction == null) {
+        mindboxLogW("[WebView] Bridge: dropping a request whose action is not a name: $action")
+        return null
+    }
+    if (!isKnown) {
+        mindboxLogW("[WebView] Bridge: unknown action $action")
+    }
+    return ReceivedBridgeMessage(message = message, sentAction = sentAction)
+}
+
+private fun Gson.isActionWireName(name: String): Boolean = runCatching {
+    val action = fromJson(JsonPrimitive(name), WebViewAction::class.java)
+    action != null && toJsonTree(action).asString == name
+}.getOrDefault(false)
+
+internal fun Gson.toBridgeJson(message: BridgeMessage, sentAction: String?): String {
+    if (message.action != WebViewAction.UNKNOWN || sentAction == null) return toJson(message)
+    return toJson(toJsonTree(message).asJsonObject.apply { addProperty("action", sentAction) })
+}
+
+internal fun Gson.toBridgeErrorPayload(error: Throwable): String = when (error) {
+    is WebViewSyncOperationException -> error.payloadJson
+    else -> toJson(BridgeErrorPayload(error = error.bridgeErrorCode.wireValue))
+}
+
+private data class BridgeErrorPayload(
+    @SerializedName("error")
+    val error: String,
+)
+
 @InternalMindboxApi
 internal typealias BridgeMessageHandler = (BridgeMessage.Request) -> String
 
 @InternalMindboxApi
 internal typealias BridgeSuspendMessageHandler = suspend (BridgeMessage.Request) -> String
+
+internal const val NOBODY_LOOKING_ERROR: String = "Nobody is looking at this page"
+
+internal val WebViewAction.isAcknowledgedWhenUnserved: Boolean
+    get() = when (this) {
+        WebViewAction.INIT,
+        WebViewAction.CLICK,
+        WebViewAction.CLOSE,
+        WebViewAction.HIDE,
+        WebViewAction.LOG,
+        WebViewAction.MOTION_STOP,
+        WebViewAction.CONTENT_RENDERED -> true
+
+        else -> false
+    }
+
+internal val WebViewAction.requiresUserPresence: Boolean
+    get() = when (this) {
+        WebViewAction.OPEN_LINK,
+        WebViewAction.SETTINGS_OPEN,
+        WebViewAction.PERMISSION_REQUEST,
+        WebViewAction.HAPTIC,
+        WebViewAction.MOTION_START,
+        WebViewAction.SHOW_IN_APP -> true
+
+        else -> false
+    }
 
 @InternalMindboxApi
 internal class WebViewActionHandlers {
@@ -175,21 +270,47 @@ internal class WebViewActionHandlers {
         suspendHandlersByActionValue[actionValue] = handler
     }
 
-    fun hasSuspendHandler(actionValue: WebViewAction): Boolean {
-        return suspendHandlersByActionValue.containsKey(actionValue)
-    }
+    fun handler(actionValue: WebViewAction): BridgeMessageHandler? = handlersByActionValue[actionValue]
 
-    fun handleRequest(message: BridgeMessage.Request): Result<String> {
-        return runCatching {
-            handlersByActionValue[message.action]?.invoke(message)
-                ?: throw IllegalArgumentException("No handler for action ${message.action}")
-        }
-    }
+    fun suspendHandler(actionValue: WebViewAction): BridgeSuspendMessageHandler? =
+        suspendHandlersByActionValue[actionValue]
+}
 
-    suspend fun handleRequestSuspend(message: BridgeMessage.Request): Result<String> {
-        return runCatching {
-            suspendHandlersByActionValue[message.action]?.invoke(message)
-                ?: throw IllegalArgumentException("No suspend handler for action ${message.action}")
+internal fun WebViewActionHandlers.dispatch(
+    message: BridgeMessage.Request,
+    isUserPresent: Boolean,
+    isAlive: () -> Boolean = { true },
+    launchSuspending: (suspend () -> Unit) -> Unit,
+    respond: (String) -> Unit,
+    refuse: (Throwable) -> Unit,
+) {
+    val suspending = suspendHandler(message.action)
+    val blocking = handler(message.action)
+    if (suspending == null && blocking == null) {
+        if (message.action.isAcknowledgedWhenUnserved) {
+            mindboxLogI("[WebView] Bridge: '${message.action}' is not served on this surface, acknowledging it")
+            respond(BridgeMessage.SUCCESS_PAYLOAD)
+        } else {
+            val code = if (message.action == WebViewAction.UNKNOWN) BridgeErrorCode.UNKNOWN_ACTION else BridgeErrorCode.NOT_SERVED
+            refuse(BridgeRefusalException(code, "Action ${message.action} is not served on this surface"))
         }
+        return
+    }
+    if (message.action.requiresUserPresence && !isUserPresent) {
+        refuse(BridgeRefusalException(BridgeErrorCode.NOT_VISIBLE, NOBODY_LOOKING_ERROR))
+        return
+    }
+    when {
+        suspending != null -> launchSuspending {
+            if (!isAlive()) return@launchSuspending
+            runCatching { suspending(message) }
+                .onSuccess(respond)
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    refuse(error)
+                }
+        }
+
+        blocking != null -> runCatching { blocking(message) }.fold(respond, refuse)
     }
 }

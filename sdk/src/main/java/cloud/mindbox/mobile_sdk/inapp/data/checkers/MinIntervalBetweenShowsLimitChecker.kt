@@ -3,7 +3,10 @@ package cloud.mindbox.mobile_sdk.inapp.data.checkers
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.models.convertToIso8601String
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 
 internal class MinIntervalBetweenShowsLimitChecker(
@@ -11,20 +14,30 @@ internal class MinIntervalBetweenShowsLimitChecker(
     private val inAppRepository: InAppRepository,
     private val timeProvider: TimeProvider
 ) : Checker {
-    override fun check(): Boolean {
-        mindboxLogI("Checking min interval between shows limit")
-        return when (val minIntervalBetweenShowDuration = sessionStorageManager.inAppShowLimitsSettings.minIntervalBetweenShows) {
+
+    override fun check(reservations: Collection<ShowReservation>): Boolean {
+        return when (val minIntervalBetweenShowDuration = sessionStorageManager.state.inAppShowLimitsSettings.minIntervalBetweenShows) {
             null -> {
-                mindboxLogI("Parameter min interval between inapp show not specify. Work without limit")
+                mindboxLogI("[ShowBudget] [minInterval] minIntervalBetweenShows not set, invalid or not positive, skipping the interval")
                 true
             }
 
             else -> {
-                val lastDismissInappTime = inAppRepository.getLastInappDismissTime().ms
-                val currentTime = timeProvider.currentTimeMillis()
-                val timeDiff = currentTime - lastDismissInappTime
-                val isAllowed = minIntervalBetweenShowDuration.interval + lastDismissInappTime < currentTime
-                mindboxLogI("Min interval between inapp show: $minIntervalBetweenShowDuration, last inapp dismiss time: $lastDismissInappTime, current time: $currentTime, time since last dismiss: ${timeDiff}ms. Show allowed: $isAllowed")
+                val lastDismissInappTime: Timestamp = inAppRepository.getLastInappDismissTime()
+                val lastReservationTime: Timestamp = reservations.maxOfOrNull { reservation -> reservation.reservedAt.ms }
+                    ?.let(::Timestamp) ?: Timestamp(0L)
+                val since: Timestamp = if (lastReservationTime.ms > lastDismissInappTime.ms) lastReservationTime else lastDismissInappTime
+                val currentTime: Timestamp = timeProvider.currentTimestamp()
+                val isAllowed = minIntervalBetweenShowDuration.interval + since.ms < currentTime.ms
+                if (since == Timestamp.ZERO) {
+                    mindboxLogI("[ShowBudget] [minInterval] no counted shows or reservations yet, allowing")
+                } else {
+                    val nextAllowed = since + minIntervalBetweenShowDuration.interval
+                    mindboxLogI(
+                        "[ShowBudget] [minInterval] last: ${since.convertToIso8601String()}, " +
+                            "next allowed: ${nextAllowed.convertToIso8601String()}, allowed: $isAllowed"
+                    )
+                }
                 isAllowed
             }
         }

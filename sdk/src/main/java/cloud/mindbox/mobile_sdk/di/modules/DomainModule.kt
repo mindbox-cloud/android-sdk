@@ -29,11 +29,10 @@ internal fun DomainModule(
             inAppProcessingManager = inAppProcessingManager,
             inAppABTestLogic = inAppABTestLogic,
             inAppFrequencyManager = inAppFrequencyManager,
-            maxInappsPerSessionLimitChecker = maxInappsPerSessionLimitChecker,
-            maxInappsPerDayLimitChecker = maxInappsPerDayLimitChecker,
-            minIntervalBetweenShowsLimitChecker = minIntervalBetweenShowsLimitChecker,
+            showBudgetManager = showBudgetManager,
             timeProvider = timeProvider,
             sessionStorageManager = sessionStorageManager,
+            inAppFailureTracker = inAppFailureTracker,
         )
     }
     override val callbackInteractor: CallbackInteractor by lazy {

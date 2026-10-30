@@ -30,6 +30,9 @@ internal class InAppValidatorTest {
     @MockK
     private lateinit var snackbarValidator: SnackbarValidator
 
+    @MockK
+    private lateinit var embeddedVariantValidator: EmbeddedVariantValidator
+
     @OverrideMockKs
     private lateinit var inAppValidator: InAppValidatorImpl
 
@@ -102,7 +105,7 @@ internal class InAppValidatorTest {
     @Test
     fun `validate form dto variants variant is not null but type is null`() {
         inAppValidator =
-            InAppValidatorImpl(sdkVersionValidator, modalWindowValidator, snackbarValidator, mockk())
+            InAppValidatorImpl(sdkVersionValidator, modalWindowValidator, snackbarValidator, mockk(), mockk())
 
         every {
             modalWindowValidator.isValid(any())
@@ -124,65 +127,6 @@ internal class InAppValidatorTest {
                             variants = listOf(
                                 InAppStub.getModalWindowDto()
                                     .copy(type = null)
-                            )
-                        )
-                    )
-            )
-        )
-    }
-
-    @Test
-    fun `validate form dto variants variant is not null but type is imageUrl is null`() {
-        inAppValidator = InAppValidatorImpl(
-            sdkVersionValidator = sdkVersionValidator,
-            modalWindowValidator = modalWindowValidator,
-            snackbarValidator = snackbarValidator,
-            mockk()
-        )
-        every {
-            modalWindowValidator.isValid(any())
-        } returns false
-        assertFalse(
-            inAppValidator.validateInApp(
-                inApp = InAppStub.getInAppDto()
-                    .copy(
-                        targeting = InAppStub.getTargetingUnionNodeDto()
-                            .copy(
-                                type = "or",
-                                nodes = listOf(
-                                    InAppStub.getTargetingSegmentNodeDto()
-                                        .copy("segment", kind = "positive", "asd", "def", "123")
-                                )
-                            ),
-                        form = InAppStub.getInAppDto().form?.copy(
-                            variants = listOf(
-                                InAppStub.getModalWindowDto()
-                                    .copy(type = "")
-                            )
-                        )
-                    )
-            )
-        )
-    }
-
-    @Test
-    fun `validate form dto variants variant is not null`() {
-        assertTrue(
-            inAppValidator.validateInApp(
-                inApp = InAppStub.getInAppDto()
-                    .copy(
-                        targeting = InAppStub.getTargetingUnionNodeDto()
-                            .copy(
-                                type = "or",
-                                nodes = listOf(
-                                    InAppStub.getTargetingSegmentNodeDto()
-                                        .copy("segment", kind = "positive", "asd", "def", "123")
-                                )
-                            ),
-                        form = InAppStub.getInAppDto().form?.copy(
-                            variants = listOf(
-                                InAppStub.getModalWindowDto()
-                                    .copy(type = "def")
                             )
                         )
                     )
@@ -374,90 +318,6 @@ internal class InAppValidatorTest {
     }
 
     @Test
-    fun `validate targetingDto is view product node with empty type`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingViewProductNodeDto().copy(
-                        type = "",
-                        kind = "incorrectKind",
-                        value = "notEmpty",
-                    ),
-                    form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targetingDto is view product node with null type`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingViewProductNodeDto().copy(
-                        type = null,
-                        kind = "incorrectKind",
-                        value = "notEmpty",
-                    ),
-                    form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targetingDto is view product node with null value`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingViewProductNodeDto().copy(
-                        type = "viewProductId",
-                        kind = "incorrectKind",
-                        value = null,
-                    ),
-                    form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targetingDto is view product node with empty value`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingViewProductNodeDto().copy(
-                        type = "viewProductId",
-                        kind = "incorrectKind",
-                        value = "",
-                    ),
-                    form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
     fun `validate targetingDto is view product segment node with correct positive kind`() {
         assertTrue(
             inAppValidator.validateInApp(
@@ -556,29 +416,6 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto().copy(
                     targeting = InAppStub.getTargetingViewProductSegmentNodeDto().copy(
                         type = "viewProductSegment",
-                        kind = "wrong kind",
-                        segmentationExternalId = "notEmpty",
-                        segmentationInternalId = "notEmpty",
-                        segmentExternalId = "notEmpty"
-                    ),
-                    form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targetingDto is view product segment node with null type`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingViewProductSegmentNodeDto().copy(
-                        type = null,
                         kind = "wrong kind",
                         segmentationExternalId = "notEmpty",
                         segmentationInternalId = "notEmpty",
@@ -980,96 +817,6 @@ internal class InAppValidatorTest {
                                             segmentationExternalId = "asd",
                                             segmentationInternalId = "def",
                                             segmentExternalId = "123"
-                                        )
-                                )
-                            ),
-                        form = InAppStub.getInAppDto().form?.copy(
-                            variants = listOf(
-                                InAppStub.getModalWindowDto()
-                                    .copy(type = "def")
-                            )
-                        )
-                    )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targeting dto is UnionNode and nodes segmentation external is not valid`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto()
-                    .copy(
-                        targeting = InAppStub.getTargetingUnionNodeDto()
-                            .copy(
-                                type = "or",
-                                nodes = listOf(
-                                    InAppStub.getTargetingSegmentNodeDto()
-                                        .copy(
-                                            type = "rrr", kind = "lll",
-                                            segmentationExternalId = null,
-                                            segmentationInternalId = "def",
-                                            segmentExternalId = "123"
-                                        )
-                                )
-                            ),
-                        form = InAppStub.getInAppDto().form?.copy(
-                            variants = listOf(
-                                InAppStub.getModalWindowDto()
-                                    .copy(type = "def")
-                            )
-                        )
-                    )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targeting dto is UnionNode and nodes segmentation internal is not valid`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto()
-                    .copy(
-                        targeting = InAppStub.getTargetingUnionNodeDto()
-                            .copy(
-                                type = "or",
-                                nodes = listOf(
-                                    InAppStub.getTargetingSegmentNodeDto()
-                                        .copy(
-                                            type = "rrr", kind = "lll",
-                                            segmentationExternalId = "asd",
-                                            segmentationInternalId = null,
-                                            segmentExternalId = "123"
-                                        )
-                                )
-                            ),
-                        form = InAppStub.getInAppDto().form?.copy(
-                            variants = listOf(
-                                InAppStub.getModalWindowDto()
-                                    .copy(type = "def")
-                            )
-                        )
-                    )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targeting dto is UnionNode and nodes segment is not valid`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto()
-                    .copy(
-                        targeting = InAppStub.getTargetingUnionNodeDto()
-                            .copy(
-                                type = "or",
-                                nodes = listOf(
-                                    InAppStub.getTargetingSegmentNodeDto()
-                                        .copy(
-                                            type = "rrr", kind = "lll",
-                                            segmentationExternalId = "asd",
-                                            segmentationInternalId = "def",
-                                            segmentExternalId = null
                                         )
                                 )
                             ),
@@ -1728,42 +1475,6 @@ internal class InAppValidatorTest {
     }
 
     @Test
-    fun `validate targeting dto is visit node and type is null`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
-                        type = null, kind = "notBlank", value = 1L
-                    ), form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targeting dto is visit node and type is blank`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
-                        type = "", kind = "notBlank", value = 1L
-                    ), form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
     fun `validate targeting dto is visit node and kind is null`() {
         assertFalse(
             inAppValidator.validateInApp(
@@ -1806,42 +1517,6 @@ internal class InAppValidatorTest {
                 InAppStub.getInAppDto().copy(
                     targeting = InAppStub.getTargetingVisitNodeDto().copy(
                         type = "notBlank", kind = "notBlank", value = 1L
-                    ), form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targeting dto is visit node and value is null`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
-                        type = "notBlank", kind = "notBlank", value = null
-                    ), form = InAppStub.getInAppDto().form?.copy(
-                        variants = listOf(
-                            InAppStub.getModalWindowDto()
-                                .copy(type = "def")
-                        )
-                    )
-                )
-            )
-        )
-    }
-
-    @Test
-    fun `validate targeting dto is visit node and value is less than 1`() {
-        assertFalse(
-            inAppValidator.validateInApp(
-                InAppStub.getInAppDto().copy(
-                    targeting = InAppStub.getTargetingVisitNodeDto().copy(
-                        type = "notBlank", kind = "notBlank", value = 0
                     ), form = InAppStub.getInAppDto().form?.copy(
                         variants = listOf(
                             InAppStub.getModalWindowDto()

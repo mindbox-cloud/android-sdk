@@ -21,10 +21,10 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.WebViewInAppViewHolder
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
-import cloud.mindbox.mobile_sdk.postDelayedAnimation
 import cloud.mindbox.mobile_sdk.root
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
+import com.google.gson.JsonElement
 import java.util.LinkedList
 
 internal interface MindboxView {
@@ -71,19 +71,10 @@ internal class InAppMessageViewDisplayerImpl(
         val holder = pausedHolder ?: currentHolder
         if (holder != null) {
             pausedHolder?.wrapper?.let { wrapper ->
-                mindboxLogI("trying to restore in-app with id ${pausedHolder?.wrapper?.inAppType?.inAppId}")
-                showInAppMessage(
-                    wrapper = wrapper.copy(
-                        inAppActionCallbacks = wrapper.inAppActionCallbacks.copy(onInAppShown = {
-                            mindboxLogI("Skip InApp.Show for restored inApp")
-                            currentActivity?.postDelayedAnimation {
-                                pausedHolder?.onClose()
-                            }
-                        })
-                    ),
-                    isRestored = true
-                )
+                mindboxLogI("trying to restore in-app with id ${wrapper.inAppType.inAppId}")
+                showInAppMessage(wrapper = wrapper, isRestored = true)
             }
+            discardQueue()
         } else {
             tryShowInAppFromQueue(isNeedToShow)
         }
@@ -104,7 +95,16 @@ internal class InAppMessageViewDisplayerImpl(
                 showInAppMessage(it)
             }
         }
+        discardQueue()
+    }
+
+    private fun discardQueue() {
+        inAppQueue.forEach { queued -> notifyNotShown(queued) }
         inAppQueue.clear()
+    }
+
+    private fun notifyNotShown(wrapper: InAppTypeWrapper<InAppType>) {
+        loggingRunCatching { wrapper.inAppActionCallbacks.onInAppNotShown.onNotShown() }
     }
 
     override fun registerInAppCallback(inAppCallback: InAppCallback) {
@@ -115,7 +115,7 @@ internal class InAppMessageViewDisplayerImpl(
         this.inAppCallback = defaultCallback
     }
 
-    override fun isInAppActive(): Boolean = currentHolder?.isActive ?: false
+    override fun isInAppActive(): Boolean = currentHolder?.isActive == true || pausedHolder != null
 
     override fun onStopCurrentActivity(activity: Activity) {
         mindboxLogI("onStopCurrentActivity: ${activity.hashCode()}")
@@ -150,6 +150,7 @@ internal class InAppMessageViewDisplayerImpl(
                 mindboxLogI(
                     "In-app with id ${inAppType.inAppId} is not added to showing queue as duplicate"
                 )
+                notifyNotShown(wrapper)
             } else if (inAppQueue.addUnique(wrapper) { it.inAppType.inAppId == wrapper.inAppType.inAppId }) {
                 mindboxLogI(
                     "In-app with id ${inAppType.inAppId} is added to showing queue and will be shown later"
@@ -158,8 +159,49 @@ internal class InAppMessageViewDisplayerImpl(
                 mindboxLogW(
                     "In-app with id ${inAppType.inAppId} already exists in showing queue!"
                 )
+                notifyNotShown(wrapper)
             }
         }
+    }
+
+    override fun showInAppMessageNow(
+        inAppType: InAppType,
+        inAppActionCallbacks: InAppActionCallbacks,
+        onRenderStart: () -> Unit,
+        tags: Map<String, String>?,
+        extraParams: Map<String, JsonElement>,
+    ) {
+        if (!isUiPresent()) {
+            mindboxLogI("No foreground activity to present the requested in-app ${inAppType.inAppId} on, not showing it")
+            loggingRunCatching { inAppActionCallbacks.onInAppNotShown.onNotShown() }
+            return
+        }
+        if (isInAppActive()) {
+            currentHolder?.let { holder ->
+                loggingRunCatching {
+                    inAppCallback.onInAppDismissed(holder.wrapper.inAppType.inAppId)
+                    holder.wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
+                }
+            }
+        }
+        pausedHolder?.let { paused ->
+            loggingRunCatching {
+                inAppCallback.onInAppDismissed(paused.wrapper.inAppType.inAppId)
+                paused.wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
+            }
+        }
+        closeInApp()
+        mindboxLogI("In-app with id ${inAppType.inAppId} is going to be shown on request, past the queue and its limits")
+        showInAppMessage(
+            InAppTypeWrapper(
+                inAppType = inAppType,
+                inAppActionCallbacks = inAppActionCallbacks,
+                onRenderStart = onRenderStart,
+                tags = tags,
+                extraParams = extraParams,
+                isRequestedShow = true,
+            )
+        )
     }
 
     private fun showInAppMessage(
@@ -179,7 +221,7 @@ internal class InAppMessageViewDisplayerImpl(
         val callbackWrapper = InAppCallbackWrapper({ inAppCallback }) {
             wrapper.inAppActionCallbacks.onInAppDismiss.onDismiss()
         }
-        val controller = InAppViewHolder.InAppController { closeInApp() }
+        val controller = InAppViewHolder.InAppController { closeInAppOf(wrapper) }
 
         @Suppress("UNCHECKED_CAST")
         currentHolder = when (wrapper.inAppType) {
@@ -202,6 +244,14 @@ internal class InAppMessageViewDisplayerImpl(
                 inAppImageSizeStorage = inAppImageSizeStorage,
                 isFirstShow = !isRestored
             )
+
+            is InAppType.Embedded -> {
+                mindboxLogW(
+                    "Embedded in-app ${wrapper.inAppType.inAppId} must never be shown as an overlay, skipping"
+                )
+                notifyNotShown(wrapper)
+                return
+            }
         }
 
         currentActivity?.root?.let { root ->
@@ -220,6 +270,7 @@ internal class InAppMessageViewDisplayerImpl(
                 errorDescription = "currentRoot is null",
                 tags = wrapper.tags
             )
+            closeInApp()
         }
     }
 
@@ -236,6 +287,7 @@ internal class InAppMessageViewDisplayerImpl(
                 errorDescription = "failed to reattach inApp: currentRoot is null",
                 tags = restoredTags
             )
+            closeInApp()
             return true
         }
         inAppFailureTracker.executeWithFailureTracking(
@@ -273,14 +325,26 @@ internal class InAppMessageViewDisplayerImpl(
         closeInApp()
     }
 
-    private fun closeInApp() {
-        loggingRunCatching {
-            currentHolder?.onClose()
-            currentHolder = null
-            pausedHolder?.onClose()
-            pausedHolder = null
-            inAppQueue.clear()
-            isActionExecuted = false
+    private fun closeInAppOf(wrapper: InAppTypeWrapper<InAppType>) {
+        if (wrapper !== currentHolder?.wrapper && wrapper !== pausedHolder?.wrapper) {
+            mindboxLogI("In-app ${wrapper.inAppType.inAppId} is no longer on screen, its close is ignored")
+            return
         }
+        closeInApp()
+    }
+
+    private fun closeInApp() {
+        currentHolder?.let { holder ->
+            notifyNotShown(holder.wrapper)
+            loggingRunCatching { holder.onClose() }
+        }
+        currentHolder = null
+        pausedHolder?.let { paused ->
+            notifyNotShown(paused.wrapper)
+            loggingRunCatching { paused.onClose() }
+        }
+        pausedHolder = null
+        discardQueue()
+        isActionExecuted = false
     }
 }

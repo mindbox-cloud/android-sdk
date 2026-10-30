@@ -20,6 +20,9 @@ internal class InAppContentFetcherImpl(
                 // do nothing
             }
 
+            is InAppType.Embedded -> {
+            }
+
             is InAppType.ModalWindow -> {
                 formVariant.layers.filterIsInstance<Layer.ImageLayer>()
                     .forEach { layer ->

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.inapp.domain.models
 
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.repositories.InAppTargetingErrorRepositoryImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
@@ -32,7 +33,8 @@ class ViewProductSegmentNodeTest {
     }
 
     private val mockkInAppSegmentationRepository: InAppSegmentationRepository = mockk()
-    private val sessionStorageManagerMock = mockk<SessionStorageManager>()
+    private val sessionState = SessionState()
+    private val sessionStorageManagerMock = mockk<SessionStorageManager> { every { state } returns sessionState }
     private val inAppTargetingErrorRepositoryMock = mockk<InAppTargetingErrorRepositoryImpl>()
 
     @get:Rule
@@ -268,7 +270,7 @@ class ViewProductSegmentNodeTest {
             "website" to "successProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS,
             "website" to "errorProduct" to ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
         )
-        every { sessionStorageManagerMock.processedProductSegmentations } returns processedProducts
+        sessionStorageManagerMock.state.processedProductSegmentations = processedProducts
         every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "successProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "errorProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
         every { mockkInAppSegmentationRepository.getProductSegmentationFetched("website" to "newProduct") } returns ProductSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED

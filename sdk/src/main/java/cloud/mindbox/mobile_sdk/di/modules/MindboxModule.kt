@@ -11,13 +11,16 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppContentFetcher
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageLoader
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.InAppImageSizeStorage
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
-import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.CallbackInteractor
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlockContentStore
+import cloud.mindbox.mobile_sdk.embedded.EmbeddedBlocksRegistry
+import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.checkers.Checker
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.interactors.InAppInteractor
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.managers.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.*
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.validators.InAppValidator
 import cloud.mindbox.mobile_sdk.inapp.presentation.*
+import cloud.mindbox.mobile_sdk.inapp.presentation.view.*
 import cloud.mindbox.mobile_sdk.managers.*
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.managers.MobileConfigSettingsManager
@@ -56,6 +59,15 @@ internal interface PresentationModule : MindboxModule {
     val inAppMessageManager: InAppMessageManager
     val clipboardManager: ClipboardManager
     val activityManager: ActivityManager
+    val webPageRegistry: MindboxWebPageRegistry
+    val embeddedBlocksRegistry: EmbeddedBlocksRegistry
+
+    val embeddedBlocksRegistryIfCreated: EmbeddedBlocksRegistry?
+    val embeddedBlockContentStore: EmbeddedBlockContentStore
+    val operationTagsResolver: OperationTagsResolver
+    val webViewOperationSender: WebViewOperationSender
+    val webViewLinkRouter: WebViewLinkRouter
+    val webViewLocalStateStore: WebViewLocalStateStore
 }
 
 internal interface DataModule : MindboxModule {
@@ -63,6 +75,8 @@ internal interface DataModule : MindboxModule {
     val inAppImageSizeStorage: InAppImageSizeStorage
     val sessionStorageManager: SessionStorageManager
     val mobileConfigRepository: MobileConfigRepository
+
+    val mobileConfigRepositoryIfCreated: MobileConfigRepository?
     val mobileConfigSerializationManager: MobileConfigSerializationManager
     val inAppWebViewPrewarmManager: InAppWebViewPrewarmManager
     val webViewCachePolicy: InAppWebViewCachePolicy
@@ -85,6 +99,7 @@ internal interface DataModule : MindboxModule {
     val jsonValidator: JsonValidator
     val xmlValidator: XmlValidator
     val urlValidator: UrlValidator
+    val hapticRequestValidator: HapticRequestValidator
     val inAppImageLoader: InAppImageLoader
     val defaultDataManager: DataManager
     val modalWindowDtoDataFiller: ModalWindowDtoDataFiller
@@ -113,6 +128,7 @@ internal interface DataModule : MindboxModule {
     val inAppConfigTtlValidator: InAppConfigTtlValidator
     val frequencyDataFiller: FrequencyDataFiller
     val frequencyValidator: FrequencyValidator
+    val embeddedVariantValidator: EmbeddedVariantValidator
     val migrationManager: MigrationManager
     val timeProvider: SystemTimeProvider
     val slidingExpirationParametersValidator: TimeSpanPositiveValidator
@@ -124,6 +140,7 @@ internal interface DataModule : MindboxModule {
     val maxInappsPerSessionLimitChecker: Checker
     val maxInappsPerDayLimitChecker: Checker
     val minIntervalBetweenShowsLimitChecker: Checker
+    val showBudgetManager: ShowBudgetManager
     val inAppMessageDelayedManager: InAppMessageDelayedManager
 }
 

@@ -50,6 +50,13 @@ dependencies {
     kover(project(':mindbox-huawei-starter'))
     kover(project(':mindbox-rustore-starter'))
     kover(project(':mindbox-sdk-starter-core'))
+    kover(project(':mindbox-embedded-compose'))
+}
+
+kover {
+    currentProject {
+        createVariant("coverage") {}
+    }
 }
 
 tasks.register('clean', Delete) {

@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk.inapp.domain
 
+import kotlinx.coroutines.flow.flowOf
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SEND_INAPP_TAGS_FEATURE
@@ -17,6 +18,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppReposi
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppSegmentationRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppTargetingErrorRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
+import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.GatewayManager
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.request.FailureReason
@@ -26,6 +28,10 @@ import com.android.volley.VolleyError
 import com.google.gson.Gson
 import io.mockk.*
 import io.mockk.junit4.MockKRule
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -155,14 +161,14 @@ internal class InAppProcessingManagerTest {
     )
 
     private fun setupTestGeoRepositoryForErrorScenario() {
-        sessionStorageManager.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
+        sessionStorageManager.state.geoFetchStatus = GeoFetchStatus.GEO_NOT_FETCHED
         every { inAppGeoRepositoryTestImpl.getGeoFetchedStatus() } answers { callOriginal() }
         coEvery { inAppGeoRepositoryTestImpl.fetchGeo() } throws GeoError(VolleyError())
         every { inAppGeoRepositoryTestImpl.setGeoStatus(any()) } answers { callOriginal() }
     }
 
     private fun setupTestSegmentationRepositoryForErrorScenario() {
-        sessionStorageManager.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentationFetched() } answers { callOriginal() }
         coEvery { inAppSegmentationRepositoryTestImpl.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError())
         coEvery { inAppSegmentationRepositoryTestImpl.setCustomerSegmentationStatus(any()) } answers { callOriginal() }
@@ -182,35 +188,6 @@ internal class InAppProcessingManagerTest {
             InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
         )
         verify(exactly = 0) {
-            mockInAppRepository.sendUserTargeted(any(), any())
-        }
-    }
-
-    @Test
-    fun `check targeting returns true sends inApp count targeted requests`() = runTest {
-        val testInApp = mockk<InApp>(relaxed = true)
-        val testInApp2 = mockk<InApp>(relaxed = true)
-        every {
-            testInApp.targeting.checkTargeting(any())
-        } returns true
-        coEvery {
-            testInApp.targeting.fetchTargetingInfo(any())
-        } just runs
-        every {
-            testInApp2.targeting.checkTargeting(any())
-        } returns true
-        coEvery {
-            testInApp2.targeting.fetchTargetingInfo(any())
-        } just runs
-        inAppProcessingManager.sendTargetedInApp(
-            testInApp,
-            InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
-        )
-        inAppProcessingManager.sendTargetedInApp(
-            testInApp2,
-            InAppEventType.OrdinalEvent(EventType.AsyncOperation(""), "")
-        )
-        verify(exactly = 2) {
             mockInAppRepository.sendUserTargeted(any(), any())
         }
     }
@@ -295,34 +272,61 @@ internal class InAppProcessingManagerTest {
     }
 
     @Test
-    fun `choose inApp to show chooses WebView inApp when targeting matches`() = runTest {
-        val validId = "webview-valid-id"
-        val expectedResult = InAppStub.getInApp().copy(
-            id = validId,
+    fun `choose inApp to show leaves the winner targeting to the caller`() = runTest {
+        val winner = InAppStub.getInApp().copy(
+            id = "winner",
             targeting = InAppStub.getTargetingTrueNode(),
             form = InAppStub.getInApp().form.copy(
-                variants = listOf(InAppStub.getWebView().copy(inAppId = validId))
+                variants = listOf(InAppStub.getModalWindow().copy(inAppId = "winner"))
             )
         )
-        val actualResult = inAppProcessingManager.chooseInAppToShow(
-            listOf(
-                InAppStub.getInApp().copy(
-                    id = "123",
-                    targeting = InAppStub.getTargetingRegionNode().copy(
-                        type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
-                    )
-                ),
-                InAppStub.getInApp().copy(
-                    id = validId,
-                    targeting = InAppStub.getTargetingTrueNode(),
-                    form = InAppStub.getInApp().form.copy(
-                        variants = listOf(InAppStub.getWebView().copy(inAppId = validId))
-                    )
-                ),
-            ),
-            event
+
+        val actualResult = inAppProcessingManager.chooseInAppToShow(listOf(winner), event)
+
+        assertEquals(winner, actualResult)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
+        verify(exactly = 0) { mockInAppRepository.saveTargetedInAppWithEvent(any(), any()) }
+    }
+
+    @Test
+    fun `choose inApp to show fetches the variant the caller picked`() = runTest {
+        val mixed = InAppStub.getInApp().copy(
+            id = "mixed",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(
+                    InAppStub.getEmbedded().copy(inAppId = "mixed"),
+                    InAppStub.getModalWindow().copy(inAppId = "mixed")
+                )
+            )
         )
-        assertEquals(expectedResult, actualResult)
+
+        val actualResult = inAppProcessingManager.chooseInAppToShow(listOf(mixed), event) { inApp ->
+            inApp.form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
+        }
+
+        assertEquals(mixed, actualResult)
+        coVerify {
+            mockkInAppContentFetcher.fetchContent("mixed", match { it is InAppType.ModalWindow })
+        }
+    }
+
+    @Test
+    fun `choose inApp to show skips a candidate whose variant the caller cannot render`() = runTest {
+        val embeddedOnly = InAppStub.getInApp().copy(
+            id = "embedded-only",
+            targeting = InAppStub.getTargetingTrueNode(),
+            form = InAppStub.getInApp().form.copy(
+                variants = listOf(InAppStub.getEmbedded().copy(inAppId = "embedded-only"))
+            )
+        )
+
+        val actualResult = inAppProcessingManager.chooseInAppToShow(listOf(embeddedOnly), event) { inApp ->
+            inApp.form.variants.firstOrNull { variant -> variant !is InAppType.Embedded }
+        }
+
+        assertNull(actualResult)
+        coVerify(exactly = 0) { mockkInAppContentFetcher.fetchContent(any(), any()) }
     }
 
     @Test
@@ -376,123 +380,6 @@ internal class InAppProcessingManagerTest {
     }
 
     @Test
-    fun `choose inApp to show segmentation error`() = runTest {
-        val validId = "validId"
-        val testInAppList = listOf(
-            InAppStub.getInApp().copy(
-                id = "123",
-                targeting = InAppStub.getTargetingSegmentNode().copy(
-                    type = "",
-                    kind = Kind.POSITIVE,
-                    segmentationExternalId = "segmentationExternalId1",
-                    segmentExternalId = "segmentExternalId1"
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = "124",
-                targeting = InAppStub.getTargetingSegmentNode().copy(
-                    type = "",
-                    kind = Kind.POSITIVE,
-                    segmentationExternalId = "segmentationExternalId2",
-                    segmentExternalId = "segmentExternalId2"
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = validId,
-                targeting = InAppStub.getTargetingTrueNode(),
-                form = InAppStub.getInApp().form.copy(
-                    variants = listOf(
-                        InAppStub.getModalWindow().copy(
-                            inAppId = validId
-                        )
-                    )
-                )
-            )
-        )
-        coEvery {
-            mockkInAppSegmentationRepository.fetchCustomerSegmentations()
-        } throws CustomerSegmentationError(VolleyError())
-        every {
-            mockkInAppSegmentationRepository.setCustomerSegmentationStatus(any())
-        } just runs
-        val expectedResult = InAppStub.getInApp().copy(
-            id = validId,
-            targeting = InAppStub.getTargetingTrueNode(),
-            form = InAppStub.getInApp().form.copy(
-                variants = listOf(
-                    InAppStub.getModalWindow().copy(
-                        inAppId = validId
-                    )
-                )
-            )
-        )
-        val actualResult = inAppProcessingManager.chooseInAppToShow(
-            testInAppList, event
-        )
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
-    fun `choose inApp to show geo error`() = runTest {
-        val validId = "validId"
-        val testInAppList = listOf(
-            InAppStub.getInApp().copy(
-                id = "123",
-                targeting = InAppStub.getTargetingRegionNode().copy(
-                    type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId")
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = "124",
-                targeting = InAppStub.getTargetingRegionNode().copy(
-                    type = "", kind = Kind.POSITIVE, ids = listOf("otherRegionId2")
-                )
-            ),
-            InAppStub.getInApp().copy(
-                id = validId,
-                targeting = InAppStub.getTargetingTrueNode(),
-                form = InAppStub.getInApp().form.copy(
-                    variants = listOf(
-                        InAppStub.getModalWindow().copy(
-                            inAppId = validId
-                        )
-                    )
-                )
-            )
-        )
-
-        val inAppProcessingManager = InAppProcessingManagerImpl(
-            inAppGeoRepository = mockk {
-                coEvery { fetchGeo() } throws GeoError(VolleyError())
-                every { getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_ERROR
-                every { setGeoStatus(any()) } just runs
-            },
-            inAppSegmentationRepository = mockkInAppSegmentationRepository,
-            inAppTargetingErrorRepository = mockk(relaxed = true),
-            inAppContentFetcher = mockkInAppContentFetcher,
-            inAppRepository = mockInAppRepository,
-            inAppFailureTracker = mockk(relaxed = true),
-            featureToggleManager = featureToggleManager
-        )
-
-        val expectedResult = InAppStub.getInApp().copy(
-            id = validId,
-            targeting = InAppStub.getTargetingTrueNode(),
-            form = InAppStub.getInApp().form.copy(
-                listOf(
-                    InAppStub.getModalWindow().copy(
-                        inAppId = validId
-                    )
-                )
-            )
-        )
-        val actualResult = inAppProcessingManager.chooseInAppToShow(
-            testInAppList, event
-        )
-        assertEquals(expectedResult, actualResult)
-    }
-
-    @Test
     fun `send inapptargeting for or node when geo return 500`() = runTest {
         setDIModule(inAppGeoRepositoryTestImpl, mockkInAppSegmentationRepository)
         setupTestGeoRepositoryForErrorScenario()
@@ -509,7 +396,7 @@ internal class InAppProcessingManagerTest {
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
 
         verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.state.geoFetchStatus)
     }
 
     @Test
@@ -527,7 +414,7 @@ internal class InAppProcessingManagerTest {
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 1) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.state.customerSegmentationFetchStatus)
     }
 
     @Test
@@ -559,7 +446,7 @@ internal class InAppProcessingManagerTest {
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.geoFetchStatus)
+        assertEquals(GeoFetchStatus.GEO_FETCH_ERROR, sessionStorageManager.state.geoFetchStatus)
     }
 
     @Test
@@ -571,7 +458,7 @@ internal class InAppProcessingManagerTest {
         )
         inAppProcessingManagerTestImpl.sendTargetedInApp(testInApp, InAppEventType.AppStartup)
         verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
-        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.customerSegmentationFetchStatus)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.state.customerSegmentationFetchStatus)
     }
 
     @Test
@@ -1200,4 +1087,270 @@ internal class InAppProcessingManagerTest {
             )
         }
     }
+
+    @Test
+    fun `prefetch fetches segmentations and geo when the config targets them`() = runTest {
+        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
+
+        inAppProcessingManager.prefetchTargetingDependencies(
+            listOf(
+                inAppTargeting("story-segment", InAppStub.getTargetingSegmentNode()),
+                inAppTargeting("story-city", InAppStub.getTargetingCityNode()),
+            )
+        )
+
+        coVerify(exactly = 1) { mockkInAppSegmentationRepository.fetchCustomerSegmentations() }
+        coVerify(exactly = 1) { mockkInAppGeoRepository.fetchGeo() }
+    }
+
+    @Test
+    fun `prefetch fetches nothing when no in-app targets segmentations or geo`() = runTest {
+        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
+
+        inAppProcessingManager.prefetchTargetingDependencies(listOf(inAppTargeting("story", InAppStub.getTargetingTrueNode())))
+
+        coVerify(exactly = 0) { mockkInAppSegmentationRepository.fetchCustomerSegmentations() }
+        coVerify(exactly = 0) { mockkInAppGeoRepository.fetchGeo() }
+    }
+
+    @Test
+    fun `prefetch fetches nothing the session already fetched`() = runTest {
+        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_FETCH_ERROR
+
+        inAppProcessingManager.prefetchTargetingDependencies(
+            listOf(
+                inAppTargeting("story-segment", InAppStub.getTargetingSegmentNode()),
+                inAppTargeting("story-city", InAppStub.getTargetingCityNode()),
+            )
+        )
+
+        coVerify(exactly = 0) { mockkInAppSegmentationRepository.fetchCustomerSegmentations() }
+        coVerify(exactly = 0) { mockkInAppGeoRepository.fetchGeo() }
+    }
+
+    private val serverError = VolleyError(NetworkResponse(500, null, false, 0, emptyList()))
+
+    private fun failSegmentationsLikeTheRepository(error: Throwable) {
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentationFetched() } answers { callOriginal() }
+        coEvery { inAppSegmentationRepositoryTestImpl.fetchCustomerSegmentations() } answers {
+            sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
+            throw error
+        }
+        setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
+    }
+
+    @Test
+    fun `prefetch keeps a failed segmentation fetch's show failure details`() = runTest {
+        failSegmentationsLikeTheRepository(CustomerSegmentationError(serverError))
+
+        inAppProcessingManagerTestImpl.prefetchTargetingDependencies(listOf(inAppTargeting("story-segment", InAppStub.getTargetingSegmentNode())))
+
+        assertNotNull(inAppTargetingErrorRepository.getError(TargetingErrorKey.CustomerSegmentation))
+    }
+
+    @Test
+    fun `prefetch fetches geo even when the segmentations fail`() = runTest {
+        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        coEvery { mockkInAppSegmentationRepository.fetchCustomerSegmentations() } throws CustomerSegmentationError(VolleyError("timeout"))
+        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
+
+        inAppProcessingManager.prefetchTargetingDependencies(
+            listOf(
+                inAppTargeting("story-segment", InAppStub.getTargetingSegmentNode()),
+                inAppTargeting("story-city", InAppStub.getTargetingCityNode()),
+            )
+        )
+
+        coVerify(exactly = 1) { mockkInAppGeoRepository.fetchGeo() }
+    }
+
+    @Test
+    fun `prefetch runs the segmentation and geo fetches at the same time`() = runTest {
+        val segmentationsAnswered = CompletableDeferred<Unit>()
+        every { mockkInAppSegmentationRepository.getCustomerSegmentationFetched() } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        coEvery { mockkInAppSegmentationRepository.fetchCustomerSegmentations() } coAnswers { segmentationsAnswered.await() }
+        every { mockkInAppGeoRepository.getGeoFetchedStatus() } returns GeoFetchStatus.GEO_NOT_FETCHED
+
+        val prefetch = launch {
+            inAppProcessingManager.prefetchTargetingDependencies(
+                listOf(
+                    inAppTargeting("story-segment", InAppStub.getTargetingSegmentNode()),
+                    inAppTargeting("story-city", InAppStub.getTargetingCityNode()),
+                )
+            )
+        }
+        runCurrent()
+
+        coVerify(exactly = 1) { mockkInAppGeoRepository.fetchGeo() }
+        assertTrue(prefetch.isActive)
+        segmentationsAnswered.complete(Unit)
+        prefetch.join()
+    }
+
+    @Test
+    fun `requested targeting fetches the dependencies before checking`() = runTest {
+        val targeting = mockk<TreeTargeting>()
+        coEvery { targeting.fetchTargetingInfo(any()) } just runs
+        every { targeting.checkTargeting(any()) } returns true
+
+        assertTrue(inAppProcessingManager.matchesRequestedTargeting(inAppTargeting("story", targeting)))
+        coVerifyOrder {
+            targeting.fetchTargetingInfo(any())
+            targeting.checkTargeting(any())
+        }
+    }
+
+    @Test
+    fun `requested targeting never matches an operation node - the page asks outside any operation`() = runTest {
+        assertFalse(inAppProcessingManager.matchesRequestedTargeting(inAppTargeting("story", InAppStub.getTargetingOperationNode())))
+    }
+
+    @Test
+    fun `requested targeting cuts an unverifiable id without reporting a failure`() = runTest {
+        val targeting = mockk<TreeTargeting>()
+        coEvery { targeting.fetchTargetingInfo(any()) } throws RuntimeException("offline")
+
+        assertFalse(inAppProcessingManager.matchesRequestedTargeting(inAppTargeting("story", targeting)))
+        verify(exactly = 0) { targeting.checkTargeting(any()) }
+        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `requested targeting re-checks from the session cache and collects no failure`() = runTest {
+        failSegmentationsLikeTheRepository(CustomerSegmentationError(serverError))
+        val segmentOrTrue = TreeTargeting.UnionNode(
+            type = "",
+            nodes = listOf(InAppStub.getTargetingSegmentNode(), InAppStub.getTargetingTrueNode())
+        )
+
+        assertTrue(inAppProcessingManagerTestImpl.matchesRequestedTargeting(inAppTargeting("story", segmentOrTrue)))
+        coVerify(exactly = 1) { inAppSegmentationRepositoryTestImpl.fetchCustomerSegmentations() }
+        verify(exactly = 0) { inAppFailureTracker.collectFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `place targeting cut by a failed segmentation fetch collects its show failure`() = runTest {
+        failSegmentationsLikeTheRepository(CustomerSegmentationError(serverError))
+
+        assertFalse(inAppProcessingManagerTestImpl.matchesTargeting(inAppTargeting("ribbon", InAppStub.getTargetingSegmentNode()), event))
+        verify(exactly = 1) {
+            inAppFailureTracker.collectFailure(
+                inAppId = "ribbon",
+                failureReason = FailureReason.CUSTOMER_SEGMENT_REQUEST_FAILED,
+                errorDetails = any(),
+                tags = any()
+            )
+        }
+    }
+
+    @Test
+    fun `place targeting reports an unknown error and cuts the candidate`() = runTest {
+        val targeting = mockk<TreeTargeting>(relaxed = true)
+        coEvery { targeting.fetchTargetingInfo(any()) } throws RuntimeException("broken")
+
+        assertFalse(inAppProcessingManager.matchesTargeting(inAppTargeting("ribbon", targeting), event))
+        verify(exactly = 1) {
+            inAppFailureTracker.sendFailure(inAppId = "ribbon", failureReason = FailureReason.UNKNOWN_ERROR, errorDetails = any(), tags = any())
+        }
+    }
+
+    @Test
+    fun `place targeting passes cancellation through without reporting a failure`() = runTest {
+        val targeting = mockk<TreeTargeting>()
+        coEvery { targeting.fetchTargetingInfo(any()) } throws CancellationException("place left the screen")
+
+        assertTrue(
+            runCatching { inAppProcessingManager.matchesTargeting(inAppTargeting("ribbon", targeting), event) }
+                .exceptionOrNull() is CancellationException
+        )
+        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `requested targeting passes cancellation through without reporting a failure`() = runTest {
+        val targeting = mockk<TreeTargeting>()
+        coEvery { targeting.fetchTargetingInfo(any()) } throws CancellationException("page closed")
+
+        assertTrue(
+            runCatching { inAppProcessingManager.matchesRequestedTargeting(inAppTargeting("story", targeting)) }
+                .exceptionOrNull() is CancellationException
+        )
+        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `choose inApp to show sends no UNKNOWN_ERROR failure on cancellation`() = runTest {
+        val targeting = mockk<TreeTargeting>(relaxed = true)
+        coEvery { targeting.fetchTargetingInfo(any()) } throws CancellationException("session expired")
+
+        runCatching { inAppProcessingManager.chooseInAppToShow(listOf(inAppTargeting("overlay", targeting)), event) }
+
+        verify(exactly = 0) { inAppFailureTracker.sendFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `place targeting matches from the session cache and collects nothing`() = runTest {
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        sessionStorageManager.state.inAppCustomerSegmentations = SegmentationCheckWrapper(
+            "Success",
+            listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "segmentationEI", segment = "segmentEI"))
+        )
+        setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
+        val inSegment = InAppStub.getTargetingSegmentNode().copy(
+            kind = Kind.POSITIVE,
+            segmentationExternalId = "segmentationEI",
+            segmentExternalId = "segmentEI"
+        )
+
+        assertTrue(inAppProcessingManagerTestImpl.matchesTargeting(inAppTargeting("ribbon", inSegment), event))
+        coVerify(exactly = 0) { gatewayManager.checkCustomerSegmentations(any(), any()) }
+        verify(exactly = 0) { inAppFailureTracker.collectFailure(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `send targeted inApp passes cancellation through and sends no targeting`() = runTest {
+        val targeting = mockk<TreeTargeting>(relaxed = true)
+        coEvery { targeting.fetchTargetingInfo(any()) } throws CancellationException("session expired")
+        every { targeting.checkTargeting(any()) } returns true
+
+        val error = runCatching { inAppProcessingManager.sendTargetedInApp(inAppTargeting("overlay", targeting), event) }.exceptionOrNull()
+
+        assertTrue(error is CancellationException)
+        verify(exactly = 0) { mockInAppRepository.sendUserTargeted(any(), any()) }
+    }
+
+    @Test
+    fun `a page question on a fresh session fetches the segmentations once and keeps the circle`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = listOf(InAppStub.getInApp().copy(id = "story"))
+        every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentationFetched() } answers { callOriginal() }
+        coEvery { inAppSegmentationRepositoryTestImpl.fetchCustomerSegmentations() } answers { callOriginal() }
+        every { inAppSegmentationRepositoryTestImpl.getCustomerSegmentations() } answers { callOriginal() }
+        mockkObject(DbManager)
+        try {
+            coEvery { DbManager.listenConfigurations() } returns flowOf(mockk(relaxed = true))
+            coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } returns
+                SegmentationCheckInAppStub.getSegmentationCheckResponse().copy("Success", listOf())
+            every { inAppMapper.mapToSegmentationCheck(any()) } returns SegmentationCheckWrapper(
+                "Success",
+                listOf(SegmentationCheckInAppStub.getCustomerSegmentation().copy(segmentation = "segmentationEI", segment = "segmentEI"))
+            )
+            setDIModule(mockkInAppGeoRepository, inAppSegmentationRepositoryTestImpl)
+            val inSegment = InAppStub.getTargetingSegmentNode().copy(
+                kind = Kind.POSITIVE,
+                segmentationExternalId = "segmentationEI",
+                segmentExternalId = "segmentEI"
+            )
+
+            assertTrue(inAppProcessingManagerTestImpl.matchesRequestedTargeting(inAppTargeting("story", inSegment)))
+            assertTrue(inAppProcessingManagerTestImpl.matchesRequestedTargeting(inAppTargeting("story", inSegment)))
+            coVerify(exactly = 1) { gatewayManager.checkCustomerSegmentations(any(), any()) }
+        } finally {
+            unmockkObject(DbManager)
+        }
+    }
+
+    private fun inAppTargeting(id: String, targeting: TreeTargeting): InApp = InAppStub.getInApp().copy(id = id, targeting = targeting)
 }

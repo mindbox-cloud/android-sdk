@@ -40,6 +40,7 @@ internal object MindboxPreferences {
     private const val DEFAULT_LOCAL_STATE_VERSION = 1
     private const val KEY_FIRST_INITIALIZATION_TIME = "key_first_initialization_time"
     private const val KEY_OPERATIONS_DOMAIN_FROM_CONFIG = "key_operations_domain_from_config"
+    private const val KEY_EMBEDDED_BLOCK_PLACE_RECORDS = "key_embedded_block_place_records"
     private const val KEY_SHOULD_COLLECT_TRACKING_IDS = "key_should_collect_tracking_ids"
     private const val KEY_LAST_SENT_TRACKING_IDS = "key_last_sent_tracking_ids"
 
@@ -53,6 +54,7 @@ internal object MindboxPreferences {
         userVisitCount = 0
         requestPermissionCount = 0
         shownInApps = ""
+        lastInappChangeStateTime = Timestamp.ZERO
         inAppConfigUpdatedTime = 0
     }
 
@@ -308,6 +310,16 @@ internal object MindboxPreferences {
         set(value) {
             loggingRunCatching {
                 SharedPreferencesManager.put(KEY_OPERATIONS_DOMAIN_FROM_CONFIG, value)
+            }
+        }
+
+    var embeddedBlockPlaceRecords: String
+        get() = loggingRunCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(KEY_EMBEDDED_BLOCK_PLACE_RECORDS, "") ?: ""
+        }
+        set(value) {
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_EMBEDDED_BLOCK_PLACE_RECORDS, value)
             }
         }
 }

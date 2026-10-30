@@ -10,10 +10,27 @@ internal class InAppABTestLogic(
     private val repository: MobileConfigRepository,
 ) : MindboxLog {
 
-    suspend fun getInAppsPool(allInApps: List<String>): Set<String> {
-        val abtests = repository.getABTests()
-        val uuid = MindboxPreferences.deviceUuid
+    private data class PoolKey(
+        val abtests: List<ABTest>,
+        val uuid: String,
+        val allInApps: List<String>,
+    )
 
+    @Volatile
+    private var cachedPool: Pair<PoolKey, Set<String>>? = null
+
+    suspend fun getInAppsPool(allInApps: List<String>): Set<String> = getInAppsPool(allInApps, repository.getABTests())
+
+    fun getInAppsPool(allInApps: List<String>, abtests: List<ABTest>): Set<String> {
+        val uuid = MindboxPreferences.deviceUuid
+        val key = PoolKey(abtests, uuid, allInApps)
+        cachedPool?.let { (cachedKey, pool) ->
+            if (cachedKey == key) return pool
+        }
+        return calculatePool(abtests, uuid, allInApps).also { pool -> cachedPool = key to pool }
+    }
+
+    private fun calculatePool(abtests: List<ABTest>, uuid: String, allInApps: List<String>): Set<String> {
         if (abtests.isEmpty()) {
             logI("Abtests is empty. Use all inApps.")
             return allInApps.toSet()

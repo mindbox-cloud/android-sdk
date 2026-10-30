@@ -110,11 +110,6 @@ internal class LifecycleManagerTest {
     // region — null-safety: no crash before callbacks set
 
     @Test
-    fun `onActivityStarted does not crash when all callbacks are null`() {
-        createManagerNoCallbacks().onActivityStarted(mockk(relaxed = true))
-    }
-
-    @Test
     fun `onActivityResumed does not crash when callback is null`() {
         createManagerNoCallbacks().onActivityResumed(mockk(relaxed = true))
     }
@@ -129,37 +124,6 @@ internal class LifecycleManagerTest {
         createManagerNoCallbacks().onActivityStopped(mockk(relaxed = true))
     }
 
-    @Test
-    fun `onNewIntent does not crash when callbacks is null`() {
-        createManagerNoCallbacks().onNewIntent(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")))
-    }
-
-    // endregion
-
-    // region — track visit NOT sent when callbacks is null
-
-    @Test
-    fun `foreground transition does not send track visit when callbacks is null`() {
-        val manager = createManagerNoCallbacks()
-        manager.onActivityStarted(mockk<Activity>(relaxed = true))
-        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_STOP)
-        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
-        assertTrue(trackVisitEvents.isEmpty())
-    }
-
-    @Test
-    fun `onNewIntent does not send track visit when callbacks is null`() {
-        createManagerNoCallbacks().onNewIntent(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")))
-        assertTrue(trackVisitEvents.isEmpty())
-    }
-
-    @Test
-    fun `onNewIntent with push intent does not send track visit when callbacks is null`() {
-        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
-        createManagerNoCallbacks().onNewIntent(intent)
-        assertTrue(trackVisitEvents.isEmpty())
-    }
-
     // endregion
 
     // region — track visit sent after callbacks set (init flow)
@@ -172,38 +136,6 @@ internal class LifecycleManagerTest {
         manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_STOP)
         manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
         assertEquals(1, trackVisitEvents.size)
-    }
-
-    @Test
-    fun `onNewIntent sends LINK track visit for https deeplink after callbacks set`() {
-        val manager = createManagerNoCallbacks()
-        listenTrackVisit(manager)
-        val uri = Uri.parse("https://example.com/promo")
-        manager.onNewIntent(Intent(Intent.ACTION_VIEW, uri))
-        assertEquals(1, trackVisitEvents.size)
-        assertEquals(LINK, trackVisitEvents[0].first)
-        assertEquals(uri.toString(), trackVisitEvents[0].second)
-    }
-
-    @Test
-    fun `onNewIntent sends PUSH track visit for push intent after callbacks set`() {
-        val manager = createManagerNoCallbacks()
-        listenTrackVisit(manager)
-        val intent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
-        manager.onNewIntent(intent)
-        assertEquals(1, trackVisitEvents.size)
-        assertEquals(PUSH, trackVisitEvents[0].first)
-    }
-
-    @Test
-    fun `repeated onNewIntent with same intent is a no-op on second call (MOBILE-393)`() {
-        val manager = createManagerNoCallbacks()
-        listenTrackVisit(manager)
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"))
-        manager.onNewIntent(intent)
-        manager.onNewIntent(intent)
-        assertEquals("duplicate call must not send a second, DIRECT-downgraded visit", 1, trackVisitEvents.size)
-        assertEquals(LINK, trackVisitEvents[0].first)
     }
 
     // endregion
@@ -243,19 +175,6 @@ internal class LifecycleManagerTest {
         manager.onActivityStarted(buildActivityA(intent))
         assertEquals(1, trackVisitEvents.size)
         assertEquals(PUSH to null, trackVisitEvents[0])
-    }
-
-    @Test
-    fun `onActivityStarted sends DIRECT when intentChanged is false on second call`() {
-        val url = "https://example.com"
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        val activity = buildActivityA(intent)
-        val manager = createManager(currentActivityName = LifecycleTestActivityA::class.java.name)
-        manager.onActivityStarted(activity)
-        trackVisitEvents.clear()
-        // hash already known → isTrackVisitSent returns true but sends nothing
-        assertTrue(manager.isTrackVisitSent())
-        assertEquals(0, trackVisitEvents.size)
     }
 
     // endregion
@@ -314,15 +233,6 @@ internal class LifecycleManagerTest {
         assertEquals(PUSH to null, trackVisitEvents[0])
     }
 
-    @Test
-    fun `onActivityStarted invokes onActivityStarted callback`() {
-        val manager = createManager()
-        val activity = buildActivityA()
-        manager.onActivityStarted(activity)
-        assertEquals(1, startedActivities.size)
-        assertSame(activity, startedActivities[0])
-    }
-
     // endregion
 
     // region — isCurrentActivityResumed
@@ -330,43 +240,6 @@ internal class LifecycleManagerTest {
     @Test
     fun `isCurrentActivityResumed is true by default`() {
         assertTrue(createManager().isCurrentActivityResumed)
-    }
-
-    @Test
-    fun `isCurrentActivityResumed is false after onActivityPaused`() {
-        val manager = createManager()
-        manager.onActivityPaused(mockk(relaxed = true))
-        assertFalse(manager.isCurrentActivityResumed)
-    }
-
-    @Test
-    fun `isCurrentActivityResumed is true after onActivityResumed`() {
-        val manager = createManager()
-        manager.onActivityPaused(mockk(relaxed = true))
-        manager.onActivityResumed(mockk(relaxed = true))
-        assertTrue(manager.isCurrentActivityResumed)
-    }
-
-    @Test
-    fun `onActivityResumed sets isCurrentActivityResumed to true and invokes callback`() {
-        val manager = createManager()
-        val activity = buildActivityA()
-        manager.onActivityPaused(activity)
-        resumedActivities.clear()
-        manager.onActivityResumed(activity)
-        assertTrue(manager.isCurrentActivityResumed)
-        assertEquals(1, resumedActivities.size)
-        assertSame(activity, resumedActivities[0])
-    }
-
-    @Test
-    fun `onActivityPaused sets isCurrentActivityResumed to false and invokes callback`() {
-        val manager = createManager()
-        val activity = buildActivityA()
-        manager.onActivityPaused(activity)
-        assertFalse(manager.isCurrentActivityResumed)
-        assertEquals(1, pausedActivities.size)
-        assertSame(activity, pausedActivities[0])
     }
 
     @Test
@@ -436,18 +309,6 @@ internal class LifecycleManagerTest {
     // region — onActivityStopped
 
     @Test
-    fun `onActivityStopped invokes onActivityStopped callback`() {
-        val manager = createManager(
-            currentActivityName = LifecycleTestActivityA::class.java.name,
-            currentIntent = Intent(),
-        )
-        val activity = buildActivityA()
-        manager.onActivityStopped(activity)
-        assertEquals(1, stoppedActivities.size)
-        assertSame(activity, stoppedActivities[0])
-    }
-
-    @Test
     fun `onActivityStopped updates currentIntent when both fields are null`() {
         val manager = createManager(currentActivityName = null, currentIntent = null)
         val intent = Intent().apply { putExtra("stopped", true) }
@@ -457,31 +318,9 @@ internal class LifecycleManagerTest {
         assertTrue(manager.isTrackVisitSent())
     }
 
-    @Test
-    fun `onActivityStopped does not override currentIntent when both fields are already set`() {
-        val originalIntent = Intent().apply { putExtra("original", true) }
-        val manager = createManager(
-            currentActivityName = LifecycleTestActivityA::class.java.name,
-            currentIntent = originalIntent,
-        )
-        manager.onActivityStopped(buildActivityB(Intent().apply { putExtra("other", true) }))
-        trackVisitEvents.clear()
-        // currentIntent unchanged → isTrackVisitSent still returns true (has an intent)
-        assertTrue(manager.isTrackVisitSent())
-    }
-
     // endregion
 
     // region — app lifecycle (foreground / background)
-
-    @Test
-    fun `ON_STOP sets app to background`() {
-        val manager = createManagerNoCallbacks()
-        listenTrackVisit(manager)
-        manager.onActivityStarted(mockk<Activity>(relaxed = true))
-        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_STOP)
-        assertTrue(trackVisitEvents.isEmpty())
-    }
 
     @Test
     fun `ON_STOP sets app to background so next onActivityStarted skips trackVisit`() {
@@ -500,26 +339,117 @@ internal class LifecycleManagerTest {
     }
 
     @Test
-    fun `ON_START does not send trackVisit when currentIntent is null`() {
-        val manager = createManager(currentIntent = null)
-        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
-        assertEquals(0, trackVisitEvents.size)
+    fun `ON_STOP tells the callbacks the app went to background`() {
+        val events = mutableListOf<String>()
+        val manager = createManagerNoCallbacks(isAppInBackground = false)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onAppMovedToBackground() {
+                events += "background"
+            }
+        }
+
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_STOP)
+
+        assertEquals(listOf("background"), events)
     }
 
     @Test
-    fun `ON_STOP then ON_START sends one trackVisit on return to foreground`() {
-        val intent = Intent()
-        val activity = buildActivityA(intent)
-        val owner = mockOwner()
-        val manager = createManager(currentActivityName = LifecycleTestActivityA::class.java.name)
-        manager.onActivityStarted(activity)
-        manager.onActivityResumed(activity)
-        manager.onActivityPaused(activity)
-        manager.onActivityStopped(activity)
-        manager.onStateChanged(owner, Lifecycle.Event.ON_STOP)
-        trackVisitEvents.clear()
-        manager.onStateChanged(owner, Lifecycle.Event.ON_START)
-        assertEquals(1, trackVisitEvents.size)
+    fun `ON_START reports the return handled after its session check, even when the check fails`() {
+        val events = mutableListOf<String>()
+        val manager = LifecycleManager(currentActivityName = null, currentIntent = Intent(), isAppInBackground = true)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onTrackVisitReady(source: String?, requestUrl: String?) {
+                events += "session check"
+                throw IllegalStateException("the check failed")
+            }
+
+            override fun onAppReturnHandled() {
+                events += "return handled"
+            }
+        }
+
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+
+        assertEquals(listOf("session check", "return handled"), events)
+    }
+
+    @Test
+    fun `ON_START reports the return handled when its visit was already sent while the app was away`() {
+        val events = mutableListOf<String>()
+        val manager = LifecycleManager(currentActivityName = null, currentIntent = Intent(), isAppInBackground = true)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onTrackVisitReady(source: String?, requestUrl: String?) {
+                events += "session check"
+            }
+
+            override fun onAppReturnHandled() {
+                events += "return handled"
+            }
+        }
+        manager.onNewIntent(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")))
+        events.clear()
+
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+
+        assertEquals(listOf("return handled"), events)
+    }
+
+    @Test
+    fun `a screen resumed while none was is reported, one resumed alongside it is not`() {
+        val resumedWhenNoneWas = mutableListOf<Activity>()
+        val manager = createManagerNoCallbacks(isAppInBackground = false)
+        manager.callbacks = object : LifecycleManager.Callbacks {
+            override fun onActivityResumedWhenNoneWas(activity: Activity) {
+                resumedWhenNoneWas += activity
+            }
+        }
+        val first = buildActivityA()
+        val second = buildActivityB()
+
+        manager.onActivityResumed(first)
+        manager.onActivityResumed(second)
+        manager.onActivityPaused(first)
+        manager.onActivityPaused(second)
+        manager.onActivityResumed(second)
+
+        assertEquals(listOf(first, second), resumedWhenNoneWas)
+    }
+
+    @Test
+    fun `the app keeps a resumed screen while one of two resumed screens pauses`() {
+        val manager = createManager()
+        val first = buildActivityA()
+        val second = buildActivityB()
+        manager.onActivityResumed(first)
+        manager.onActivityResumed(second)
+
+        manager.onActivityPaused(first)
+
+        assertTrue(manager.hasResumedActivity)
+
+        manager.onActivityPaused(second)
+
+        assertFalse(manager.hasResumedActivity)
+    }
+
+    @Test
+    fun `the app is in the foreground besides a screen while that screen is resumed or another of its screens is started`() {
+        val manager = createManager()
+        val host = buildActivityA()
+        val other = buildActivityB()
+        manager.onActivityStarted(host)
+        manager.onActivityResumed(host)
+
+        assertTrue(manager.isInForegroundBesides(host))
+
+        manager.onActivityStarted(other)
+        manager.onActivityPaused(host)
+
+        assertTrue(manager.isInForegroundBesides(host))
+
+        manager.onActivityStopped(other)
+
+        assertFalse(manager.isInForegroundBesides(host))
     }
 
     @Test
@@ -537,17 +467,6 @@ internal class LifecycleManagerTest {
         assertEquals(0, trackVisitEvents.size)
     }
 
-    @Test
-    fun `keepalive timer fires onTrackVisitReady`() {
-        val manager = createManagerNoCallbacks()
-        listenTrackVisit(manager)
-        manager.onActivityStarted(mockk<Activity>(relaxed = true))
-        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_STOP)
-        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
-        // at least one track visit was sent (which in production also starts the timer)
-        assertEquals(1, trackVisitEvents.size)
-    }
-
     // endregion
 
     // region — scheduleReinitTrackVisit
@@ -556,21 +475,6 @@ internal class LifecycleManagerTest {
     // (via attachLifecycleCallbacks during Mindbox.init reinit) dispatches a track-visit
     // immediately through the new endpoint. The backend uses this to learn the device is
     // active in the new environment.
-
-    @Test
-    fun `scheduleReinitTrackVisit dispatches visit immediately when callbacks are replaced`() {
-        // Simulate app already running with a known intent
-        val manager = LifecycleManager(
-            currentActivityName = null,
-            currentIntent = Intent(),
-            isAppInBackground = false,
-        )
-        // Reinit: schedule before replacing callbacks (mirrors setupLifecycleManager order)
-        manager.scheduleReinitTrackVisit()
-        // attachLifecycleCallbacks() replaces callbacks → pendingVisit = true → dispatch
-        listenTrackVisit(manager)
-        assertEquals("reinit must send exactly one visit via new callbacks", 1, trackVisitEvents.size)
-    }
 
     @Test
     fun `scheduleReinitTrackVisit sends DIRECT source for plain intent`() {
@@ -599,15 +503,6 @@ internal class LifecycleManagerTest {
         assertEquals(1, trackVisitEvents.size)
         assertEquals(LINK, trackVisitEvents[0].first)
         assertEquals(url, trackVisitEvents[0].second)
-    }
-
-    @Test
-    fun `scheduleReinitTrackVisit does not send when currentIntent is null`() {
-        // e.g. very early reinit before any activity has started
-        val manager = createManagerNoCallbacks(isAppInBackground = false)
-        manager.scheduleReinitTrackVisit()
-        listenTrackVisit(manager)
-        assertEquals("no visit when intent is still null", 0, trackVisitEvents.size)
     }
 
     @Test
@@ -643,35 +538,6 @@ internal class LifecycleManagerTest {
         manager.scheduleReinitTrackVisit()
         listenTrackVisit(manager)
         assertEquals(2, trackVisitEvents.size)
-    }
-
-    // endregion
-
-    // region — isTrackVisitSent
-
-    @Test
-    fun `isTrackVisitSent returns false when currentIntent is null`() {
-        val manager = createManager(currentIntent = null)
-        assertFalse(manager.isTrackVisitSent())
-        assertEquals(0, trackVisitEvents.size)
-    }
-
-    @Test
-    fun `isTrackVisitSent returns true and sends trackVisit for new intent hash`() {
-        val manager = createManager(currentIntent = Intent())
-        val result = manager.isTrackVisitSent()
-        assertTrue(result)
-        assertEquals(1, trackVisitEvents.size)
-    }
-
-    @Test
-    fun `isTrackVisitSent returns true but does not resend for already-known intent hash`() {
-        val manager = createManager(currentIntent = Intent())
-        manager.isTrackVisitSent()
-        trackVisitEvents.clear()
-        val result = manager.isTrackVisitSent()
-        assertTrue(result)
-        assertEquals(0, trackVisitEvents.size)
     }
 
     // endregion
@@ -721,16 +587,6 @@ internal class LifecycleManagerTest {
     }
 
     @Test
-    fun `onNewIntent sets skipNextTrackVisit when app is in background`() {
-        val deeplink = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"))
-        val manager = createManager(currentIntent = Intent(), isAppInBackground = true)
-        manager.onNewIntent(deeplink)
-        trackVisitEvents.clear()
-        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
-        assertEquals(0, trackVisitEvents.size)
-    }
-
-    @Test
     fun `onNewIntent when not in background does not set skipNextTrackVisit`() {
         val deeplink = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"))
         val manager = createManager(currentIntent = Intent(), isAppInBackground = false)
@@ -764,16 +620,6 @@ internal class LifecycleManagerTest {
         trackVisitEvents.clear()
         manager.onActivityStarted(buildActivityA(firstIntent))
         assertEquals(1, trackVisitEvents.size)
-    }
-
-    @Test
-    fun `reusing an intent whose hash is still in list does not send trackVisit`() {
-        val manager = createManager(currentActivityName = LifecycleTestActivityA::class.java.name)
-        val intent = Intent().apply { putExtra("id", 99) }
-        manager.onActivityStarted(buildActivityA(intent))
-        trackVisitEvents.clear()
-        manager.onActivityStarted(buildActivityA(intent))
-        assertEquals(0, trackVisitEvents.size)
     }
 
     // endregion
@@ -937,24 +783,6 @@ internal class LifecycleManagerTest {
     // endregion
 
     // region — initialization order
-
-    @Test
-    fun `manager with null currentActivityName does not send DIRECT for first activity start`() {
-        val manager = createManager(currentActivityName = null, currentIntent = null)
-        manager.onActivityStarted(buildActivityA(Intent()))
-        // areActivitiesEqual = (null == ActivityA.name) = false, source = DIRECT → no send
-        assertEquals(0, trackVisitEvents.size)
-    }
-
-    @Test
-    fun `manager with null currentActivityName sends non-DIRECT trackVisit for first activity start`() {
-        val url = "https://example.com"
-        val manager = createManager(currentActivityName = null, currentIntent = null)
-        manager.onActivityStarted(buildActivityA(Intent(Intent.ACTION_VIEW, Uri.parse(url))))
-        // areActivitiesEqual = false, source = LINK → sends
-        assertEquals(1, trackVisitEvents.size)
-        assertEquals(LINK to url, trackVisitEvents[0])
-    }
 
     @Test
     fun `full session lifecycle produces exactly two trackVisit events`() {

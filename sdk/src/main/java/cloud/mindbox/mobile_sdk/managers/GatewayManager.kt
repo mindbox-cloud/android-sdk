@@ -14,6 +14,7 @@ import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
 import cloud.mindbox.mobile_sdk.models.operation.response.SegmentationCheckResponse
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
+import cloud.mindbox.mobile_sdk.network.WebViewContentRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
@@ -22,7 +23,6 @@ import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
 import com.android.volley.ParseError
 import com.android.volley.Request
 import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
@@ -347,23 +347,23 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     } ?: false
 
     suspend fun checkGeoTargeting(configuration: Configuration): GeoTargetingDto {
-        return suspendCoroutine { continuation ->
-            mindboxServiceGenerator.addToRequestQueue(
-                MindboxRequest(
-                    Request.Method.GET,
-                    "${SdkValidation.toBaseUrl(configuration.domain)}/geo",
-                    configuration,
-                    null,
-                    { response ->
-                        continuation.resumeFromJson<GeoTargetingDto>(
-                            json = response.toString()
-                        )
-                    },
-                    { error ->
-                        continuation.resumeWithException(GeoError(error))
-                    }
-                )
+        return suspendCancellableCoroutine { continuation ->
+            val request = MindboxRequest(
+                Request.Method.GET,
+                "${SdkValidation.toBaseUrl(configuration.domain)}/geo",
+                configuration,
+                null,
+                { response ->
+                    continuation.resumeFromJson<GeoTargetingDto>(
+                        json = response.toString()
+                    )
+                },
+                { error ->
+                    continuation.resumeWithException(GeoError(error))
+                }
             )
+            continuation.invokeOnCancellation { request.cancel() }
+            mindboxServiceGenerator.addToRequestQueue(request)
         }
     }
 
@@ -400,28 +400,28 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         configuration: Configuration,
         segmentationCheckRequest: SegmentationCheckRequest,
     ): SegmentationCheckResponse {
-        return suspendCoroutine { continuation ->
-            mindboxServiceGenerator.addToRequestQueue(
-                MindboxRequest(
-                    Request.Method.POST,
-                    getCustomerSegmentationsUrl(configuration),
-                    configuration,
-                    convertBodyToJson(
-                        gson.toJson(
-                            segmentationCheckRequest,
-                            SegmentationCheckRequest::class.java
-                        )
-                    )!!,
-                    { response ->
-                        continuation.resumeFromJson<SegmentationCheckResponse>(
-                            json = response.toString()
-                        )
-                    },
-                    { error ->
-                        continuation.resumeWithException(CustomerSegmentationError(error))
-                    }
-                )
+        return suspendCancellableCoroutine { continuation ->
+            val request = MindboxRequest(
+                Request.Method.POST,
+                getCustomerSegmentationsUrl(configuration),
+                configuration,
+                convertBodyToJson(
+                    gson.toJson(
+                        segmentationCheckRequest,
+                        SegmentationCheckRequest::class.java
+                    )
+                )!!,
+                { response ->
+                    continuation.resumeFromJson<SegmentationCheckResponse>(
+                        json = response.toString()
+                    )
+                },
+                { error ->
+                    continuation.resumeWithException(CustomerSegmentationError(error))
+                }
             )
+            continuation.invokeOnCancellation { request.cancel() }
+            mindboxServiceGenerator.addToRequestQueue(request)
         }
     }
 
@@ -471,16 +471,14 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     }
 
     suspend fun fetchWebViewContent(contentUrl: String): String {
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
             try {
-                val request: StringRequest = StringRequest(
-                    Request.Method.GET,
-                    contentUrl,
-                    { response -> continuation.resume(response) },
-                    { error -> continuation.resumeWithException(error) }
-                ).apply {
-                    setShouldCache(false)
-                }
+                val request = WebViewContentRequest(
+                    url = contentUrl,
+                    listener = { response -> continuation.resume(response) },
+                    errorListener = { error -> continuation.resumeWithException(error) },
+                )
+                continuation.invokeOnCancellation { request.cancel() }
                 mindboxServiceGenerator.addToRequestQueue(request)
             } catch (e: Exception) {
                 mindboxLogE("Failed to fetch WebView content", e)

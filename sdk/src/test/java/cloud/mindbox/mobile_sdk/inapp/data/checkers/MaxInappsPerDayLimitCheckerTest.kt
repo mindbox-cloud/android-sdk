@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.inapp.data.checkers
 
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.InAppRepository
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppShowLimitsSettings
+import cloud.mindbox.mobile_sdk.inapp.domain.models.ShowReservation
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.every
@@ -15,6 +17,8 @@ import org.junit.Test
 class MaxInappsPerDayLimitCheckerTest {
 
     private lateinit var sessionStorageManager: SessionStorageManager
+
+    private val sessionState = SessionState()
     private lateinit var inAppRepository: InAppRepository
     private lateinit var timeProvider: TimeProvider
     private lateinit var maxInappsPerDayLimitChecker: MaxInappsPerDayLimitChecker
@@ -30,6 +34,7 @@ class MaxInappsPerDayLimitCheckerTest {
     @Before
     fun setup() {
         sessionStorageManager = mockk()
+        every { sessionStorageManager.state } returns sessionState
         inAppRepository = mockk()
         timeProvider = mockk()
         maxInappsPerDayLimitChecker = MaxInappsPerDayLimitChecker(
@@ -41,7 +46,7 @@ class MaxInappsPerDayLimitCheckerTest {
 
     @Test
     fun `check returns true when setting maxInappsPerDay is null`() {
-        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(
             maxInappsPerDay = null
         )
         every { timeProvider.currentTimeMillis() } returns TEST_TIME
@@ -49,7 +54,7 @@ class MaxInappsPerDayLimitCheckerTest {
             "inapp1" to listOf(TEST_TIME - ONE_HOUR_MS)
         )
 
-        val result = maxInappsPerDayLimitChecker.check()
+        val result = maxInappsPerDayLimitChecker.check(emptyList())
 
         assertTrue(result)
     }
@@ -58,7 +63,7 @@ class MaxInappsPerDayLimitCheckerTest {
     fun `check returns true when shown inapps count is less than limit`() {
         val maxInappsPerDay = 3
 
-        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
         every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
@@ -67,7 +72,7 @@ class MaxInappsPerDayLimitCheckerTest {
             "inapp2" to listOf(TEST_TIME - TWO_HOURS_MS)
         )
 
-        val result = maxInappsPerDayLimitChecker.check()
+        val result = maxInappsPerDayLimitChecker.check(emptyList())
 
         assertTrue(result)
     }
@@ -76,7 +81,7 @@ class MaxInappsPerDayLimitCheckerTest {
     fun `check returns false when shown inapps count equals limit`() {
         val maxInappsPerDay = 2
 
-        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
         every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
@@ -85,7 +90,7 @@ class MaxInappsPerDayLimitCheckerTest {
             "inapp2" to listOf(TEST_TIME - TWO_HOURS_MS)
         )
 
-        val result = maxInappsPerDayLimitChecker.check()
+        val result = maxInappsPerDayLimitChecker.check(emptyList())
 
         assertFalse(result)
     }
@@ -94,7 +99,7 @@ class MaxInappsPerDayLimitCheckerTest {
     fun `check returns false when shown inapps count exceeds limit`() {
         val maxInappsPerDay = 1
 
-        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
         every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
@@ -103,7 +108,7 @@ class MaxInappsPerDayLimitCheckerTest {
             "inapp2" to listOf(TEST_TIME - TWO_HOURS_MS)
         )
 
-        val result = maxInappsPerDayLimitChecker.check()
+        val result = maxInappsPerDayLimitChecker.check(emptyList())
 
         assertFalse(result)
     }
@@ -112,7 +117,7 @@ class MaxInappsPerDayLimitCheckerTest {
     fun `check ignores inapps shown on previous days`() {
         val maxInappsPerDay = 2
 
-        every { sessionStorageManager.inAppShowLimitsSettings } returns InAppShowLimitsSettings(
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(
             maxInappsPerDay = maxInappsPerDay
         )
         every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
@@ -121,8 +126,23 @@ class MaxInappsPerDayLimitCheckerTest {
             "inapp2" to listOf(TEST_TIME - ONE_DAY_MS)
         )
 
-        val result = maxInappsPerDayLimitChecker.check()
+        val result = maxInappsPerDayLimitChecker.check(emptyList())
 
         assertTrue(result)
+    }
+
+    @Test
+    fun `check counts held reservations against the daily limit`() {
+        sessionStorageManager.state.inAppShowLimitsSettings = InAppShowLimitsSettings(
+            maxInappsPerDay = 2
+        )
+        every { timeProvider.currentTimestamp() } returns Timestamp(TEST_TIME)
+        every { inAppRepository.getShownInApps() } returns mapOf(
+            "inapp1" to listOf(TEST_TIME - ONE_HOUR_MS)
+        )
+        val held = listOf(ShowReservation("inapp2", Timestamp(TEST_TIME)))
+
+        assertFalse(maxInappsPerDayLimitChecker.check(held))
+        assertTrue(maxInappsPerDayLimitChecker.check(emptyList()))
     }
 }

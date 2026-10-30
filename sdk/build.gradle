@@ -15,6 +15,7 @@ dependencies {
         api("cloud.mindbox:mindbox-huawei-starter:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-rustore-starter:$SDK_VERSION_NAME")
         api("cloud.mindbox:mindbox-sdk-starter-core:$SDK_VERSION_NAME")
+        api("cloud.mindbox:mindbox-embedded-compose:$SDK_VERSION_NAME")
     }
 }
 android {
@@ -36,6 +37,10 @@ android {
 
     testOptions {
         unitTests.includeAndroidResources = true
+        unitTests.all {
+            maxParallelForks = Math.min(4, Math.max(1, Runtime.runtime.availableProcessors().intdiv(2)))
+            maxHeapSize = "1536m"
+        }
     }
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         kotlinOptions {
@@ -86,6 +91,7 @@ dependencies {
 
     // Handle app lifecycle
     implementation libs.androidx.lifecycle
+    implementation libs.androidx.lifecycle.runtime
     implementation libs.androidx.startup
     implementation libs.threetenabp
 

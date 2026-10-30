@@ -1,10 +1,14 @@
 package cloud.mindbox.mobile_sdk.inapp.data.repositories
 
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CompletableDeferred
+import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionState
 import cloud.mindbox.mobile_sdk.inapp.data.managers.SessionStorageManager
 import cloud.mindbox.mobile_sdk.inapp.data.mapper.InAppMapper
+import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationError
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.CustomerSegmentationInApp
-import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationFetchStatus
 import cloud.mindbox.mobile_sdk.inapp.domain.models.ProductSegmentationResponseWrapper
 import cloud.mindbox.mobile_sdk.inapp.domain.models.SegmentationCheckWrapper
 import cloud.mindbox.mobile_sdk.managers.DbManager
@@ -15,6 +19,7 @@ import com.android.volley.VolleyError
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -29,14 +34,8 @@ class InAppSegmentationRepositoryTest {
     val mockkRule = MockKRule(this)
 
     private val inAppMapper = mockk<InAppMapper>()
-    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true) {
-        every {
-            currentSessionInApps
-        } returns emptyList()
-        every {
-            currentSessionInApps = any()
-        } just runs
-    }
+    private val sessionState = SessionState()
+    private val sessionStorageManager = mockk<SessionStorageManager>(relaxUnitFun = true) { every { state } returns sessionState }
 
     private val gatewayManager = mockk<GatewayManager>()
 
@@ -53,13 +52,12 @@ class InAppSegmentationRepositoryTest {
     fun onTestStart() {
         mockkObject(DbManager)
         mockkObject(MindboxPreferences)
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
     }
 
     @Test
     fun `request customer segmentations success`() = runTest {
-        every {
-            sessionStorageManager.currentSessionInApps
-        } returns mutableListOf(InAppStub.getInApp())
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
         coEvery { DbManager.listenConfigurations() } answers {
             flow {
                 emit(configuration)
@@ -73,39 +71,20 @@ class InAppSegmentationRepositoryTest {
         } returns segCheckResponse
 
         every {
-            inAppSegmentationRepository.setCustomerSegmentationStatus(any())
-        } just runs
-
-        every {
             inAppMapper.mapToSegmentationCheck(any())
         } returns SegmentationCheckInAppStub.getSegmentationCheckWrapper()
-        every {
-            sessionStorageManager setProperty "inAppCustomerSegmentations" value any<SegmentationCheckWrapper>()
-        } just runs
 
         inAppSegmentationRepository.fetchCustomerSegmentations()
 
-        verify {
-            sessionStorageManager setProperty "customerSegmentationFetchStatus" value
-                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-        }
-        verify(exactly = 1) {
-            sessionStorageManager setProperty "inAppCustomerSegmentations" value any<SegmentationCheckWrapper>()
-        }
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS, sessionStorageManager.state.customerSegmentationFetchStatus)
+        assertNotNull(sessionStorageManager.state.inAppCustomerSegmentations)
     }
 
     @Test
     fun `request customer segmentations no inApps`() = runTest {
-        sessionStorageManager.currentSessionInApps = mutableListOf()
-        every {
-            sessionStorageManager.customerSegmentationFetchStatus =
-                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-        } just runs
+        sessionStorageManager.state.currentSessionInApps = mutableListOf()
         inAppSegmentationRepository.fetchCustomerSegmentations()
-        verify(exactly = 1) {
-            sessionStorageManager.customerSegmentationFetchStatus =
-                CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR
-        }
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionStorageManager.state.customerSegmentationFetchStatus)
 
         coVerify(exactly = 0) {
             gatewayManager.checkCustomerSegmentations(
@@ -117,9 +96,7 @@ class InAppSegmentationRepositoryTest {
 
     @Test
     fun `request customer segmentation error`() = runTest {
-        every {
-            sessionStorageManager.currentSessionInApps
-        } returns mutableListOf(InAppStub.getInApp())
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
         coEvery { DbManager.listenConfigurations() } answers {
             flow {
                 emit(configuration)
@@ -128,10 +105,6 @@ class InAppSegmentationRepositoryTest {
         every {
             inAppMapper.mapToSegmentationCheck(any())
         } returns SegmentationCheckInAppStub.getSegmentationCheckWrapper()
-        every {
-            sessionStorageManager.inAppCustomerSegmentations =
-                SegmentationCheckInAppStub.getSegmentationCheckWrapper()
-        } just runs
         coEvery {
             gatewayManager.checkCustomerSegmentations(any(), any())
         } throws VolleyError("test message")
@@ -159,87 +132,15 @@ class InAppSegmentationRepositoryTest {
                 )
             )
         )
-        every {
-            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]
-        } answers {
-            expectedResult
-        }
+        sessionStorageManager.state.inAppProductSegmentations["testSystem" to "testValue"] = expectedResult
         assertEquals(expectedResult, inAppSegmentationRepository.getProductSegmentations("testSystem" to "testValue"))
     }
 
     @Test
     fun `get product segmentation no segmentation`() {
-        every {
-            sessionStorageManager.inAppProductSegmentations[any()]
-        } answers {
-            null
-        }
         assertEquals(
             emptySet<Set<ProductSegmentationResponseWrapper>>(),
             inAppSegmentationRepository.getProductSegmentations("testSystem" to "testValue")
-        )
-    }
-
-    @Test
-    fun `request product segmentation success`() = runTest {
-        val result = ProductSegmentationResponseStub.getProductSegmentationResponseDto()
-        val expectedResult =
-            ProductSegmentationResponseWrapper(
-                productSegmentations = listOf(
-                    ProductSegmentationResponseStub.getProductResponse().copy(
-                        productList = listOf(
-                            ProductSegmentationResponseStub.getProductSegmentationsResponse()
-                                .copy(
-                                    segmentationExternalId = "test2",
-                                    segmentExternalId = "test2"
-                                )
-                        )
-                    )
-                )
-            )
-        every {
-            inAppMapper.mapToProductSegmentationResponse(any())
-        } answers {
-            expectedResult
-        }
-        val dtoResult = ProductSegmentationRequestStub.getProductSegmentationRequestDto()
-        every {
-            inAppMapper.mapToProductSegmentationCheckRequest("testSystem" to "testValue", listOf())
-        } returns dtoResult
-        every {
-            sessionStorageManager.processedProductSegmentations["testSystem" to "testValue"]
-        } answers {
-            ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-        }
-        every {
-            sessionStorageManager.processedProductSegmentations["testSystem" to "testValue"] = ProductSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
-        } just runs
-        coEvery {
-            gatewayManager.checkProductSegmentation(any(), any())
-        } answers {
-            result
-        }
-        every { sessionStorageManager.inAppProductSegmentations } returns HashMap()
-        every {
-            sessionStorageManager.inAppProductSegmentations = any()
-        } just runs
-        every {
-            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]
-        } answers {
-            setOf(expectedResult)
-        }
-        every {
-            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"] = setOf(expectedResult)
-        } just runs
-        coEvery { DbManager.listenConfigurations() } answers {
-            flow {
-                emit(configuration)
-            }
-        }
-        inAppSegmentationRepository.fetchProductSegmentation("testSystem" to "testValue")
-        assertEquals(
-            expectedResult,
-            sessionStorageManager.inAppProductSegmentations["testSystem" to "testValue"]?.firstOrNull()
         )
     }
 
@@ -266,9 +167,7 @@ class InAppSegmentationRepositoryTest {
 
     @Test
     fun `get segmentation fetched success`() {
-        every {
-            sessionStorageManager.customerSegmentationFetchStatus
-        } returns CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS
         assertEquals(
             CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS,
             inAppSegmentationRepository.getCustomerSegmentationFetched()
@@ -277,9 +176,7 @@ class InAppSegmentationRepositoryTest {
 
     @Test
     fun `get segmentation not fetched`() {
-        every {
-            sessionStorageManager.customerSegmentationFetchStatus
-        } returns CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
+        sessionStorageManager.state.customerSegmentationFetchStatus = CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED
         assertEquals(
             CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED,
             inAppSegmentationRepository.getCustomerSegmentationFetched()
@@ -288,9 +185,7 @@ class InAppSegmentationRepositoryTest {
 
     @Test
     fun `get segmentation fetched error`() {
-        every {
-            sessionStorageManager.customerSegmentationFetchStatus
-        } throws Error()
+        every { sessionStorageManager.state } throws Error()
         assertEquals(
             CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR,
             inAppSegmentationRepository.getCustomerSegmentationFetched()
@@ -300,9 +195,7 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `get inApps segmentations success`() {
         val expectedResult = listOf(SegmentationCheckInAppStub.getCustomerSegmentation())
-        every {
-            sessionStorageManager.inAppCustomerSegmentations?.customerSegmentations
-        } returns expectedResult
+        sessionStorageManager.state.inAppCustomerSegmentations = SegmentationCheckWrapper("", expectedResult)
         val actualResult = inAppSegmentationRepository.getCustomerSegmentations()
         assertEquals(expectedResult, actualResult)
     }
@@ -310,9 +203,6 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `get inApps segmentations returns null`() {
         val expectedResult = emptyList<CustomerSegmentationInApp>()
-        every {
-            sessionStorageManager.inAppCustomerSegmentations?.customerSegmentations
-        } returns null
         val actualResult = inAppSegmentationRepository.getCustomerSegmentations()
         assertEquals(expectedResult, actualResult)
     }
@@ -320,10 +210,116 @@ class InAppSegmentationRepositoryTest {
     @Test
     fun `get inApps segmentations error`() {
         val expectedResult = emptyList<CustomerSegmentationInApp>()
-        every {
-            sessionStorageManager.inAppCustomerSegmentations?.customerSegmentations
-        } throws Error()
+        every { sessionStorageManager.state } throws Error()
         val actualResult = inAppSegmentationRepository.getCustomerSegmentations()
         assertEquals(expectedResult, actualResult)
+    }
+
+    @Test
+    fun `failed customer segmentations fetch is cached for the session`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery {
+            gatewayManager.checkCustomerSegmentations(any(), any())
+        } throws CustomerSegmentationError(VolleyError("timeout"))
+
+        assertTrue(runCatching { inAppSegmentationRepository.fetchCustomerSegmentations() }.exceptionOrNull() is CustomerSegmentationError)
+        inAppSegmentationRepository.fetchCustomerSegmentations()
+
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionStorageManager.state.customerSegmentationFetchStatus)
+        coVerify(exactly = 1) { gatewayManager.checkCustomerSegmentations(any(), any()) }
+    }
+
+    @Test
+    fun `a fetch the session reset outlived writes into its own session only`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        val nextSession = SessionState()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } answers {
+            every { sessionStorageManager.state } returns nextSession
+            throw CustomerSegmentationError(VolleyError("timeout"))
+        }
+
+        runCatching { inAppSegmentationRepository.fetchCustomerSegmentations() }
+
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionState.customerSegmentationFetchStatus)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, nextSession.customerSegmentationFetchStatus)
+    }
+
+    @Test
+    fun `a request the queue dropped without an answer ends as a cached fetch error`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } coAnswers { awaitCancellation() }
+
+        assertTrue(runCatching { inAppSegmentationRepository.fetchCustomerSegmentations() }.exceptionOrNull() is CustomerSegmentationError)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_ERROR, sessionState.customerSegmentationFetchStatus)
+    }
+
+    @Test
+    fun `a session the reset just started is not marked failed before its in-apps arrive`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        val nextSession = SessionState()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } answers {
+            every { sessionStorageManager.state } returns nextSession
+            SegmentationCheckInAppStub.getSegmentationCheckResponse().copy("Success", listOf())
+        }
+
+        inAppSegmentationRepository.fetchCustomerSegmentations()
+        inAppSegmentationRepository.fetchCustomerSegmentations()
+
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS, sessionState.customerSegmentationFetchStatus)
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, nextSession.customerSegmentationFetchStatus)
+
+        nextSession.currentSessionInApps = listOf(InAppStub.getInApp())
+        inAppSegmentationRepository.fetchCustomerSegmentations()
+
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS, nextSession.customerSegmentationFetchStatus)
+        coVerify(exactly = 2) { gatewayManager.checkCustomerSegmentations(any(), any()) }
+    }
+
+    @Test
+    fun `two callers on a cold cache make one segmentation request and both see its result`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        val answer = CompletableDeferred<Unit>()
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } coAnswers {
+            answer.await()
+            SegmentationCheckInAppStub.getSegmentationCheckResponse().copy("Success", listOf())
+        }
+
+        val first = launch { inAppSegmentationRepository.fetchCustomerSegmentations() }
+        val second = launch { inAppSegmentationRepository.fetchCustomerSegmentations() }
+        runCurrent()
+        answer.complete(Unit)
+        first.join()
+        second.join()
+
+        coVerify(exactly = 1) { gatewayManager.checkCustomerSegmentations(any(), any()) }
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS, sessionState.customerSegmentationFetchStatus)
+    }
+
+    @Test
+    fun `a caller cancelled while it holds the lock leaves the status not fetched for the next caller`() = runTest {
+        sessionStorageManager.state.currentSessionInApps = mutableListOf(InAppStub.getInApp())
+        var dropsTheRequest = true
+        coEvery { DbManager.listenConfigurations() } answers { flow { emit(configuration) } }
+        coEvery { gatewayManager.checkCustomerSegmentations(any(), any()) } coAnswers {
+            if (dropsTheRequest) awaitCancellation()
+            SegmentationCheckInAppStub.getSegmentationCheckResponse().copy("Success", listOf())
+        }
+
+        val cancelled = launch { inAppSegmentationRepository.fetchCustomerSegmentations() }
+        runCurrent()
+        cancelled.cancel()
+        cancelled.join()
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_NOT_FETCHED, sessionState.customerSegmentationFetchStatus)
+
+        dropsTheRequest = false
+        inAppSegmentationRepository.fetchCustomerSegmentations()
+
+        assertEquals(CustomerSegmentationFetchStatus.SEGMENTATION_FETCH_SUCCESS, sessionState.customerSegmentationFetchStatus)
+        coVerify(exactly = 2) { gatewayManager.checkCustomerSegmentations(any(), any()) }
     }
 }

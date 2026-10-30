@@ -1,0 +1,213 @@
+package cloud.mindbox.mobile_sdk.embedded
+
+import android.app.Activity
+import android.os.Looper
+import android.view.View
+import android.widget.LinearLayout
+import cloud.mindbox.mobile_sdk.R
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.Robolectric
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import java.time.Duration
+
+@RunWith(RobolectricTestRunner::class)
+class MindboxEmbeddedBlockViewLookupTest {
+
+    @org.junit.Test
+    fun `a place name with surrounding whitespace is normalized at the view boundary`() {
+        val activity = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
+        val view = MindboxEmbeddedBlockView(activity, "  main-screen-top  ")
+
+        org.junit.Assert.assertEquals("main-screen-top", view.placeSystemName)
+    }
+
+    private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+
+    private fun attach(view: MindboxEmbeddedBlockView) {
+        activity.setContentView(
+            LinearLayout(activity).apply { addView(view, 500, 300) },
+        )
+        shadowOf(Looper.getMainLooper()).idle()
+        dispatchWindowVisibility(view, View.VISIBLE)
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    @Test
+    fun `a block created before the config arrived holds the placeholder within the timeout`() {
+        val view = MindboxEmbeddedBlockView(
+            activity,
+            "main-screen-top",
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+        )
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(29L))
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue(listener.events.isEmpty())
+        assertEquals("main-screen-top", view.placeSystemName)
+    }
+
+    @Test
+    fun `no config within the timeout fails the block with networkError`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail:networkError"), listener.events)
+    }
+
+    @Test
+    fun `a timeout given in code is the one the block waits out`() {
+        val view = MindboxEmbeddedBlockView(
+            activity,
+            "main-screen-top",
+            timeoutMs = 5_000L,
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+        )
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(4L))
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue(listener.events.isEmpty())
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail:networkError"), listener.events)
+    }
+
+    @Test
+    fun `a block given no timeout in code still reads the one from xml`() {
+        val attrs = Robolectric.buildAttributeSet()
+            .addAttribute(R.attr.mindboxPlaceSystemName, "main-screen-top")
+            .addAttribute(R.attr.mindboxTimeoutMs, "5000")
+            .build()
+
+        val view = MindboxEmbeddedBlockView(activity, attrs)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(6L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail:networkError"), listener.events)
+    }
+
+    @Test
+    fun `a non-positive timeout is not a budget, and the default stands`() {
+        val view = MindboxEmbeddedBlockView(
+            activity,
+            "main-screen-top",
+            timeoutMs = 0L,
+            loadingStrategy = MindboxEmbeddedBlockLoadingStrategy.PLACEHOLDER,
+        )
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(29L))
+
+        assertEquals(View.VISIBLE, view.visibility)
+        assertTrue(listener.events.isEmpty())
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2L))
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("fail:networkError"), listener.events)
+    }
+
+    @Test
+    fun `a block without a place name hides itself without a crash`() {
+        val view = MindboxEmbeddedBlockView(activity)
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+
+        assertEquals(View.GONE, view.visibility)
+        assertEquals(listOf("empty"), listener.events)
+        assertNull(view.placeSystemName)
+    }
+
+    @Test
+    fun `the place name is read from the xml attribute`() {
+        val attrs = Robolectric.buildAttributeSet()
+            .addAttribute(R.attr.mindboxPlaceSystemName, "main-screen-top")
+            .build()
+
+        val view = MindboxEmbeddedBlockView(activity, attrs)
+
+        assertEquals("main-screen-top", view.placeSystemName)
+    }
+
+    @Test
+    fun `a layout without the attribute leaves the block nameless`() {
+        val view = MindboxEmbeddedBlockView(activity, Robolectric.buildAttributeSet().build())
+
+        assertNull(view.placeSystemName)
+    }
+
+    @Test
+    fun `an empty place name is the same as none`() {
+        val view = MindboxEmbeddedBlockView(activity, "")
+
+        attach(view)
+
+        assertEquals(View.GONE, view.visibility)
+        assertNull(view.placeSystemName)
+    }
+
+    @Test
+    fun `a blank place name is the same as none`() {
+        val view = MindboxEmbeddedBlockView(activity, "   ")
+
+        attach(view)
+
+        assertNull(view.placeSystemName)
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @Test
+    fun `a place that stays empty reports its outcome once across passes`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        val listener = RecordingListener()
+        view.setListener(listener)
+
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        assertEquals(listOf("fail:networkError"), listener.events)
+
+        (view.parent as LinearLayout).removeView(view)
+        shadowOf(Looper.getMainLooper()).idle()
+        attach(view)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31L))
+
+        assertEquals(listOf("fail:networkError"), listener.events)
+    }
+
+    @Test
+    fun `releasing a block that never resolved anything is safe`() {
+        val view = MindboxEmbeddedBlockView(activity, "main-screen-top")
+        attach(view)
+
+        (view.parent as LinearLayout).removeView(view)
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+}

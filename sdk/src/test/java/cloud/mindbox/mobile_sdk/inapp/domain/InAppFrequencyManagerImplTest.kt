@@ -101,4 +101,17 @@ class InAppFrequencyManagerImplTest {
 
         assertEquals(listOf(inApp), result)
     }
+
+    @Test
+    fun `unlimited frequency passes even when in-app was shown before`() {
+        val inApp = InAppStub.getInApp().copy(
+            id = "unlimited-id",
+            frequency = Frequency(Frequency.Delay.Unlimited),
+        )
+        every { inAppRepository.getShownInApps() } returns mapOf("unlimited-id" to listOf(1L, 2L))
+
+        val result = inAppFrequencyManager.filterInAppsFrequency(listOf(inApp))
+
+        assertEquals(listOf(inApp), result)
+    }
 }

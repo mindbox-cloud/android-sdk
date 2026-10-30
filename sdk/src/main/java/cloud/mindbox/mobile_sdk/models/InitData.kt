@@ -43,6 +43,11 @@ internal data class TrackVisitData(
     @SerializedName("sdkVersionNumeric") val sdkVersionNumeric: Int,
 )
 
+internal data class TrackVisitOrigin(
+    @TrackVisitSource val source: String?,
+    val requestUrl: String?,
+)
+
 internal data class TokenData(
     @SerializedName("token") val token: String,
     @SerializedName("notificationProvider") val notificationProvider: String,

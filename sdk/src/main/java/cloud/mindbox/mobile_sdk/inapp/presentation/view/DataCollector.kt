@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.utils.Constants
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -22,10 +23,11 @@ internal class DataCollector(
     private val sessionStorageManager: SessionStorageManager,
     private val permissionManager: PermissionManager,
     private val configuration: Configuration,
-    private val params: Map<String, String>,
+    private val params: Map<String, JsonElement>,
     private val inAppInsets: InAppInsets,
     private val gson: Gson,
     private val inAppId: String,
+    private val operation: InAppEventType.OrdinalEvent?,
 ) {
 
     private val providers: MutableMap<String, Provider> by lazy {
@@ -37,35 +39,46 @@ internal class DataCollector(
             KEY_IN_APP_ID to Provider.string(inAppId),
             KEY_INSETS to createInsetsPayload(inAppInsets),
             KEY_LOCALE to Provider.string(resolveLocale()),
-            KEY_OPERATION_NAME to Provider.string((sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent)?.name),
-            KEY_OPERATION_BODY to Provider.string((sessionStorageManager.inAppTriggerEvent as? InAppEventType.OrdinalEvent)?.body),
             KEY_PERMISSIONS to createPermissionsPayload(),
             KEY_PLATFORM to Provider.string(VALUE_PLATFORM),
             KEY_SDK_VERSION to Provider.string(BuildConfig.VERSION_NAME),
             KEY_SDK_VERSION_NUMERIC to Provider.string(Constants.SDK_VERSION_NUMERIC.toString()),
             KEY_THEME to Provider.string(resolveTheme()),
-            KEY_TRACK_VISIT_SOURCE to Provider.string(sessionStorageManager.lastTrackVisitData?.source),
-            KEY_TRACK_VISIT_REQUEST_URL to Provider.string(sessionStorageManager.lastTrackVisitData?.requestUrl),
             KEY_USER_VISIT_COUNT to Provider.string(MindboxPreferences.userVisitCount.toString()),
             KEY_VERSION to Provider.string(configuration.versionName),
         ).apply {
             params.forEach { (key, value) ->
-                put(key, Provider.string(value))
+                put(key, Provider { value })
             }
+            putAll(sdkMeasuredKeys())
         }
+    }
+
+    private fun sdkMeasuredKeys(): Map<String, Provider> = buildMap {
+        putIfPresent(KEY_OPERATION_NAME, operation?.name)
+        putIfPresent(KEY_OPERATION_BODY, operation?.body)
+        val visit = sessionStorageManager.lastTrackVisitData
+        putIfPresent(KEY_TRACK_VISIT_SOURCE, visit?.source)
+        putIfPresent(KEY_TRACK_VISIT_REQUEST_URL, visit?.requestUrl)
+    }
+
+    private fun MutableMap<String, Provider>.putIfPresent(key: String, value: String?) {
+        if (!value.isNullOrBlank()) put(key, Provider.string(value))
     }
 
     companion object Companion {
         private const val KEY_DEVICE_UUID = "deviceUUID"
         private const val KEY_ENDPOINT_ID = "endpointId"
         private const val KEY_FIRST_INITIALIZATION_TIME = "firstInitializationDateTime"
-        private const val KEY_IN_APP_ID = "inAppId"
+        private const val KEY_IN_APP_ID = "inappId"
         private const val KEY_INSETS = "insets"
         private const val KEY_LOCALE = "locale"
         private const val KEY_OPERATION_BODY = "operationBody"
         private const val KEY_OPERATION_NAME = "operationName"
         private const val KEY_PERMISSIONS = "permissions"
         private const val KEY_PERMISSIONS_STATUS = "status"
+        private const val KEY_PERMISSIONS_DETAILS = "details"
+        private const val KEY_PERMISSIONS_DETAILS_ACCESS = "access"
         private const val KEY_PERMISSIONS_CAMERA = "camera"
         private const val KEY_PERMISSIONS_LOCATION = "location"
         private const val KEY_PERMISSIONS_MICROPHONE = "microphone"
@@ -83,6 +96,16 @@ internal class DataCollector(
         private const val VALUE_PLATFORM = "android"
         private const val VALUE_THEME_DARK = "dark"
         private const val VALUE_THEME_LIGHT = "light"
+
+        fun mergedParams(
+            config: Map<String, String>,
+            fromCaller: Map<String, JsonElement> = emptyMap(),
+        ): Map<String, JsonElement> = buildMap {
+            config.forEach { (key, value) ->
+                Provider.jsonStructureOrString(value).get()?.let { element -> put(key, element) }
+            }
+            putAll(fromCaller)
+        }
     }
 
     internal fun interface Provider {
@@ -98,28 +121,12 @@ internal class DataCollector(
                 JsonPrimitive(value)
             }
 
-            fun objectIntParams(vararg pairs: Pair<String, Int>) = Provider {
-                JsonObject().apply {
-                    pairs.forEach { (key, value) ->
-                        addProperty(key, value)
-                    }
-                }
-            }
-
-            fun objectStringParams(vararg pairs: Pair<String, String?>) = Provider {
-                JsonObject().apply {
-                    pairs.forEach { (key, value) ->
-                        addProperty(key, value)
-                    }
-                }
-            }
-
-            fun objectStringParams(map: Map<String, String>) = Provider {
-                JsonObject().apply {
-                    map.forEach { (key, value) ->
-                        addProperty(key, value)
-                    }
-                }
+            fun jsonStructureOrString(value: String?) = Provider {
+                if (value.isNullOrBlank()) return@Provider null
+                runCatching { JsonParser.parseString(value) }
+                    .getOrNull()
+                    ?.takeIf { parsed -> parsed.isJsonObject || parsed.isJsonArray }
+                    ?: JsonPrimitive(value)
             }
         }
     }
@@ -135,21 +142,38 @@ internal class DataCollector(
     }
 
     private fun createPermissionsPayload(): Provider {
-        val map = mapOf(
-            KEY_PERMISSIONS_CAMERA to permissionManager.getCameraPermissionStatus().value,
-            KEY_PERMISSIONS_LOCATION to permissionManager.getLocationPermissionStatus().value,
-            KEY_PERMISSIONS_MICROPHONE to permissionManager.getMicrophonePermissionStatus().value,
-            KEY_PERMISSIONS_NOTIFICATIONS to permissionManager.getNotificationPermissionStatus().value,
-            KEY_PERMISSIONS_PHOTO_LIBRARY to permissionManager.getPhotoLibraryPermissionStatus().value,
-        ).filter { (_, value) -> value == PermissionStatus.GRANTED.value }
+        val statuses = mapOf(
+            KEY_PERMISSIONS_CAMERA to permissionManager.getCameraPermissionStatus(),
+            KEY_PERMISSIONS_LOCATION to permissionManager.getLocationPermissionStatus(),
+            KEY_PERMISSIONS_MICROPHONE to permissionManager.getMicrophonePermissionStatus(),
+            KEY_PERMISSIONS_NOTIFICATIONS to permissionManager.getNotificationPermissionStatus(),
+            KEY_PERMISSIONS_PHOTO_LIBRARY to permissionManager.getPhotoLibraryPermissionStatus(),
+        )
 
         return Provider {
             JsonObject().apply {
-                map.forEach { (key, value) ->
-                    add(key, JsonObject().apply { addProperty(KEY_PERMISSIONS_STATUS, value) })
+                statuses.forEach { (key, status) ->
+                    grantedPermissionPayload(status)?.let { payload -> add(key, payload) }
                 }
             }
         }
+    }
+
+    private fun grantedPermissionPayload(status: PermissionStatus): JsonObject? = when (status) {
+        PermissionStatus.GRANTED -> JsonObject().apply {
+            addProperty(KEY_PERMISSIONS_STATUS, PermissionStatus.GRANTED.value)
+        }
+        PermissionStatus.LIMITED -> JsonObject().apply {
+            addProperty(KEY_PERMISSIONS_STATUS, PermissionStatus.GRANTED.value)
+            add(
+                KEY_PERMISSIONS_DETAILS,
+                JsonObject().apply { addProperty(KEY_PERMISSIONS_DETAILS_ACCESS, PermissionStatus.LIMITED.value) }
+            )
+        }
+        PermissionStatus.DENIED,
+        PermissionStatus.NOT_DETERMINED,
+        PermissionStatus.RESTRICTED,
+        -> null
     }
 
     private fun resolveTheme(): String {
