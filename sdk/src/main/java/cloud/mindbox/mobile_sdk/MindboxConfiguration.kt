@@ -25,6 +25,8 @@ public class MindboxConfiguration private constructor(
     internal val uuidDebugEnabled: Boolean,
     internal val disableTrackingIds: Boolean,
     internal val operationsDomain: String? = null,
+    internal val trackingDomain: String? = null,
+    internal val isTrackingDisabled: Boolean = false,
 ) {
 
     public constructor(builder: Builder) : this(
@@ -41,6 +43,8 @@ public class MindboxConfiguration private constructor(
         uuidDebugEnabled = builder.uuidDebugEnabled,
         disableTrackingIds = builder.disableTrackingIds,
         operationsDomain = builder.operationsDomain,
+        trackingDomain = builder.trackingDomain,
+        isTrackingDisabled = builder.isTrackingDisabled,
     )
 
     internal fun copy(
@@ -57,6 +61,8 @@ public class MindboxConfiguration private constructor(
         uuidDebugEnabled: Boolean = this.uuidDebugEnabled,
         disableTrackingIds: Boolean = this.disableTrackingIds,
         operationsDomain: String? = this.operationsDomain,
+        trackingDomain: String? = this.trackingDomain,
+        isTrackingDisabled: Boolean = this.isTrackingDisabled,
     ) = MindboxConfiguration(
         previousInstallationId = previousInstallationId,
         previousDeviceUUID = previousDeviceUUID,
@@ -71,6 +77,8 @@ public class MindboxConfiguration private constructor(
         uuidDebugEnabled = uuidDebugEnabled,
         disableTrackingIds = disableTrackingIds,
         operationsDomain = operationsDomain,
+        trackingDomain = trackingDomain,
+        isTrackingDisabled = isTrackingDisabled,
     )
 
     override fun toString(): String {
@@ -86,7 +94,9 @@ public class MindboxConfiguration private constructor(
             "shouldIncludeVersionCode = $shouldIncludeVersionCode, " +
             "uuidDebugEnabled = $uuidDebugEnabled, " +
             "disableTrackingIds = $disableTrackingIds, " +
-            "operationsDomain = $operationsDomain)"
+            "operationsDomain = $operationsDomain, " +
+            "trackingDomain = $trackingDomain, " +
+            "isTrackingDisabled = $isTrackingDisabled)"
     }
 
     /**
@@ -113,6 +123,8 @@ public class MindboxConfiguration private constructor(
         internal var uuidDebugEnabled: Boolean = true
         internal var disableTrackingIds: Boolean = false
         internal var operationsDomain: String? = null
+        internal var trackingDomain: String? = null
+        internal var isTrackingDisabled: Boolean = false
 
         /**
          * Specifies deviceUUID for Mindbox
@@ -224,6 +236,28 @@ public class MindboxConfiguration private constructor(
          */
         public fun operationsDomain(operationsDomain: String): Builder {
             this.operationsDomain = operationsDomain.trim().takeIf { it.isNotBlank() }
+            return this
+        }
+
+        /**
+         * Controls where the advertising identifiers (GAID, OAID) go, or turns their collection off.
+         *
+         * By default the SDK derives the host from [domain] by replacing `api` with `api-tracking`
+         * in the first label (`api.mindbox.ru` → `api-tracking.mindbox.ru`, `api-staging.mindbox.ru` →
+         * `api-tracking-staging.mindbox.ru`). A blank value keeps that default. Set an explicit host
+         * when your domain does not follow the pattern: without a tracking host the identifiers are
+         * not reported and the set stored for the device is erased.
+         *
+         * Pass `null` to turn the collection off: the identifiers are then not read at all and the
+         * stored set is erased, the same as [disableTrackingIds].
+         *
+         * @param trackingDomain - host with an optional path prefix, the same format as
+         * [operationsDomain], e.g. "api-tracking.mindbox.ru" or "proxy.client.ru/mindbox"; blank
+         * for the derived host; `null` to turn the collection off.
+         */
+        public fun trackingDomain(trackingDomain: String?): Builder {
+            this.isTrackingDisabled = trackingDomain == null
+            this.trackingDomain = trackingDomain?.trim()?.takeIf { it.isNotBlank() }
             return this
         }
 

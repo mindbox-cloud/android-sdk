@@ -12,6 +12,9 @@ import io.mockk.verify
 import io.mockk.slot
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.MindboxError
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.every
@@ -20,6 +23,7 @@ import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -51,12 +55,113 @@ class GatewayManagerTest {
         mockkObject(MindboxPreferences)
         every { MindboxPreferences.deviceUuid } returns "test-device-uuid-123"
         every { MindboxPreferences.operationsDomainFromConfig } returns null
+        every { MindboxPreferences.trackingDomain } returns null
+        every { MindboxPreferences.isTrackingDisabled } returns false
     }
 
     @After
     fun onTestEnd() {
         unmockkObject(MindboxPreferences)
     }
+
+    // region tracking host
+
+    @Test
+    fun `resolveTrackingHost derives the twin from the domain`() {
+        assertEquals("api-tracking.mindbox.ru", gatewayManager.resolveTrackingHost(mockConfiguration))
+    }
+
+    @Test
+    fun `resolveTrackingHost prefers the configured trackingDomain`() {
+        every { MindboxPreferences.trackingDomain } returns "https://tracking.client.ru/"
+
+        assertEquals("tracking.client.ru", gatewayManager.resolveTrackingHost(mockConfiguration))
+    }
+
+    @Test
+    fun `resolveTrackingHost is null when the tracking is turned off`() {
+        every { MindboxPreferences.isTrackingDisabled } returns true
+        every { MindboxPreferences.trackingDomain } returns "tracking.client.ru"
+
+        assertNull(gatewayManager.resolveTrackingHost(mockConfiguration))
+    }
+
+    @Test
+    fun `resolveTrackingHost is null for a domain without a twin`() {
+        assertNull(gatewayManager.resolveTrackingHost(mockConfiguration.copy(domain = "gost-api.mindbox.ru")))
+    }
+
+    private val idsBody = """{"instanceId":"i","ids":[{"type":"google","value":"g"}]}"""
+
+    private fun sentRequest(config: Configuration, event: Event, onError: (MindboxError) -> Unit = {}): MindboxRequest? {
+        gatewayManager.sendEvent(
+            configuration = config,
+            deviceUuid = "test-device-uuid-123",
+            event = event,
+            shouldCountOffset = false,
+            onSuccess = {},
+            onError = onError,
+        )
+        val request = slot<MindboxRequest>()
+        verify(atLeast = 0, atMost = 1) { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        return if (request.isCaptured) request.captured else null
+    }
+
+    @Test
+    fun `tracking ids event goes to the tracking host over https`() {
+        val config = mockConfiguration.copy(domain = "http://api.mindbox.ru", operationsDomain = "anonymizer.client.ru")
+
+        val request = sentRequest(config, Event(eventType = EventType.AppInfoUpdated, body = idsBody))!!
+
+        assertTrue(request.fullUrl, request.fullUrl.startsWith("https://api-tracking.mindbox.ru/v3/operations/async?"))
+        assertTrue(request.fullUrl.contains("operation=MobilePush.ApplicationInfoUpdated"))
+        assertTrue(request.fullUrl.contains("endpointId=test-endpoint-id"))
+    }
+
+    @Test
+    fun `tracking ids event uses the configured trackingDomain`() {
+        every { MindboxPreferences.trackingDomain } returns "tracking.client.ru"
+
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppInfoUpdated, body = idsBody))!!
+
+        assertTrue(request.fullUrl.startsWith("https://tracking.client.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `tracking ids event keeps the trackingDomain path prefix`() {
+        every { MindboxPreferences.trackingDomain } returns "http://proxy.client.ru/mindbox/"
+
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppInfoUpdated, body = idsBody))!!
+
+        assertTrue(request.fullUrl, request.fullUrl.startsWith("https://proxy.client.ru/mindbox/v3/operations/async?"))
+    }
+
+    @Test
+    fun `tracking ids event goes to the main host without ids when there is no tracking host`() {
+        val request = sentRequest(
+            mockConfiguration.copy(domain = "gost-api.mindbox.ru"),
+            Event(eventType = EventType.AppInfoUpdated, body = idsBody),
+        )!!
+
+        // org.json is a stub in unit tests, so the stripped body itself is asserted in EventTrackingIdsTest
+        assertTrue(request.fullUrl, request.fullUrl.startsWith("https://gost-api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `a custom operation with a top-level ids field stays on the operations host`() {
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AsyncOperation("Custom.Op"), body = idsBody))!!
+
+        assertTrue(request.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `an application operation without ids stays on the operations host`() {
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppInfoUpdated, body = """{"ids":[]}"""))!!
+
+        assertTrue(request.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    // endregion
 
     // region resolveOperationsDomain priority chain
 

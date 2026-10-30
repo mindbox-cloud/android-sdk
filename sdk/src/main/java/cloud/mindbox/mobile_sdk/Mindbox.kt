@@ -98,9 +98,6 @@ public object Mindbox : MindboxLog {
 
     private var pushConverters: List<PushConverter> by SingleInitDelegate()
 
-    internal val configuredTrackingIdTypes: Set<String>?
-        get() = trackingIdTypesOf(configured = pushConverters, live = pushServiceHandlers)
-
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
     private val getDeviceIdMutex = Mutex()
@@ -604,6 +601,8 @@ public object Mindbox : MindboxLog {
             DbManager.saveConfigurations(Configuration(configuration))
             MindboxPreferences.shouldCollectTrackingIds =
                 !validatedConfiguration.disableTrackingIds
+            MindboxPreferences.trackingDomain = validatedConfiguration.trackingDomain
+            MindboxPreferences.isTrackingDisabled = validatedConfiguration.isTrackingDisabled
             logI("init. checkResult: $checkResult")
             if (checkResult != ConfigUpdate.NOT_UPDATED && !MindboxPreferences.isFirstInitialize) {
                 logI("init. softReinitialization")
@@ -1314,7 +1313,7 @@ public object Mindbox : MindboxLog {
         }
 
         MindboxEventManager.appInstalled(context, initData, configuration.shouldCreateCustomer)
-        trackingIdsResolver.markSent(trackingIds)
+        if (trackingIds != null) trackingIdsResolver.markSent(trackingIds)
 
         deliverDeviceUuid(deviceUuid)
         deliverToken(pushTokens)
@@ -1339,7 +1338,7 @@ public object Mindbox : MindboxLog {
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
             val trackingIds = trackingIdsResolver.resolve(context)
-            val isTrackingIdsChanged = trackingIdsResolver.hasChanged(trackingIds)
+            val isTrackingIdsChanged = trackingIds != null && trackingIdsResolver.hasChanged(trackingIds)
 
             if (pushTokens == savedPushTokens &&
                 isNotificationEnabled == savedIsNotificationEnabled &&
@@ -1362,7 +1361,7 @@ public object Mindbox : MindboxLog {
             )
 
             MindboxEventManager.appInfoUpdate(context, initData)
-            trackingIdsResolver.markSent(trackingIds)
+            if (trackingIds != null) trackingIdsResolver.markSent(trackingIds)
 
             if (isNotificationEnabled != savedIsNotificationEnabled) {
                 MindboxPreferences.isNotificationEnabled = isNotificationEnabled
@@ -1471,6 +1470,7 @@ public object Mindbox : MindboxLog {
             previousDeviceUUID = configuration.previousDeviceUUID,
             previousInstallationId = configuration.previousInstallationId,
             operationsDomain = configuration.operationsDomain,
+            trackingDomain = configuration.trackingDomain,
         )
 
         return if (validationErrors.isEmpty()) {
@@ -1483,11 +1483,13 @@ public object Mindbox : MindboxLog {
             val isDeviceIdError = validationErrors.contains(SdkValidation.Error.INVALID_DEVICE_ID)
             val isInstallationIdError = validationErrors.contains(SdkValidation.Error.INVALID_INSTALLATION_ID)
             val isOperationsDomainError = validationErrors.contains(SdkValidation.Error.INVALID_OPERATIONS_DOMAIN)
+            val isTrackingDomainError = validationErrors.contains(SdkValidation.Error.INVALID_TRACKING_DOMAIN)
 
             configuration.copy(
                 previousDeviceUUID = if (isDeviceIdError) "" else configuration.previousDeviceUUID,
                 previousInstallationId = if (isInstallationIdError) "" else configuration.previousInstallationId,
                 operationsDomain = if (isOperationsDomainError) null else configuration.operationsDomain,
+                trackingDomain = if (isTrackingDomainError) null else configuration.trackingDomain,
             )
         }
     }

@@ -1,6 +1,9 @@
 package cloud.mindbox.mobile_sdk
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SdkValidationDomainTest {
@@ -236,6 +239,104 @@ class SdkValidationDomainTest {
     @Test
     fun `isValidOperationsDomain rejects incomplete percent escape (one hex digit)`() {
         assertEquals(false, SdkValidation.isValidOperationsDomain("domain.com/a%2"))
+    }
+
+    // endregion
+
+    // region deriveTrackingHost
+
+    @Test
+    fun `deriveTrackingHost yields the four names the infrastructure serves`() {
+        assertEquals("api-tracking.mindbox.ru", SdkValidation.deriveTrackingHost("api.mindbox.ru"))
+        assertEquals("api-tracking.b.mindbox.ru", SdkValidation.deriveTrackingHost("api.b.mindbox.ru"))
+        assertEquals("api-tracking.s.mindbox.ru", SdkValidation.deriveTrackingHost("api.s.mindbox.ru"))
+        assertEquals("api-tracking-staging.mindbox.ru", SdkValidation.deriveTrackingHost("api-staging.mindbox.ru"))
+    }
+
+    @Test
+    fun `deriveTrackingHost ignores scheme, trailing slash and case`() {
+        assertEquals("api-tracking.mindbox.ru", SdkValidation.deriveTrackingHost("https://api.mindbox.ru/"))
+        assertEquals("api-tracking.mindbox.ru", SdkValidation.deriveTrackingHost("http://API.mindbox.ru"))
+        assertEquals("api-tracking-Staging.mindbox.ru", SdkValidation.deriveTrackingHost("Api-Staging.mindbox.ru"))
+    }
+
+    @Test
+    fun `deriveTrackingHost is null when the first label is not api`() {
+        assertNull(SdkValidation.deriveTrackingHost("gost-api.mindbox.ru"))
+        assertNull(SdkValidation.deriveTrackingHost("apix.mindbox.ru"))
+        assertNull(SdkValidation.deriveTrackingHost("mobile-sdk-test.mindbox.ru"))
+        assertNull(SdkValidation.deriveTrackingHost("proxy.client.ru"))
+    }
+
+    @Test
+    fun `deriveTrackingHost is null for an ip address, a single label and a blank value`() {
+        assertNull(SdkValidation.deriveTrackingHost("192.168.0.1"))
+        assertNull(SdkValidation.deriveTrackingHost("api"))
+        assertNull(SdkValidation.deriveTrackingHost(""))
+        assertNull(SdkValidation.deriveTrackingHost("   "))
+    }
+
+    @Test
+    fun `deriveTrackingHost refuses a label longer than DNS allows`() {
+        val suffix = "x".repeat(60)
+
+        assertNull(SdkValidation.deriveTrackingHost("api-$suffix.mindbox.ru"))
+    }
+
+    @Test
+    fun `resolveTrackingHost prefers the explicit trackingDomain`() {
+        assertEquals("tracking.client.ru", SdkValidation.resolveTrackingHost("https://tracking.client.ru/", "api.mindbox.ru"))
+        assertEquals("api-tracking.mindbox.ru", SdkValidation.resolveTrackingHost(null, "api.mindbox.ru"))
+        assertEquals("api-tracking.mindbox.ru", SdkValidation.resolveTrackingHost("  ", "api.mindbox.ru"))
+        assertNull(SdkValidation.resolveTrackingHost(null, "gost-api.mindbox.ru"))
+    }
+
+    @Test
+    fun `toTrackingBaseUrl always uses https`() {
+        assertEquals("https://api-tracking.mindbox.ru", SdkValidation.toTrackingBaseUrl("api-tracking.mindbox.ru"))
+        assertEquals("https://api-tracking.mindbox.ru", SdkValidation.toTrackingBaseUrl("http://api-tracking.mindbox.ru/"))
+    }
+
+    @Test
+    fun `toTrackingBaseUrl keeps the path prefix`() {
+        assertEquals("https://proxy.client.ru/mindbox", SdkValidation.toTrackingBaseUrl("http://proxy.client.ru/mindbox/"))
+    }
+
+    // endregion
+
+    // region trackingDomain validation
+
+    @Test
+    fun `isValidTrackingDomain follows the operationsDomain rule`() {
+        assertTrue(SdkValidation.isValidTrackingDomain("api-tracking.mindbox.ru"))
+        assertTrue(SdkValidation.isValidTrackingDomain("https://api-tracking.mindbox.ru/"))
+        assertTrue(SdkValidation.isValidTrackingDomain("proxy.client.ru/mindbox/tracking"))
+        assertFalse(SdkValidation.isValidTrackingDomain("api-tracking.mindbox.ru:443"))
+        assertFalse(SdkValidation.isValidTrackingDomain("api-tracking.mindbox.ru//api"))
+        assertFalse(SdkValidation.isValidTrackingDomain("not a host"))
+        assertFalse(SdkValidation.isValidTrackingDomain(""))
+    }
+
+    @Test
+    fun `validateConfiguration reports an invalid trackingDomain as a non-critical error`() {
+        val errors = SdkValidation.validateConfiguration(
+            domain = "api.mindbox.ru",
+            endpointId = "endpoint",
+            previousDeviceUUID = "",
+            previousInstallationId = "",
+            trackingDomain = "api-tracking.mindbox.ru:443",
+        )
+
+        assertEquals(listOf(SdkValidation.Error.INVALID_TRACKING_DOMAIN), errors)
+        assertFalse(SdkValidation.Error.INVALID_TRACKING_DOMAIN.critical)
+    }
+
+    @Test
+    fun `validateConfiguration accepts a valid or absent trackingDomain`() {
+        assertTrue(
+            SdkValidation.validateConfiguration("api.mindbox.ru", "endpoint", "", "", trackingDomain = "tracking.client.ru").isEmpty()
+        )
+        assertTrue(SdkValidation.validateConfiguration("api.mindbox.ru", "endpoint", "", "", trackingDomain = null).isEmpty())
     }
 
     // endregion

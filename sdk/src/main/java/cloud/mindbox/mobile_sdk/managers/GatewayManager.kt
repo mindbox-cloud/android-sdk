@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
@@ -107,6 +108,19 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         return configuration.domain
     }
 
+    /**
+     * The host the advertising ids go to: the configured trackingDomain, otherwise the one
+     * derived from the domain. Null means the tracking is turned off or the configuration has no
+     * tracking host at all.
+     */
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun resolveTrackingHost(configuration: Configuration): String? =
+        if (MindboxPreferences.isTrackingDisabled) {
+            null
+        } else {
+            SdkValidation.resolveTrackingHost(MindboxPreferences.trackingDomain, configuration.domain)
+        }
+
     private fun buildEventUrl(
         configuration: Configuration,
         deviceUuid: String,
@@ -144,10 +158,20 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             }
         }
 
-        val domain = resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig)
-        val baseUrl = SdkValidation.toBaseUrl(domain)
+        val baseUrl = resolveTrackingHost(configuration)
+            ?.takeIf { event.carriesTrackingIds() }
+            ?.let(SdkValidation::toTrackingBaseUrl)
+            ?: SdkValidation.toBaseUrl(resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig))
         return "$baseUrl${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
+
+    private fun Event.forCurrentHosts(configuration: Configuration): Event =
+        if (carriesTrackingIds() && resolveTrackingHost(configuration) == null) {
+            mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
+            withoutTrackingIds()
+        } else {
+            this
+        }
 
     fun sendAsyncEvent(
         configuration: Configuration,
@@ -190,9 +214,10 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         onError: (MindboxError) -> Unit,
     ) {
         try {
-            val requestType: Int = getRequestType(event.eventType)
-            val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
-            val jsonRequest: JSONObject? = convertBodyToJson(event.body)
+            val outgoing = event.forCurrentHosts(configuration)
+            val requestType: Int = getRequestType(outgoing.eventType)
+            val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, outgoing)
+            val jsonRequest: JSONObject? = convertBodyToJson(outgoing.body)
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,

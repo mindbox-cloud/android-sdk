@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.models
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import cloud.mindbox.mobile_sdk.managers.DbManager.EVENTS_TABLE_NAME
+import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 import java.util.UUID
@@ -91,3 +92,20 @@ internal sealed class InAppEventType(val name: String) {
         }
     }
 }
+
+internal val EventType.isApplicationEvent: Boolean
+    get() = this is EventType.AppInstalled ||
+        this is EventType.AppInstalledWithoutCustomer ||
+        this is EventType.AppInfoUpdated ||
+        this is EventType.AppKeepalive
+
+internal fun Event.carriesTrackingIds(): Boolean = runCatching {
+    eventType.isApplicationEvent &&
+        (JsonParser.parseString(body ?: return false).asJsonObject.get("ids")?.asJsonArray?.size() ?: 0) > 0
+}.getOrDefault(false)
+
+internal fun Event.withoutTrackingIds(): Event = copy(
+    body = body?.let { raw ->
+        runCatching { JsonParser.parseString(raw).asJsonObject.apply { remove("ids") }.toString() }.getOrDefault(raw)
+    },
+)

@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -48,6 +49,49 @@ internal class MindboxConfigurationTest {
             .build()
 
         assertTrue(configuration.disableTrackingIds)
+    }
+
+    @Test
+    fun `trackingDomain is not set by default`() {
+        val configuration = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT).build()
+
+        assertNull(configuration.trackingDomain)
+    }
+
+    @Test
+    fun `trackingDomain is trimmed and a blank value means not set`() {
+        val set = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT)
+            .trackingDomain("  api-tracking.mindbox.ru  ")
+            .build()
+        val blank = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT)
+            .trackingDomain("   ")
+            .build()
+
+        assertEquals("api-tracking.mindbox.ru", set.trackingDomain)
+        assertNull(blank.trackingDomain)
+        assertFalse(set.isTrackingDisabled)
+        assertFalse(blank.isTrackingDisabled)
+    }
+
+    @Test
+    fun `a null trackingDomain turns the tracking off`() {
+        val configuration = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT)
+            .trackingDomain(null)
+            .build()
+
+        assertTrue(configuration.isTrackingDisabled)
+        assertNull(configuration.trackingDomain)
+    }
+
+    @Test
+    fun `the last trackingDomain call wins`() {
+        val configuration = MindboxConfiguration.Builder(context, DOMAIN, ENDPOINT)
+            .trackingDomain(null)
+            .trackingDomain("api-tracking.mindbox.ru")
+            .build()
+
+        assertFalse(configuration.isTrackingDisabled)
+        assertEquals("api-tracking.mindbox.ru", configuration.trackingDomain)
     }
 
     @Test

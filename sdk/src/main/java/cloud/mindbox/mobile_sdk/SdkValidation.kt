@@ -13,7 +13,8 @@ internal object SdkValidation {
         EMPTY_ENDPOINT(true, "Endpoint must not be empty"),
         INVALID_DEVICE_ID(false, "Invalid previous device UUID format"),
         INVALID_INSTALLATION_ID(false, "Invalid UUID format of previous installationId"),
-        INVALID_OPERATIONS_DOMAIN(true, "The operationsDomain is not valid");
+        INVALID_OPERATIONS_DOMAIN(true, "The operationsDomain is not valid"),
+        INVALID_TRACKING_DOMAIN(false, "The trackingDomain is not valid");
 
         override fun toString() = "$name(critical=$critical, message=$message)"
     }
@@ -74,12 +75,36 @@ internal object SdkValidation {
         return PATH_PREFIX_REGEX.matches(hostAndPath.removePrefix(host))
     }
 
+    private val TRACKING_HOST_LABEL_REGEX = Regex("^api(-[A-Za-z0-9-]+)?$", RegexOption.IGNORE_CASE)
+    private const val TRACKING_HOST_LABEL = "api-tracking"
+    private const val MAX_DNS_LABEL_LENGTH = 63
+
+    fun deriveTrackingHost(domain: String): String? {
+        val host = extractHost(domain).substringBefore('/')
+        if (host.isBlank() || PatternsCompat.IP_ADDRESS.matcher(host).matches()) return null
+        val first = host.substringBefore('.')
+        val rest = host.substringAfter('.', missingDelimiterValue = "")
+        if (rest.isBlank() || !TRACKING_HOST_LABEL_REGEX.matches(first)) return null
+        val label = TRACKING_HOST_LABEL + first.drop("api".length)
+        if (label.length > MAX_DNS_LABEL_LENGTH) return null
+        return "$label.$rest"
+    }
+
+    fun resolveTrackingHost(trackingDomain: String?, domain: String): String? =
+        trackingDomain?.let(::extractHost)?.takeIf { it.isNotBlank() }
+            ?: deriveTrackingHost(domain)
+
+    fun toTrackingBaseUrl(hostOrUrl: String): String = "https://${extractHost(hostOrUrl)}"
+
+    fun isValidTrackingDomain(value: String): Boolean = isValidOperationsDomain(value)
+
     fun validateConfiguration(
         domain: String,
         endpointId: String,
         previousDeviceUUID: String,
         previousInstallationId: String,
         operationsDomain: String? = null,
+        trackingDomain: String? = null,
     ) = LoggingExceptionHandler.runCatching(defaultValue = listOf()) {
         mutableListOf<Error>().apply {
             when {
@@ -107,6 +132,10 @@ internal object SdkValidation {
 
             if (operationsDomain != null && !isValidOperationsDomain(operationsDomain)) {
                 add(Error.INVALID_OPERATIONS_DOMAIN)
+            }
+
+            if (trackingDomain != null && !isValidTrackingDomain(trackingDomain)) {
+                add(Error.INVALID_TRACKING_DOMAIN)
             }
         }
     }
