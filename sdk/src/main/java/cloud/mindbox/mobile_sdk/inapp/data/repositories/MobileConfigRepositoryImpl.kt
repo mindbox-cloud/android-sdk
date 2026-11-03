@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import com.google.gson.JsonElement
 
 internal class MobileConfigRepositoryImpl(
     private val inAppMapper: InAppMapper,
@@ -254,7 +255,19 @@ internal class MobileConfigRepositoryImpl(
             ?.filter { inAppDtoBlank ->
                 inAppValidator.validateInAppVersion(inAppDtoBlank)
             }
-            ?.map { inAppDtoBlank ->
+            ?.mapNotNull { inAppDtoBlank ->
+                val frequencyDto = if (inAppDtoBlank.frequency.isAbsent()) {
+                    defaultDataManager.fillFrequencyData(null)
+                } else {
+                    mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency, inAppDtoBlank.id)
+                        ?: return@mapNotNull null
+                }
+                val displayConditionsDto = if (inAppDtoBlank.displayConditions.isAbsent()) {
+                    null
+                } else {
+                    mobileConfigSerializationManager.deserializeToDisplayConditionsDto(inAppDtoBlank.displayConditions, inAppDtoBlank.id)
+                        ?: return@mapNotNull null
+                }
                 inAppMapper.mapToInAppDto(
                     inAppDtoBlank = inAppDtoBlank,
                     delayTime = inAppDtoBlank.delayTime
@@ -266,20 +279,19 @@ internal class MobileConfigRepositoryImpl(
                             inAppDtoBlank.id
                         )
                     ),
-                    frequencyDto = defaultDataManager.fillFrequencyData(mobileConfigSerializationManager.deserializeToFrequencyDto(inAppDtoBlank.frequency, inAppDtoBlank.id)),
+                    frequencyDto = frequencyDto,
                     targetingDto = mobileConfigSerializationManager.deserializeToInAppTargetingDto(
                         inAppDtoBlank.targeting,
                         inAppDtoBlank.id
                     ),
-                    displayConditionsDto = mobileConfigSerializationManager.deserializeToDisplayConditionsDto(
-                        inAppDtoBlank.displayConditions,
-                        inAppDtoBlank.id
-                    )
+                    displayConditionsDto = displayConditionsDto,
                 )
             }?.filter { inAppDto ->
                 inAppValidator.validateInApp(inAppDto)
             }
     }
+
+    private fun JsonElement?.isAbsent(): Boolean = this == null || isJsonNull
 
     private fun getMonitoring(configBlank: InAppConfigResponseBlank?): List<LogRequestDto>? =
         configBlank?.monitoring?.logs?.filter { logRequestDtoBlank ->

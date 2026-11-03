@@ -30,18 +30,18 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         return result.getOrNull()
     }
 
-    override fun deserializeToFrequencyDto(frequencyString: JsonObject?, inAppId: String): FrequencyDto? {
+    override fun deserializeToFrequencyDto(frequency: JsonElement?, inAppId: String): FrequencyDto? {
         val result = runCatching {
-            gson.fromJson(frequencyString, FrequencyDto::class.java)
+            gson.fromJson(frequency, FrequencyDto::class.java)
         }
         result.exceptionOrNull()?.let { error ->
-            logParseFailure(inAppId, frequencyString, error)
+            logParseFailure(inAppId, frequency, error)
         }
         return result.getOrNull()
     }
 
-    override fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?, inAppId: String): DisplayConditionsDto? {
-        if (displayConditions == null) return null
+    override fun deserializeToDisplayConditionsDto(displayConditions: JsonElement?, inAppId: String): DisplayConditionsDto? {
+        if (displayConditions == null || displayConditions.isJsonNull) return null
         val result = runCatching {
             gson.fromJson(displayConditions, DisplayConditionsDto::class.java)
         }
@@ -239,7 +239,7 @@ internal class MobileConfigSerializationManagerImpl(private val gson: Gson) :
         return result.getOrNull()
     }
 
-    private fun logParseFailure(inAppId: String, json: JsonObject?, error: Throwable) {
+    private fun logParseFailure(inAppId: String, json: JsonElement?, error: Throwable) {
         if (error is UnknownSubtypeException) {
             mindboxLogW("In-app $inAppId: unknown ${Constants.TYPE_JSON_NAME} '${error.label}', skipping it: $json")
         } else {

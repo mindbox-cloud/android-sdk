@@ -5,11 +5,12 @@ import cloud.mindbox.mobile_sdk.models.operation.response.DisplayConditionsDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FormDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.models.operation.response.InAppConfigResponseBlank
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 
 internal interface MobileConfigSerializationManager {
 
-    fun deserializeToFrequencyDto(frequencyString: JsonObject?, inAppId: String): FrequencyDto?
+    fun deserializeToFrequencyDto(frequency: JsonElement?, inAppId: String): FrequencyDto?
 
     fun deserializeToConfigDtoBlank(inAppConfig: String): InAppConfigResponseBlank?
 
@@ -17,5 +18,5 @@ internal interface MobileConfigSerializationManager {
 
     fun deserializeToInAppTargetingDto(inAppTreeTargeting: JsonObject?, inAppId: String): TreeTargetingDto?
 
-    fun deserializeToDisplayConditionsDto(displayConditions: JsonObject?, inAppId: String): DisplayConditionsDto?
+    fun deserializeToDisplayConditionsDto(displayConditions: JsonElement?, inAppId: String): DisplayConditionsDto?
 }
