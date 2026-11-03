@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.models.operation.response.DisplayConditionsDto
 import cloud.mindbox.mobile_sdk.models.operation.response.FrequencyDto
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
@@ -36,7 +37,7 @@ class EmbeddedContractSerializationTest {
     }
 
     @Test
-    fun `displayConditions with unknown type reads as show by trigger`() {
+    fun `displayConditions with unknown type cannot be read`() {
         assertNull(manager.deserializeToDisplayConditionsDto(json("""{"${'$'}type":"pushOnly"}"""), "inapp-id"))
     }
 
@@ -214,21 +215,22 @@ class EmbeddedContractSerializationTest {
         )
 
         assertEquals(1, config?.inApps?.size)
-        assertNull(config?.inApps?.first()?.displayConditions)
+        assertTrue(config?.inApps?.first()?.displayConditions?.isJsonNull ?: true)
     }
 
     @Test
-    fun `garbage restriction fields read as no restriction`() {
+    fun `garbage restriction fields do not fail the inapps block and keep the raw value for the in-app check`() {
         val config = manager.deserializeToConfigDtoBlank(
             """
             {"inapps":[{"id":"a","isPriority":false,
-              "validityPeriod":"tomorrow","displayConditions":42,
+              "validityPeriod":"tomorrow","displayConditions":42,"frequency":"once",
               "targeting":{"${'$'}type":"true"},
               "form":{"variants":[]}}]}
             """.trimIndent()
         )
 
         assertEquals(1, config?.inApps?.size)
-        assertNull(config?.inApps?.first()?.displayConditions)
+        assertEquals(JsonPrimitive(42), config?.inApps?.first()?.displayConditions)
+        assertEquals(JsonPrimitive("once"), config?.inApps?.first()?.frequency)
     }
 }
