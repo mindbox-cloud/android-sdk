@@ -4,6 +4,7 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogD
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
+import cloud.mindbox.mobile_sdk.models.withMaskedTrackingIds
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import com.android.volley.Request
 import com.android.volley.RequestQueue
@@ -53,7 +54,7 @@ internal class MindboxServiceGenerator(private val requestQueue: RequestQueue) {
             builder.appendLine(request.headers
                 .map { (key, value) -> "$key: $value" }
                 .joinToString(separator = System.getProperty("line.separator") ?: "\n"))
-            builder.appendLine("${request.jsonRequest}")
+            builder.appendLine(request.jsonRequest?.toString()?.withMaskedTrackingIds())
             builder.append("---> End of request")
 
             mindboxLogD(builder.toString())

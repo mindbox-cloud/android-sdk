@@ -74,6 +74,23 @@ internal object SdkValidation {
         return PATH_PREFIX_REGEX.matches(hostAndPath.removePrefix(host))
     }
 
+    private val TRACKING_HOST_LABEL_REGEX = Regex("^api(-[A-Za-z0-9-]+)?$", RegexOption.IGNORE_CASE)
+    private const val TRACKING_HOST_LABEL = "api-tracking"
+    private const val MAX_DNS_LABEL_LENGTH = 63
+
+    fun deriveTrackingHost(domain: String): String? {
+        val host = extractHost(domain).substringBefore('/')
+        if (host.isBlank() || PatternsCompat.IP_ADDRESS.matcher(host).matches()) return null
+        val first = host.substringBefore('.')
+        val rest = host.substringAfter('.', missingDelimiterValue = "")
+        if (rest.isBlank() || !TRACKING_HOST_LABEL_REGEX.matches(first)) return null
+        val label = TRACKING_HOST_LABEL + first.drop("api".length)
+        if (label.length > MAX_DNS_LABEL_LENGTH) return null
+        return "$label.$rest"
+    }
+
+    fun toTrackingBaseUrl(host: String): String = "https://$host"
+
     fun validateConfiguration(
         domain: String,
         endpointId: String,

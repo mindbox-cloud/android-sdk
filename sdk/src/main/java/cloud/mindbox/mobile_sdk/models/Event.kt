@@ -91,3 +91,9 @@ internal sealed class InAppEventType(val name: String) {
         }
     }
 }
+
+internal val EventType.isApplicationEvent: Boolean
+    get() = this is EventType.AppInstalled ||
+        this is EventType.AppInstalledWithoutCustomer ||
+        this is EventType.AppInfoUpdated ||
+        this is EventType.AppKeepalive

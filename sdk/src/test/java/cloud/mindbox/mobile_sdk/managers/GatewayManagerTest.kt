@@ -4,27 +4,38 @@ import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckReques
 import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.launch
 import io.mockk.verify
 import io.mockk.slot
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.MindboxError
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.util.UUID
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class GatewayManagerTest {
 
     private lateinit var gatewayManager: GatewayManager
@@ -33,6 +44,7 @@ class GatewayManagerTest {
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         mockMindboxServiceGenerator = mockk(relaxed = true)
         gatewayManager = GatewayManager(mockMindboxServiceGenerator)
         mockConfiguration = Configuration(
@@ -56,7 +68,125 @@ class GatewayManagerTest {
     @After
     fun onTestEnd() {
         unmockkObject(MindboxPreferences)
+        Dispatchers.resetMain()
     }
+
+    // region tracking host
+
+    @Test
+    fun `resolveTrackingHost derives the twin from the domain`() {
+        assertEquals("api-tracking.mindbox.ru", gatewayManager.resolveTrackingHost(mockConfiguration))
+    }
+
+    @Test
+    fun `resolveTrackingHost is null for a domain without a twin`() {
+        assertNull(gatewayManager.resolveTrackingHost(mockConfiguration.copy(domain = "gost-api.mindbox.ru")))
+    }
+
+    @Test
+    fun `resolveTrackingHost is null behind an anonymizer from init`() {
+        assertNull(gatewayManager.resolveTrackingHost(mockConfiguration.copy(operationsDomain = "anonymizer.client.ru")))
+    }
+
+    @Test
+    fun `resolveTrackingHost is null behind an anonymizer from the mobile config`() {
+        every { MindboxPreferences.operationsDomainFromConfig } returns "anonymizer.client.ru"
+
+        assertNull(gatewayManager.resolveTrackingHost(mockConfiguration))
+    }
+
+    private val idsBody = """{"instanceId":"i","ids":[{"type":"google","value":"g"}]}"""
+
+    private fun sentRequest(config: Configuration, event: Event, onError: (MindboxError) -> Unit = {}): MindboxRequest? {
+        clearMocks(mockMindboxServiceGenerator, answers = false)
+        gatewayManager.sendEvent(
+            configuration = config,
+            deviceUuid = "test-device-uuid-123",
+            event = event,
+            shouldCountOffset = false,
+            onSuccess = {},
+            onError = onError,
+        )
+        val request = slot<MindboxRequest>()
+        verify(atLeast = 0, atMost = 1) { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
+        return if (request.isCaptured) request.captured else null
+    }
+
+    @Test
+    fun `tracking ids event goes to the tracking host over https`() {
+        val config = mockConfiguration.copy(domain = "http://api.mindbox.ru")
+
+        val request = sentRequest(config, Event(eventType = EventType.AppInfoUpdated, body = idsBody))!!
+
+        assertTrue(request.fullUrl, request.fullUrl.startsWith("https://api-tracking.mindbox.ru/v3/operations/async?"))
+        assertTrue(request.fullUrl.contains("operation=MobilePush.ApplicationInfoUpdated"))
+        assertTrue(request.fullUrl.contains("endpointId=test-endpoint-id"))
+    }
+
+    @Test
+    fun `behind an anonymizer a tracking ids event goes through it without ids`() {
+        val config = mockConfiguration.copy(operationsDomain = "anonymizer.client.ru")
+
+        val request = sentRequest(config, Event(eventType = EventType.AppInfoUpdated, body = idsBody))!!
+
+        assertTrue(request.fullUrl, request.fullUrl.startsWith("https://anonymizer.client.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `after a failure on the tracking host the retry goes to the main host without ids`() {
+        val event = Event(eventType = EventType.AppInfoUpdated, body = idsBody)
+        val first = sentRequest(mockConfiguration, event)!!
+        assertTrue(first.fullUrl, first.fullUrl.startsWith("https://api-tracking.mindbox.ru/"))
+
+        first.errorsListener!!.onErrorResponse(VolleyError())
+        val retry = sentRequest(mockConfiguration, event)!!
+
+        assertTrue(retry.fullUrl, retry.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `a failure on the tracking host does not touch the other queued events`() {
+        val failed = Event(eventType = EventType.AppInfoUpdated, body = idsBody)
+        sentRequest(mockConfiguration, failed)!!.errorsListener!!.onErrorResponse(VolleyError())
+
+        val other = sentRequest(mockConfiguration, Event(eventType = EventType.AppKeepalive, body = idsBody))!!
+
+        assertTrue(other.fullUrl, other.fullUrl.startsWith("https://api-tracking.mindbox.ru/"))
+    }
+
+    @Test
+    fun `tracking ids event goes to the main host without ids when there is no tracking host`() {
+        val request = sentRequest(
+            mockConfiguration.copy(domain = "gost-api.mindbox.ru"),
+            Event(eventType = EventType.AppInfoUpdated, body = idsBody),
+        )!!
+
+        // org.json is a stub in unit tests, so the stripped body itself is asserted in EventTrackingIdsTest
+        assertTrue(request.fullUrl, request.fullUrl.startsWith("https://gost-api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `a custom operation with a top-level ids field stays on the operations host`() {
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AsyncOperation("Custom.Op"), body = idsBody))!!
+
+        assertTrue(request.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `an erase of the tracking ids goes to the main host`() {
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppInfoUpdated, body = """{"ids":[]}"""))!!
+
+        assertTrue(request.fullUrl, request.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `an application operation without the ids field stays on the operations host`() {
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppInfoUpdated, body = """{"instanceId":"i"}"""))!!
+
+        assertTrue(request.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    // endregion
 
     // region resolveOperationsDomain priority chain
 

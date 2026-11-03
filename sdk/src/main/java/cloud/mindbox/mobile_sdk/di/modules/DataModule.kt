@@ -315,6 +315,7 @@ internal fun DataModule(
     override val trackingIdsResolver: TrackingIdsResolver by lazy {
         TrackingIdsResolverImpl()
     }
+    override val deviceUuidResolver: DeviceUuidResolver by lazy { DeviceUuidResolverImpl() }
     override val integerPositiveValidator: IntegerPositiveValidator by lazy { IntegerPositiveValidator() }
     override val inappSettingsManager: InappSettingsManagerImpl by lazy { InappSettingsManagerImpl(sessionStorageManager) }
     override val featureToggleManager: FeatureToggleManager by lazy { FeatureToggleManagerImpl() }
