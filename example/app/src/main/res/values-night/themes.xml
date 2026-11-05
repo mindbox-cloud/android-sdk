@@ -1,8 +1,8 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <style name="Base.Theme.MindboxAndroidSdkExample" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Status bar: dark background, white icons -->
         <item name="android:statusBarColor">@color/mindbox_dark_background</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightStatusBar">false</item>
 
         <!-- Primary — light green on dark for good contrast -->
         <item name="colorPrimary">@color/mindbox_green_light</item>

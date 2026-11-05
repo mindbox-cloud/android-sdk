@@ -2,8 +2,6 @@ package cloud.mindbox.mobile_sdk.pushes.handler.image
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.os.Build
-import androidx.annotation.RequiresApi
 import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 
@@ -16,7 +14,6 @@ import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
  * @param delay Period in milliseconds after which the download will be retried.
  * @param defaultImage Optional image
  */
-@RequiresApi(Build.VERSION_CODES.M)
 public fun MindboxImageFailureHandler.Companion.applyDefaultAndRetryStrategy(
     maxAttempts: Int,
     delay: Long = 0L,
@@ -27,7 +24,6 @@ public fun MindboxImageFailureHandler.Companion.applyDefaultAndRetryStrategy(
     defaultImage = defaultImage,
 )
 
-@RequiresApi(Build.VERSION_CODES.M)
 internal class ApplyDefaultAndRetryStrategyImpl(
     private val maxAttempts: Int,
     private val delay: Long = 0L,

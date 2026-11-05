@@ -30,7 +30,6 @@ internal class PushActivationActivity : Activity() {
         internal const val EXTRA_ROUTE_TO_SETTINGS: String = "runtime_permission_route_to_settings"
     }
 
-    @RequiresApi(Build.VERSION_CODES.M)
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
