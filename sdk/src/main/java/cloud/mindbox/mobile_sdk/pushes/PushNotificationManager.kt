@@ -10,10 +10,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
 import androidx.annotation.DrawableRes
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -58,7 +56,6 @@ internal object PushNotificationManager {
         NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
-    @RequiresApi(Build.VERSION_CODES.M)
     private fun isNotificationActive(
         notificationManager: NotificationManager,
         notificationId: Int,
@@ -210,15 +207,6 @@ internal object PushNotificationManager {
             }
         }
 
-        if (fallback is ImageRetryStrategy.ApplyDefaultAndRetry && Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            mindboxLogE(
-                message = buildLogMessage(
-                    message = remoteMessage,
-                    log = "ApplyDefaultAndRetry works correctly only on SDK >= 23",
-                ),
-            )
-        }
-
         when (fallback) {
             is ImageRetryStrategy.Retry -> retryNotifyRemoteMessage(
                 context = context,
@@ -293,8 +281,7 @@ internal object PushNotificationManager {
         notificationManager: NotificationManager,
         notificationId: Int,
         state: MessageHandlingState,
-    ) = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-        state.attemptNumber > 1 &&
+    ) = state.attemptNumber > 1 &&
         state.isMessageDisplayed &&
         !isNotificationActive(notificationManager, notificationId)
 
