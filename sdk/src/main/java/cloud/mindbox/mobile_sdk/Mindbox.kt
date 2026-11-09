@@ -1340,7 +1340,8 @@ public object Mindbox : MindboxLog {
                 trackingIds = changedTrackingIds,
             )
 
-            MindboxEventManager.appInfoUpdate(context, initData)
+            val isAppInfoChanged = pushTokens != savedPushTokens || isNotificationEnabled != savedIsNotificationEnabled
+            MindboxEventManager.appInfoUpdate(context, initData, refreshesKeepalive = isAppInfoChanged)
             changedTrackingIds?.let(trackingIdsResolver::markSent)
 
             if (isNotificationEnabled != savedIsNotificationEnabled) {

@@ -54,12 +54,13 @@ internal object MindboxEventManager {
     fun appInfoUpdate(
         context: Context,
         initData: UpdateData,
+        refreshesKeepalive: Boolean = true,
     ): Unit = loggingRunCatching {
         asyncOperation(
             context,
             Event(eventType = EventType.AppInfoUpdated, body = gson.toJson(initData)),
         )
-        updateLastInfoUpdateTime()
+        if (refreshesKeepalive) updateLastInfoUpdateTime()
     }
 
     fun appKeepalive(

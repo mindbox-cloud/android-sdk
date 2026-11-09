@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.managers
 import android.util.Log
 import androidx.annotation.VisibleForTesting
 import cloud.mindbox.mobile_sdk.SdkValidation
+import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.fromJsonTyped
 import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
@@ -34,7 +35,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-internal class GatewayManager(private val mindboxServiceGenerator: MindboxServiceGenerator) {
+internal class GatewayManager(
+    private val mindboxServiceGenerator: MindboxServiceGenerator,
+    private val trackingIdsResolver: () -> TrackingIdsResolver = { MindboxDI.appModule.trackingIdsResolver },
+) {
 
     companion object {
         private const val TIMEOUT_DELAY = 60000
@@ -170,6 +174,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         }
         transactionId in refusedByTrackingHost -> {
             mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
+            trackingIdsResolver().resetSent()
             withoutTrackingIds()
         }
         else -> this

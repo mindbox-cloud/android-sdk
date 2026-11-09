@@ -126,7 +126,7 @@ class MindboxTest {
 
         Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
 
-        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, updateData(googleIds)) }
+        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, updateData(googleIds), refreshesKeepalive = false) }
         verify(exactly = 1) { trackingIdsResolver.markSent(googleIds) }
     }
 
@@ -159,7 +159,7 @@ class MindboxTest {
 
         Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
 
-        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, updateData(emptyList())) }
+        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, updateData(emptyList()), refreshesKeepalive = false) }
         verify(exactly = 1) { trackingIdsResolver.markSent(emptyList()) }
     }
 
@@ -174,7 +174,8 @@ class MindboxTest {
         verify(exactly = 1) {
             MindboxEventManager.appInfoUpdate(
                 context,
-                match { it.tokens.first().token == "NEW_TOKEN" && it.trackingIds == googleIds }
+                match { it.tokens.first().token == "NEW_TOKEN" && it.trackingIds == googleIds },
+                refreshesKeepalive = true,
             )
         }
     }
@@ -217,7 +218,7 @@ class MindboxTest {
 
         Mindbox.firstInitialization(context, mockk(relaxed = true))
 
-        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, match { it.trackingIds == googleIds }) }
+        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, match { it.trackingIds == googleIds }, refreshesKeepalive = false) }
         verify(exactly = 1) { trackingIdsResolver.markSent(googleIds) }
     }
 

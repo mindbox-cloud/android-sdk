@@ -41,12 +41,13 @@ class GatewayManagerTest {
     private lateinit var gatewayManager: GatewayManager
     private lateinit var mockMindboxServiceGenerator: MindboxServiceGenerator
     private lateinit var mockConfiguration: Configuration
+    private val trackingIdsResolver = mockk<TrackingIdsResolver>(relaxUnitFun = true)
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         mockMindboxServiceGenerator = mockk(relaxed = true)
-        gatewayManager = GatewayManager(mockMindboxServiceGenerator)
+        gatewayManager = GatewayManager(mockMindboxServiceGenerator) { trackingIdsResolver }
         mockConfiguration = Configuration(
             configurationId = 1L,
             previousInstallationId = "prev-install-id",
@@ -142,6 +143,23 @@ class GatewayManagerTest {
         val retry = sentRequest(mockConfiguration, event)!!
 
         assertTrue(retry.fullUrl, retry.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+        verify(exactly = 1) { trackingIdsResolver.resetSent() }
+    }
+
+    @Test
+    fun `the tracking ids stay marked as sent until the retry actually drops them`() {
+        val event = Event(eventType = EventType.AppInfoUpdated, body = idsBody)
+
+        sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
+
+        verify(exactly = 0) { trackingIdsResolver.resetSent() }
+    }
+
+    @Test
+    fun `a tracking ids event sent without a tracking host does not reset the sent mark`() {
+        sentRequest(mockConfiguration.copy(domain = "gost-api.mindbox.ru"), Event(eventType = EventType.AppInfoUpdated, body = idsBody))
+
+        verify(exactly = 0) { trackingIdsResolver.resetSent() }
     }
 
     @Test
