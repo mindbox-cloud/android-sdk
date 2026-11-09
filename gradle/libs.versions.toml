@@ -1,7 +1,7 @@
 [versions]
 compile_sdk = "36"
 build_tools = "35.0.0"
-min_sdk = "21"
+min_sdk = "23"
 target_sdk = "36"
 
 firebase_bom = "33.7.0"

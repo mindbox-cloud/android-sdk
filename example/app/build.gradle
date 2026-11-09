@@ -38,7 +38,7 @@ android {
 
     defaultConfig {
         applicationId "com.mindbox.example"
-        minSdk 21
+        minSdk 23
         targetSdk 36
         versionCode EXAMPLE_VERSION_CODE.toInteger()
         // versionName is taken from SDK_VERSION_NAME in the android-sdk repo root
