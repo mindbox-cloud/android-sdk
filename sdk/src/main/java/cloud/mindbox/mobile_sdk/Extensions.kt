@@ -217,6 +217,8 @@ internal fun verifyThreadExecution(methodName: String, shouldBeMainThread: Boole
     }
 }
 
+internal fun generateRandomUuid(): String = UUID.randomUUID().toString()
+
 internal fun String.maskAfter(visibleLength: Int): String =
     take(visibleLength) + drop(visibleLength).replace(Regex("[^-]"), "*")
 

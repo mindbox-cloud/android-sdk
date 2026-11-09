@@ -93,6 +93,7 @@ public object Mindbox : MindboxLog {
     private val userVisitManager: UserVisitManager by mindboxInject { userVisitManager }
     private val timeProvider by mindboxInject { timeProvider }
     private val trackingIdsResolver by mindboxInject { trackingIdsResolver }
+    private val deviceUuidResolver by mindboxInject { deviceUuidResolver }
 
     internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
 
@@ -100,7 +101,6 @@ public object Mindbox : MindboxLog {
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
-    private val getDeviceIdMutex = Mutex()
     private val inAppMutex = Mutex()
     private val mutexUpdateAppInfo: Mutex = Mutex()
     private val pushServiceMutex = Mutex()
@@ -1252,23 +1252,6 @@ public object Mindbox : MindboxLog {
         }
     }
 
-    private suspend fun getDeviceId(
-        context: Context,
-    ): String {
-        getDeviceIdMutex.withLock {
-            return MindboxPreferences.deviceUuid.ifEmpty {
-                val adidResult = mindboxScope.async {
-                    pushServiceHandlers.firstNotNullOfOrNull { handler ->
-                        handler.getAdsIdentification(context)
-                    }
-                }.await() ?: generateRandomUuid()
-
-                MindboxPreferences.deviceUuid = adidResult
-                adidResult
-            }
-        }
-    }
-
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal suspend fun firstInitialization(
         context: Context,
@@ -1277,7 +1260,7 @@ public object Mindbox : MindboxLog {
         val pushTokens: PushTokenMap = getPushTokens(context, emptyMap())
 
         val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
-        val deviceUuid = getDeviceId(context)
+        val deviceUuid = deviceUuidResolver.resolve(context)
         val instanceId = generateRandomUuid()
 
         logI(
@@ -1487,6 +1470,4 @@ public object Mindbox : MindboxLog {
             )
         }
     }
-
-    internal fun generateRandomUuid(): String = UUID.randomUUID().toString()
 }

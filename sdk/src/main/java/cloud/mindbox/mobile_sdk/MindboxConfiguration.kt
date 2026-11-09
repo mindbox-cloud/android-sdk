@@ -212,6 +212,10 @@ public class MindboxConfiguration private constructor(
          * Turning the collection off erases the set stored for the device in Mindbox on the next
          * initialization.
          *
+         * On the first initialization the SDK normally takes the advertising identifier as the
+         * deviceUuid. With the collection turned off, or with [operationsDomain] set, it generates
+         * a random deviceUuid instead; an already assigned deviceUuid is never changed.
+         *
          * @param disableTrackingIds - flag which turns the collection off. Default value is false,
          * meaning the identifier is collected.
          */
@@ -229,7 +233,8 @@ public class MindboxConfiguration private constructor(
          * and ignored during SDK initialization.
          *
          * While an operations domain is set, the SDK does not collect the device tracking
-         * identifier (see [disableTrackingIds]).
+         * identifier (see [disableTrackingIds]), and on the first initialization it generates a
+         * random deviceUuid instead of taking the advertising identifier.
          */
         public fun operationsDomain(operationsDomain: String): Builder {
             this.operationsDomain = operationsDomain.trim().takeIf { it.isNotBlank() }

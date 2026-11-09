@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.managers.DeviceUuidResolver
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolver
 import cloud.mindbox.mobile_sdk.models.TrackingId
@@ -48,6 +49,9 @@ class MindboxTest {
     }
 
     private val trackingIdsResolver = mockk<TrackingIdsResolver>()
+    private val deviceUuidResolver = mockk<DeviceUuidResolver> {
+        coEvery { resolve(any()) } returns "deviceUUID"
+    }
 
     private val thirdProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "RuStore"
@@ -67,6 +71,7 @@ class MindboxTest {
         every { trackingIdsResolver.resetSent() } just runs
         every { MindboxDI.appModule } returns mockk(relaxed = true) {
             every { trackingIdsResolver } returns this@MindboxTest.trackingIdsResolver
+            every { deviceUuidResolver } returns this@MindboxTest.deviceUuidResolver
         }
         mockkObject(MindboxPreferences)
         mockkObject(PushNotificationManager)
@@ -363,9 +368,6 @@ class MindboxTest {
         mockkStatic(UUID::class)
         try {
             every { UUID.randomUUID() } returns uuid
-            coEvery { firstProvider.getAdsIdentification(context) } returns "adsId"
-            coEvery { secondProvider.getAdsIdentification(context) } returns "adsId"
-            coEvery { thirdProvider.getAdsIdentification(context) } returns "adsId"
             every { MindboxPreferences.pushTokens } returns mapOf()
 
             Mindbox.firstInitialization(context, mockk(relaxed = true))
@@ -393,6 +395,17 @@ class MindboxTest {
         } finally {
             unmockkStatic(UUID::class)
         }
+    }
+
+    @Test
+    fun `firstInitialization takes the deviceUuid from the resolver`() = runTest {
+        coEvery { deviceUuidResolver.resolve(context) } returns "resolved-uuid"
+        every { MindboxPreferences.pushTokens } returns mapOf()
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 1) { MindboxEventManager.appInstalled(context, any(), any()) }
+        coVerify(exactly = 1) { deviceUuidResolver.resolve(context) }
     }
 
     @Test
