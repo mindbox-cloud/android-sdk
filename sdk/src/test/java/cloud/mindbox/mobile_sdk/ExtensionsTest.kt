@@ -414,4 +414,11 @@ internal class ExtensionsTest {
         assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "abc".sha256())
         assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "".sha256())
     }
+
+    @Test
+    fun `maskAfter keeps the prefix and the separators`() {
+        assertEquals("38400000-****-****-****-************", "38400000-8cf0-11bd-b23e-10b96e40000d".maskAfter(8))
+        assertEquals("abc", "abc".maskAfter(8))
+        assertEquals("", "".maskAfter(8))
+    }
 }

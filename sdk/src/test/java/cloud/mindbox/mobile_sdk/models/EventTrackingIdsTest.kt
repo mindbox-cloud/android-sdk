@@ -53,4 +53,25 @@ class EventTrackingIdsTest {
     fun `withoutTrackingIds leaves an unparsable body untouched`() {
         assertEquals("not json", Event(eventType = EventType.AppInfoUpdated, body = "not json").withoutTrackingIds().body)
     }
+
+    @Test
+    fun `withMaskedTrackingIds keeps only the first group of each identifier readable`() {
+        val body = """{"instanceId":"i","ids":[""" +
+            """{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"},""" +
+            """{"type":"huawei","value":"1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"}]}"""
+
+        assertEquals(
+            """{"instanceId":"i","ids":[""" +
+                """{"type":"google","value":"38400000-****-****-****-************"},""" +
+                """{"type":"huawei","value":"1a2b3c4d-****-****-****-************"}]}""",
+            body.withMaskedTrackingIds(),
+        )
+    }
+
+    @Test
+    fun `withMaskedTrackingIds leaves a body without identifiers untouched`() {
+        assertEquals("""{"instanceId":"i"}""", """{"instanceId":"i"}""".withMaskedTrackingIds())
+        assertEquals("""{"ids":[]}""", """{"ids":[]}""".withMaskedTrackingIds())
+        assertEquals("not json", "not json".withMaskedTrackingIds())
+    }
 }

@@ -217,6 +217,9 @@ internal fun verifyThreadExecution(methodName: String, shouldBeMainThread: Boole
     }
 }
 
+internal fun String.maskAfter(visibleLength: Int): String =
+    take(visibleLength) + drop(visibleLength).replace(Regex("[^-]"), "*")
+
 internal fun String.sha256(): String =
     MessageDigest.getInstance("SHA-256")
         .digest(toByteArray())
