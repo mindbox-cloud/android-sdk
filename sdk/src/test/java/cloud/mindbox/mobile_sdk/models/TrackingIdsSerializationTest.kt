@@ -1,15 +1,15 @@
 package cloud.mindbox.mobile_sdk.models
 
 import com.google.gson.Gson
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The field is required by the backend: it must appear in every body, empty set included. */
 class TrackingIdsSerializationTest {
 
     private val gson = Gson()
 
-    private fun updateData(ids: List<TrackingId>) = UpdateData(
+    private fun updateData(ids: List<TrackingId>?) = UpdateData(
         isNotificationsEnabled = true,
         instanceId = "instance",
         version = 1,
@@ -45,16 +45,28 @@ class TrackingIdsSerializationTest {
     }
 
     @Test
-    fun `the field cannot be left out — every body has to carry it`() {
-        // The model has no default for `ids`, so a new construction site cannot forget it and
-        // silently ship a body the backend would read as an erase.
-        val json = gson.toJson(updateData(emptyList()))
+    fun `a null set is left out of the body, so the backend keeps what it has`() {
+        val json = gson.toJson(updateData(null))
 
-        assertTrue(json.contains("\"ids\""))
+        assertFalse(json.contains("\"ids\""))
     }
 
     @Test
-    fun `installed body carries the same field`() {
+    fun `the regular operations carry no set by default`() {
+        val json = gson.toJson(
+            UpdateData(
+                isNotificationsEnabled = true,
+                instanceId = "instance",
+                version = 1,
+                tokens = emptyList(),
+            )
+        )
+
+        assertFalse(json.contains("\"ids\""))
+    }
+
+    @Test
+    fun `the install body carries no set, the ids follow in an ApplicationInfoUpdated`() {
         val json = gson.toJson(
             InitData(
                 installationId = "",
@@ -64,10 +76,9 @@ class TrackingIdsSerializationTest {
                 instanceId = "instance",
                 ianaTimeZone = null,
                 tokens = emptyList(),
-                trackingIds = emptyList(),
             )
         )
 
-        assertTrue(json.contains("\"ids\":[]"))
+        assertFalse(json.contains("\"ids\""))
     }
 }

@@ -188,6 +188,11 @@ public class MindboxConfiguration private constructor(
          * Services, OAID from Huawei Mobile Services), which the SDK otherwise reports to Mindbox
          * alongside the application events.
          *
+         * The identifiers go to a tracking host derived from [domain] by replacing `api` with
+         * `api-tracking` in the first label (`api.mindbox.ru` → `api-tracking.mindbox.ru`,
+         * `api-staging.mindbox.ru` → `api-tracking-staging.mindbox.ru`). A domain without such a
+         * twin has no tracking host, and nothing is collected for it.
+         *
          * Collection is **on by default**; pass true to stop it. This is the only supported way to
          * opt out: stripping `com.google.android.gms.permission.AD_ID` from the manifest is
          * app-wide, cuts off every other SDK that needs the identifier, and does nothing about the
@@ -201,7 +206,11 @@ public class MindboxConfiguration private constructor(
          *
          * Projects that route operations through an anonymizer never collect the identifier,
          * whatever this option says: collection stops as soon as [operationsDomain] is set or the
-         * mobile config supplies an operations domain.
+         * mobile config supplies an operations domain, and the set already stored in Mindbox is
+         * left as it is.
+         *
+         * Turning the collection off erases the set stored for the device in Mindbox on the next
+         * initialization.
          *
          * @param disableTrackingIds - flag which turns the collection off. Default value is false,
          * meaning the identifier is collected.

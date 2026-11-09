@@ -73,7 +73,7 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
             }
         } catch (e: Exception) {
             logW("Unable to read $type from $notificationProvider. Failed with exception $e")
-            TrackingIdResult.Unavailable
+            TrackingIdResult.Failed
         }
     }
 

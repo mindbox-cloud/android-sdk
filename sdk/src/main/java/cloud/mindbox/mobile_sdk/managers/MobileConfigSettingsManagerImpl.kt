@@ -68,7 +68,7 @@ internal class MobileConfigSettingsManagerImpl(
             trackingIds = trackingIds,
         )
         MindboxEventManager.appKeepalive(appContext, updateData)
-        trackingIdsResolver.markSent(trackingIds)
+        if (trackingIds != null) trackingIdsResolver.markSent(trackingIds)
 
         MindboxPreferences.isNotificationEnabled = isNotificationEnabled
 

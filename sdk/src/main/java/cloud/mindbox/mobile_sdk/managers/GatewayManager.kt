@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
@@ -27,6 +28,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.Collections
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -97,15 +99,22 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
     internal fun resolveOperationsDomain(
         configuration: Configuration,
         operationsDomainFromConfig: String?,
-    ): String {
-        operationsDomainFromConfig
-            ?.takeIf { it.isNotBlank() }
-            ?.let { return it }
-        configuration.operationsDomain
-            ?.takeIf { it.isNotBlank() }
-            ?.let { return it }
-        return configuration.domain
-    }
+    ): String = anonymizer(configuration, operationsDomainFromConfig) ?: configuration.domain
+
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun resolveTrackingHost(
+        configuration: Configuration,
+        operationsDomainFromConfig: String? = MindboxPreferences.operationsDomainFromConfig,
+    ): String? =
+        if (anonymizer(configuration, operationsDomainFromConfig) != null) {
+            null
+        } else {
+            SdkValidation.deriveTrackingHost(configuration.domain)
+        }
+
+    private fun anonymizer(configuration: Configuration, operationsDomainFromConfig: String?): String? =
+        operationsDomainFromConfig?.takeIf { it.isNotBlank() }
+            ?: configuration.operationsDomain?.takeIf { it.isNotBlank() }
 
     private fun buildEventUrl(
         configuration: Configuration,
@@ -144,9 +153,26 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             }
         }
 
-        val domain = resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig)
-        val baseUrl = SdkValidation.toBaseUrl(domain)
+        val baseUrl = resolveTrackingHost(configuration)
+            ?.takeIf { event.carriesTrackingIds() }
+            ?.let(SdkValidation::toTrackingBaseUrl)
+            ?: SdkValidation.toBaseUrl(resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig))
         return "$baseUrl${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
+    }
+
+    private val refusedByTrackingHost: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
+
+    private fun Event.forCurrentHosts(configuration: Configuration): Event = when {
+        !carriesTrackingIds() -> this
+        resolveTrackingHost(configuration) == null -> {
+            mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
+            withoutTrackingIds()
+        }
+        transactionId in refusedByTrackingHost -> {
+            mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
+            withoutTrackingIds()
+        }
+        else -> this
     }
 
     fun sendAsyncEvent(
@@ -190,9 +216,10 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         onError: (MindboxError) -> Unit,
     ) {
         try {
-            val requestType: Int = getRequestType(event.eventType)
-            val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
-            val jsonRequest: JSONObject? = convertBodyToJson(event.body)
+            val outgoing = event.forCurrentHosts(configuration)
+            val requestType: Int = getRequestType(outgoing.eventType)
+            val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, outgoing)
+            val jsonRequest: JSONObject? = convertBodyToJson(outgoing.body)
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,
@@ -200,9 +227,11 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                 jsonRequest = jsonRequest,
                 listener = {
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
+                    refusedByTrackingHost.remove(outgoing.transactionId)
                     onSuccess.invoke(it.toString())
                 },
                 errorsListener = { volleyError ->
+                    if (outgoing.carriesTrackingIds()) refusedByTrackingHost.add(outgoing.transactionId)
                     handleError(volleyError, onSuccess, onError)
                 },
             ).apply {
