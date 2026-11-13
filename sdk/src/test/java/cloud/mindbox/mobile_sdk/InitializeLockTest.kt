@@ -5,12 +5,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.AfterClass
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InitializeLockTest {
+
+    companion object {
+        @JvmStatic
+        @AfterClass
+        fun resetInitializeLock() {
+            InitializeLock.State.values().forEach(InitializeLock::reset)
+        }
+    }
 
     @Before
     fun setUp() {
