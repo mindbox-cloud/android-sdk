@@ -6,8 +6,12 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.managers.DeliveryPauseManager
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolver
+import cloud.mindbox.mobile_sdk.models.AsyncEventSendResult
+import cloud.mindbox.mobile_sdk.models.EventType
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
@@ -24,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.text.SimpleDateFormat
@@ -366,6 +371,29 @@ class MindboxTest {
                 repository.startListening()
                 inAppManager.requestConfig()
             }
+        } finally {
+            setMindboxScope(originalScope)
+            unmockkObject(DbManager, BackgroundWorkManager)
+        }
+    }
+
+    @Test
+    fun `a soft re-init lifts delivery pauses`() {
+        val deliveryPauseManager = DeliveryPauseManager { Milliseconds(0L) }
+        deliveryPauseManager.register(EventType.TrackVisit, AsyncEventSendResult.THROTTLED)
+        val appModule = MindboxDI.appModule
+        every { appModule.deliveryPauseManager } returns deliveryPauseManager
+        every { MindboxPreferences.resetAppInfoUpdated() } just runs
+        mockkObject(DbManager, BackgroundWorkManager)
+        val originalScope = Mindbox.mindboxScope
+        try {
+            every { DbManager.removeAllEventsFromQueue() } just runs
+            every { BackgroundWorkManager.cancelAllWork(any()) } returns mockk()
+            setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
+
+            Mindbox.softReinitialization(context)
+
+            assertNull(deliveryPauseManager.remainingPause(EventType.TrackVisit))
         } finally {
             setMindboxScope(originalScope)
             unmockkObject(DbManager, BackgroundWorkManager)
