@@ -4,6 +4,8 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -21,7 +23,7 @@ internal object DbManager {
 
     private const val MAX_EVENT_LIST_SIZE = 10000
     private const val HALF_YEAR_IN_MILLISECONDS: Long = 15552000000L
-    private const val DELAY_FOR_SEND_IN_BACKGROUND = 120_000
+    private val DELAY_FOR_SEND_IN_BACKGROUND = Milliseconds(120_000L)
 
     @Volatile
     private lateinit var mindboxDb: MindboxDatabase
@@ -60,8 +62,12 @@ internal object DbManager {
         resultEvents
     }
 
-    fun getFilteredEventsForBackgroundSend() = System.currentTimeMillis().let { time ->
-        getFilteredEvents().filter { time - it.enqueueTimestamp > DELAY_FOR_SEND_IN_BACKGROUND }
+    fun getFilteredEventsForBackgroundSend(): List<Event> {
+        val events = getFilteredEvents()
+        val now = System.currentTimeMillis().toTimestamp()
+        return events.filterNot { event ->
+            now.ms - event.enqueueTimestamp in 0..DELAY_FOR_SEND_IN_BACKGROUND.interval
+        }
     }
 
     fun removeEventFromQueue(event: Event) = LoggingExceptionHandler.runCatching {

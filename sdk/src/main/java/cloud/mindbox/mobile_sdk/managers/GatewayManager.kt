@@ -8,6 +8,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
 import cloud.mindbox.mobile_sdk.models.operation.request.LogResponseDto
@@ -38,6 +39,8 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         private const val TIMEOUT_DELAY = 60000
         private const val MAX_RETRIES = 0
         private const val MONITORING_DELAY = 5000
+        private const val HTTP_TOO_MANY_REQUESTS = 429
+        private val HTTP_SERVER_ERRORS = 500..599
 
         private const val OPERATION_MOBILE_SDK_LOGS = "MobileSdk.Logs"
         private const val OPERATION_CHECK_PRODUCT_SEGMENTS = "Tracker.CheckProductSegments"
@@ -154,14 +157,15 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         deviceUuid: String,
         event: Event,
         shouldCountOffset: Boolean,
-        isSentListener: (Boolean) -> Unit,
-    ) = sendEvent(
+        onResult: (AsyncEventSendResult) -> Unit,
+    ) = enqueueEventRequest(
         configuration = configuration,
         deviceUuid = deviceUuid,
         event = event,
         shouldCountOffset = shouldCountOffset,
-        onSuccess = { isSentListener.invoke(true) },
-        onError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) },
+        onSuccess = { onResult(AsyncEventSendResult.DELIVERED) },
+        onFailure = { onResult(AsyncEventSendResult.RETRY_LATER) },
+        onVolleyError = { volleyError -> handleAsyncError(volleyError, onResult) },
     )
 
     fun <T : OperationResponseBaseInternal> sendEvent(
@@ -188,6 +192,24 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         shouldCountOffset: Boolean,
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit,
+    ) = enqueueEventRequest(
+        configuration = configuration,
+        deviceUuid = deviceUuid,
+        event = event,
+        shouldCountOffset = shouldCountOffset,
+        onSuccess = onSuccess,
+        onFailure = onError,
+        onVolleyError = { volleyError -> handleError(volleyError, onSuccess, onError) },
+    )
+
+    private fun enqueueEventRequest(
+        configuration: Configuration,
+        deviceUuid: String,
+        event: Event,
+        shouldCountOffset: Boolean,
+        onSuccess: (String) -> Unit,
+        onFailure: (MindboxError) -> Unit,
+        onVolleyError: (VolleyError) -> Unit,
     ) {
         try {
             val requestType: Int = getRequestType(event.eventType)
@@ -202,9 +224,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
                     onSuccess.invoke(it.toString())
                 },
-                errorsListener = { volleyError ->
-                    handleError(volleyError, onSuccess, onError)
-                },
+                errorsListener = { volleyError -> onVolleyError(volleyError) },
             ).apply {
                 setShouldCache(false)
                 retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
@@ -213,7 +233,47 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
             mindboxServiceGenerator.addToRequestQueue(request)
         } catch (e: Exception) {
             MindboxLoggerImpl.e(this, "Sending event was failure with exception", e)
-            onError.invoke(MindboxError.Unknown(e))
+            onFailure.invoke(MindboxError.Unknown(e))
+        }
+    }
+
+    private fun handleAsyncError(
+        volleyError: VolleyError,
+        onResult: (AsyncEventSendResult) -> Unit,
+    ) {
+        when (val statusCode = volleyError.networkResponse?.statusCode) {
+            null -> {
+                mindboxLogI("[GD] decision: no response → keep")
+                onResult(AsyncEventSendResult.RETRY_LATER)
+            }
+
+            HTTP_TOO_MANY_REQUESTS -> {
+                mindboxLogI("[GD] decision: HTTP $statusCode → keep")
+                onResult(AsyncEventSendResult.THROTTLED)
+            }
+
+            in HTTP_SERVER_ERRORS -> {
+                mindboxLogI("[GD] decision: HTTP $statusCode → keep")
+                onResult(AsyncEventSendResult.RETRY_LATER)
+            }
+
+            else -> handleError(
+                volleyError = volleyError,
+                onSuccess = {
+                    mindboxLogI("[GD] decision: HTTP $statusCode → delete")
+                    onResult(AsyncEventSendResult.DELIVERED)
+                },
+                onError = { error ->
+                    val result = if (isAsyncSent(error.statusCode)) {
+                        AsyncEventSendResult.DISCARDED
+                    } else {
+                        AsyncEventSendResult.RETRY_LATER
+                    }
+                    val decision = if (result.isRemovedFromQueue) "delete" else "keep"
+                    mindboxLogI("[GD] decision: HTTP $statusCode → $decision")
+                    onResult(result)
+                },
+            )
         }
     }
 
@@ -233,7 +293,7 @@ internal class GatewayManager(private val mindboxServiceGenerator: MindboxServic
         timeMls: Long,
         shouldCountOffset: Boolean,
     ): String = if (shouldCountOffset) {
-        (System.currentTimeMillis() - timeMls).toString()
+        (System.currentTimeMillis() - timeMls).coerceAtLeast(0L).toString()
     } else {
         "0"
     }
