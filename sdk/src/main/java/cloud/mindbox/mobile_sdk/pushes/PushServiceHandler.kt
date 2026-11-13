@@ -1,13 +1,13 @@
 package cloud.mindbox.mobile_sdk.pushes
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.generateRandomUuid
 import cloud.mindbox.mobile_sdk.isUuid
 import cloud.mindbox.mobile_sdk.logger.MindboxLog
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatchingSuspending
-import java.util.UUID
 
 /**
 * A class for internal sdk work only. Do not extend or use it
@@ -73,7 +73,7 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
             }
         } catch (e: Exception) {
             logW("Unable to read $type from $notificationProvider. Failed with exception $e")
-            TrackingIdResult.Unavailable
+            TrackingIdResult.Failed
         }
     }
 
@@ -113,8 +113,6 @@ public abstract class PushServiceHandler : PushConverter, MindboxLog {
         )
         generateRandomUuid()
     }
-
-    private fun generateRandomUuid() = UUID.randomUUID().toString()
 }
 
 // Both checks are needed: the format one rejects the short `0000-0000` some devices answer

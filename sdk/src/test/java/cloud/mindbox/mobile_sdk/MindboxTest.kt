@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
 import cloud.mindbox.mobile_sdk.managers.DbManager
+import cloud.mindbox.mobile_sdk.managers.DeviceUuidResolver
 import cloud.mindbox.mobile_sdk.managers.MindboxEventManager
 import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolver
 import cloud.mindbox.mobile_sdk.models.TrackingId
@@ -23,6 +24,7 @@ import io.mockk.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -47,20 +49,29 @@ class MindboxTest {
     }
 
     private val trackingIdsResolver = mockk<TrackingIdsResolver>()
+    private val deviceUuidResolver = mockk<DeviceUuidResolver> {
+        coEvery { resolve(any()) } returns "deviceUUID"
+    }
 
     private val thirdProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "RuStore"
         coEvery { registerToken(any(), any()) } returns "tokenRuStore"
     }
 
+    private lateinit var originalScope: CoroutineScope
+
     @Before
     fun setUp() {
+        originalScope = Mindbox.mindboxScope
+        setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
         mockkObject(MindboxDI)
-        coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+        coEvery { trackingIdsResolver.resolve(any()) } returns null
         every { trackingIdsResolver.hasChanged(any()) } returns false
         every { trackingIdsResolver.markSent(any()) } just runs
+        every { trackingIdsResolver.resetSent() } just runs
         every { MindboxDI.appModule } returns mockk(relaxed = true) {
             every { trackingIdsResolver } returns this@MindboxTest.trackingIdsResolver
+            every { deviceUuidResolver } returns this@MindboxTest.deviceUuidResolver
         }
         mockkObject(MindboxPreferences)
         mockkObject(PushNotificationManager)
@@ -81,6 +92,12 @@ class MindboxTest {
         Mindbox.pushServiceHandlers = listOf(firstProvider, secondProvider, thirdProvider)
     }
 
+    @After
+    fun tearDown() {
+        setMindboxScope(originalScope)
+        unmockkAll()
+    }
+
     @Test
     fun `updateAppInfo not call appInfoUpdate when no token`() = runTest {
         Mindbox.updateAppInfo(context)
@@ -88,27 +105,173 @@ class MindboxTest {
         verify(exactly = 0) { MindboxEventManager.appInfoUpdate(context, any()) }
     }
 
+    private val googleIds = listOf(TrackingId("google", "38400000-8cf0-11bd-b23e-10b96e40000d"))
+
+    private fun updateData(trackingIds: List<TrackingId>?) = UpdateData(
+        isNotificationsEnabled = true,
+        instanceId = "instanceId",
+        version = 1,
+        tokens = listOf(
+            TokenData(token = "tokenFCM", notificationProvider = "FCM"),
+            TokenData(token = "tokenHMS", notificationProvider = "HMS"),
+            TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
+        ),
+        trackingIds = trackingIds,
+    )
+
     @Test
-    fun `updateAppInfo calls appInfoUpdate when only the tracking ids changed`() = runTest {
-        val trackingIds = listOf(TrackingId("google", "38400000-8cf0-11bd-b23e-10b96e40000d"))
-        coEvery { trackingIdsResolver.resolve(any()) } returns trackingIds
-        every { trackingIdsResolver.hasChanged(trackingIds) } returns true
+    fun `updateAppInfo sends changed tracking ids in a tracking event of their own`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns true
 
         Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
 
-        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, any()) }
-        verify(exactly = 1) { trackingIdsResolver.markSent(trackingIds) }
+        verify(exactly = 1) { MindboxEventManager.appTrackingIdsUpdate(context, updateData(googleIds)) }
+        verify(exactly = 0) { MindboxEventManager.appInfoUpdate(any(), any(), any()) }
+        verify(exactly = 1) { trackingIdsResolver.markSent(googleIds) }
     }
 
     @Test
-    fun `updateAppInfo does not call appInfoUpdate when the tracking ids are unchanged`() = runTest {
-        val trackingIds = listOf(TrackingId("google", "38400000-8cf0-11bd-b23e-10b96e40000d"))
-        coEvery { trackingIdsResolver.resolve(any()) } returns trackingIds
-        every { trackingIdsResolver.hasChanged(trackingIds) } returns false
+    fun `updateAppInfo sends nothing when only unchanged tracking ids were read`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns false
 
         Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
 
         verify(exactly = 0) { MindboxEventManager.appInfoUpdate(context, any()) }
+        verify(exactly = 0) { MindboxEventManager.appTrackingIdsUpdate(any(), any()) }
+        verify(exactly = 0) { trackingIdsResolver.markSent(any()) }
+    }
+
+    @Test
+    fun `updateAppInfo leaves the ids field out when there is no tracking host`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns null
+        coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "NEW_TOKEN"))
+
+        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, match { it.trackingIds == null }) }
+        verify(exactly = 0) { MindboxEventManager.appTrackingIdsUpdate(any(), any()) }
+        verify(exactly = 0) { trackingIdsResolver.markSent(any()) }
+    }
+
+    @Test
+    fun `updateAppInfo erases the tracking ids with an empty array in the regular operation`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+        every { trackingIdsResolver.hasChanged(emptyList()) } returns true
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
+
+        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, updateData(emptyList()), refreshesKeepalive = false) }
+        verify(exactly = 0) { MindboxEventManager.appTrackingIdsUpdate(any(), any()) }
+        verify(exactly = 1) { trackingIdsResolver.markSent(emptyList()) }
+    }
+
+    @Test
+    fun `updateAppInfo erases the tracking ids together with a token change in one operation`() = runTest {
+        coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
+        coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+        every { trackingIdsResolver.hasChanged(emptyList()) } returns true
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "NEW_TOKEN"))
+
+        verify(exactly = 1) {
+            MindboxEventManager.appInfoUpdate(
+                context,
+                match { it.tokens.first().token == "NEW_TOKEN" && it.trackingIds == emptyList<TrackingId>() },
+                refreshesKeepalive = true,
+            )
+        }
+    }
+
+    @Test
+    fun `updateAppInfo sends a token change and new tracking ids as two operations`() = runTest {
+        coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns true
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "NEW_TOKEN"))
+
+        verify(exactly = 1) {
+            MindboxEventManager.appInfoUpdate(
+                context,
+                match { it.tokens.first().token == "NEW_TOKEN" && it.trackingIds == null },
+                refreshesKeepalive = true,
+            )
+        }
+        verify(exactly = 1) {
+            MindboxEventManager.appTrackingIdsUpdate(
+                context,
+                match { it.tokens.first().token == "NEW_TOKEN" && it.trackingIds == googleIds },
+            )
+        }
+    }
+
+    @Test
+    fun `updateAppInfo sends a token change without the unchanged tracking ids`() = runTest {
+        coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns false
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "NEW_TOKEN"))
+
+        verify(exactly = 1) {
+            MindboxEventManager.appInfoUpdate(
+                context,
+                match { it.tokens.first().token == "NEW_TOKEN" && it.trackingIds == null }
+            )
+        }
+        verify(exactly = 0) { trackingIdsResolver.markSent(any()) }
+    }
+
+    @Test
+    fun `firstInitialization sends the install before it reads the tracking ids`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns true
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        coVerifyOrder {
+            MindboxEventManager.appInstalled(context, any(), any())
+            trackingIdsResolver.resetSent()
+            trackingIdsResolver.resolve(any())
+        }
+    }
+
+    @Test
+    fun `firstInitialization sends the tracking ids in a follow-up tracking event`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns true
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 1) { MindboxEventManager.appTrackingIdsUpdate(context, match { it.trackingIds == googleIds }) }
+        verify(exactly = 0) { MindboxEventManager.appInfoUpdate(any(), any(), any()) }
+        verify(exactly = 1) { trackingIdsResolver.markSent(googleIds) }
+    }
+
+    @Test
+    fun `firstInitialization sends no ApplicationInfoUpdated when there are no tracking ids`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+        every { trackingIdsResolver.hasChanged(emptyList()) } returns false
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 1) { MindboxEventManager.appInstalled(context, any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appInfoUpdate(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appTrackingIdsUpdate(any(), any()) }
+        verify(exactly = 0) { trackingIdsResolver.markSent(any()) }
+    }
+
+    @Test
+    fun `firstInitialization sends no ApplicationInfoUpdated when the tracking ids could not be read`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns null
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 1) { MindboxEventManager.appInstalled(context, any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appInfoUpdate(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.appTrackingIdsUpdate(any(), any()) }
         verify(exactly = 0) { trackingIdsResolver.markSent(any()) }
     }
 
@@ -148,7 +311,6 @@ class MindboxTest {
                         TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
-                    trackingIds = emptyList(),
                 )
             )
         }
@@ -172,7 +334,6 @@ class MindboxTest {
                         TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
-                    trackingIds = emptyList(),
                 )
             )
         }
@@ -205,7 +366,6 @@ class MindboxTest {
                         TokenData(token = "NEW_TOKEN", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
-                    trackingIds = emptyList(),
                 )
             )
         }
@@ -228,7 +388,6 @@ class MindboxTest {
                         TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                         TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                     ),
-                    trackingIds = emptyList(),
                 )
             )
         }
@@ -240,9 +399,6 @@ class MindboxTest {
         mockkStatic(UUID::class)
         try {
             every { UUID.randomUUID() } returns uuid
-            coEvery { firstProvider.getAdsIdentification(context) } returns "adsId"
-            coEvery { secondProvider.getAdsIdentification(context) } returns "adsId"
-            coEvery { thirdProvider.getAdsIdentification(context) } returns "adsId"
             every { MindboxPreferences.pushTokens } returns mapOf()
 
             Mindbox.firstInitialization(context, mockk(relaxed = true))
@@ -263,7 +419,6 @@ class MindboxTest {
                             TokenData(token = "tokenHMS", notificationProvider = "HMS"),
                             TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
                         ),
-                        trackingIds = emptyList(),
                     ),
                     any()
                 )
@@ -271,6 +426,17 @@ class MindboxTest {
         } finally {
             unmockkStatic(UUID::class)
         }
+    }
+
+    @Test
+    fun `firstInitialization takes the deviceUuid from the resolver`() = runTest {
+        coEvery { deviceUuidResolver.resolve(context) } returns "resolved-uuid"
+        every { MindboxPreferences.pushTokens } returns mapOf()
+
+        Mindbox.firstInitialization(context, mockk(relaxed = true))
+
+        verify(exactly = 1) { MindboxEventManager.appInstalled(context, any(), any()) }
+        coVerify(exactly = 1) { deviceUuidResolver.resolve(context) }
     }
 
     @Test

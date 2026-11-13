@@ -6,6 +6,7 @@ import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.sha256
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -20,6 +21,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -28,10 +30,10 @@ private const val GOOGLE = "google"
 private const val HUAWEI = "huawei"
 private const val GOOGLE_VALUE = "38400000-8cf0-11bd-b23e-10b96e40000d"
 private const val HUAWEI_VALUE = "1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"
-private const val STORED_BOTH =
-    """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"},{"type":"huawei","value":"1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"}]"""
-private const val STORED_GOOGLE =
+private const val LEGACY_STORED_GOOGLE =
     """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"}]"""
+private val STORED_GOOGLE = LEGACY_STORED_GOOGLE.sha256()
+private val STORED_EMPTY = "[]".sha256()
 private const val ANONYMIZER_DOMAIN = "anonymizer.example.com"
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -61,11 +63,14 @@ class TrackingIdsResolverImplTest {
         unmockkObject(DbManager)
     }
 
-    private fun storedConfiguration(operationsDomain: String?) = Configuration(
+    private fun storedConfiguration(
+        operationsDomain: String?,
+        domain: String = "api.mindbox.ru",
+    ) = Configuration(
         previousInstallationId = "",
         previousDeviceUUID = "",
         endpointId = "test-endpoint",
-        domain = "api.mindbox.ru",
+        domain = domain,
         packageName = "com.test.app",
         versionName = "1.0.0",
         versionCode = "1",
@@ -74,23 +79,17 @@ class TrackingIdsResolverImplTest {
         operationsDomain = operationsDomain,
     )
 
-    private fun resolver(
-        vararg results: TrackingIdResult,
-        configured: Set<String>? = null,
-    ) = TrackingIdsResolverImpl(
-        pushServiceHandlers = { results.map(::handlerReturning) },
-        configuredTrackingIdTypes = { configured },
+    private fun resolver(vararg results: TrackingIdResult) = resolver(results.map(::handlerReturning))
+
+    private fun resolver(handlers: List<PushServiceHandler>) = TrackingIdsResolverImpl(
+        pushServiceHandlers = { handlers },
         scope = { CoroutineScope(UnconfinedTestDispatcher()) },
         ioDispatcher = UnconfinedTestDispatcher(),
     )
 
     /** Reads on a real dispatcher so a blocking provider actually blocks. */
-    private fun resolverWithHangingProvider(
-        vararg fast: TrackingIdResult,
-        configured: Set<String>? = null,
-    ) = TrackingIdsResolverImpl(
+    private fun resolverWithHangingProvider(vararg fast: TrackingIdResult) = TrackingIdsResolverImpl(
         pushServiceHandlers = { fast.map(::handlerReturning) + handlerThatHangs() },
-        configuredTrackingIdTypes = { configured },
         scope = { CoroutineScope(Dispatchers.IO) },
         ioDispatcher = Dispatchers.IO,
         timeoutMillis = 100L,
@@ -117,43 +116,11 @@ class TrackingIdsResolverImplTest {
     private val googleId = TrackingId(GOOGLE, GOOGLE_VALUE)
     private val huaweiId = TrackingId(HUAWEI, HUAWEI_VALUE)
 
+    // region identifiers read with certainty
+
     @Test
     fun `available identifier is returned`() = runTest {
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
-
-        assertEquals(listOf(googleId), payload)
-    }
-
-    @Test
-    fun `resolve alone persists nothing`() = runTest {
-        resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
-
-        assertEquals("", lastSent)
-    }
-
-    @Test
-    fun `markSent records what the operation carried`() = runTest {
-        val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
-
-        resolver.markSent(resolver.resolve(context))
-
-        assertEquals(STORED_GOOGLE, lastSent)
-    }
-
-    @Test
-    fun `an outage repeats the last reported set`() = runTest {
-        lastSent = STORED_GOOGLE
-
-        val payload = resolver(TrackingIdResult.Unavailable).resolve(context)
-
-        assertEquals(listOf(googleId), payload)
-    }
-
-    @Test
-    fun `an outage on a device that reported nothing stays empty`() = runTest {
-        val payload = resolver(TrackingIdResult.Unavailable).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
+        assertEquals(listOf(googleId), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
     @Test
@@ -168,7 +135,71 @@ class TrackingIdsResolverImplTest {
     }
 
     @Test
-    fun `one reachable provider outweighs another one being down`() = runTest {
+    fun `resolve alone persists nothing`() = runTest {
+        resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+
+        assertEquals("", lastSent)
+    }
+
+    @Test
+    fun `markSent records what the operation carried`() = runTest {
+        val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
+
+        resolver.markSent(resolver.resolve(context)!!)
+
+        assertEquals(STORED_GOOGLE, lastSent)
+    }
+
+    @Test
+    fun `markSent keeps a digest only, never the identifier itself`() = runTest {
+        val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
+
+        resolver.markSent(resolver.resolve(context)!!)
+
+        assertFalse(lastSent.contains(GOOGLE_VALUE))
+        assertFalse(lastSent.contains(GOOGLE))
+    }
+
+    @Test
+    fun `a fresh value is reported even when the same type was sent before`() = runTest {
+        lastSent = STORED_GOOGLE
+        val renewed = "11111111-1111-1111-1111-111111111111"
+
+        assertEquals(listOf(TrackingId(GOOGLE, renewed)), resolver(success(GOOGLE, renewed)).resolve(context))
+    }
+
+    // endregion
+
+    // region no identifier: an empty set erases what the backend has
+
+    @Test
+    fun `opt-out reports an empty set`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.Denied(GOOGLE)).resolve(context))
+    }
+
+    @Test
+    fun `missing services report an empty set`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.Unavailable).resolve(context))
+    }
+
+    @Test
+    fun `a RuStore-only device reports an empty set`() = runTest {
+        assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.NotSupported).resolve(context))
+    }
+
+    @Test
+    fun `no providers at all report an empty set`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        assertEquals(emptyList<TrackingId>(), resolver().resolve(context))
+    }
+
+    @Test
+    fun `a provider that answered outweighs one without services`() = runTest {
         val payload = resolver(
             TrackingIdResult.Unavailable,
             success(HUAWEI, HUAWEI_VALUE),
@@ -178,19 +209,11 @@ class TrackingIdsResolverImplTest {
     }
 
     @Test
-    fun `opt-out erases a value that was sent before`() = runTest {
+    fun `a provider dropped from the integration is simply absent from the set`() = runTest {
         lastSent = STORED_GOOGLE
 
-        val payload = resolver(TrackingIdResult.Denied(GOOGLE)).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
-    }
-
-    @Test
-    fun `opt-out reports an empty set even when nothing was ever sent`() = runTest {
-        val payload = resolver(TrackingIdResult.Denied(GOOGLE)).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
+        // Firebase was dropped, the new build passes HMS only: the backend replaces the whole set.
+        assertEquals(listOf(huaweiId), resolver(success(HUAWEI, HUAWEI_VALUE)).resolve(context))
     }
 
     @Test
@@ -198,7 +221,7 @@ class TrackingIdsResolverImplTest {
         lastSent = STORED_GOOGLE
         val resolver = resolver(TrackingIdResult.Denied(GOOGLE))
 
-        val erase = resolver.resolve(context)
+        val erase = resolver.resolve(context)!!
         resolver.markSent(erase)
 
         assertEquals(emptyList<TrackingId>(), erase)
@@ -207,281 +230,183 @@ class TrackingIdsResolverImplTest {
 
     @Test
     fun `granting the permission again restores the value`() = runTest {
-        lastSent = "[]"
+        lastSent = STORED_EMPTY
 
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+        assertEquals(listOf(googleId), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
+    }
 
-        assertEquals(listOf(googleId), payload)
+    // endregion
+
+    // region not sure: null leaves the stored set alone
+
+    @Test
+    fun `a failed read is null`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        assertNull(resolver(TrackingIdResult.Failed).resolve(context))
     }
 
     @Test
-    fun `a RuStore-only device reports an empty set`() = runTest {
-        val payload = resolver(TrackingIdResult.NotSupported).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
+    fun `a failed read is null even when nothing was ever sent`() = runTest {
+        assertNull(resolver(TrackingIdResult.Failed).resolve(context))
     }
+
+    @Test
+    fun `a hanging provider is null`() = runBlocking {
+        assertNull(resolverWithHangingProvider().resolve(context))
+    }
+
+    @Test
+    fun `a fresh value that came in time does not outweigh a hanging provider`() = runBlocking {
+        assertNull(resolverWithHangingProvider(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
+    }
+
+    @Test
+    fun `a fresh value next to a failed read is null`() = runTest {
+        assertNull(resolver(success(GOOGLE, GOOGLE_VALUE), TrackingIdResult.Failed).resolve(context))
+    }
+
+    @Test
+    fun `a failed read persists nothing`() = runTest {
+        lastSent = STORED_GOOGLE
+
+        resolver(TrackingIdResult.Failed).resolve(context)
+
+        assertEquals(STORED_GOOGLE, lastSent)
+    }
+
+    @Test
+    fun `a failed read does not produce value-empty-value churn`() = runTest {
+        val available = resolver(success(GOOGLE, GOOGLE_VALUE))
+        val failed = resolver(TrackingIdResult.Failed)
+
+        available.markSent(available.resolve(context)!!)
+        val duringOutage = listOf(failed.resolve(context), failed.resolve(context))
+        val afterRecovery = available.resolve(context)!!
+
+        assertEquals(listOf(null, null), duringOutage)
+        assertEquals(listOf(googleId), afterRecovery)
+        assertFalse(available.hasChanged(afterRecovery))
+    }
+
+    // endregion
+
+    // region switches
 
     @Test
     fun `nothing is collected when the integrator turned tracking ids off`() = runTest {
-        shouldCollect = false
-
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
-    }
-
-    @Test
-    fun `turning the option off erases what was already sent`() = runTest {
         lastSent = STORED_GOOGLE
         shouldCollect = false
 
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
+        assertEquals(emptyList<TrackingId>(), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
     @Test
-    fun `nothing is collected when operationsDomain is set in init`() = runTest {
+    fun `nothing is collected and nothing is erased when operationsDomain is set in init`() = runTest {
         configuration = storedConfiguration(operationsDomain = ANONYMIZER_DOMAIN)
 
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
+        assertNull(resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
     @Test
-    fun `nothing is collected when operationsDomain comes from the mobile config`() = runTest {
+    fun `nothing is collected and nothing is erased when operationsDomain comes from the mobile config`() = runTest {
         operationsDomainFromConfig = ANONYMIZER_DOMAIN
 
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+        assertNull(resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
+    }
 
-        assertEquals(emptyList<TrackingId>(), payload)
+    @Test
+    fun `the opt-out erases even behind an anonymizer`() = runTest {
+        shouldCollect = false
+        operationsDomainFromConfig = ANONYMIZER_DOMAIN
+
+        assertEquals(emptyList<TrackingId>(), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
     @Test
     fun `providers are not even read when operationsDomain is set`() = runTest {
         operationsDomainFromConfig = ANONYMIZER_DOMAIN
         val handler = handlerReturning(success(GOOGLE, GOOGLE_VALUE))
-        val resolver = TrackingIdsResolverImpl(
-            pushServiceHandlers = { listOf(handler) },
-            scope = { CoroutineScope(UnconfinedTestDispatcher()) },
-            ioDispatcher = UnconfinedTestDispatcher(),
-        )
 
-        resolver.resolve(context)
+        resolver(listOf(handler)).resolve(context)
 
         verify(exactly = 0) { handler.tryGetTrackingId(any()) }
     }
 
     @Test
-    fun `operationsDomain does not repeat the last reported set`() = runTest {
-        lastSent = STORED_BOTH
-        configuration = storedConfiguration(operationsDomain = ANONYMIZER_DOMAIN)
+    fun `a switch is an erase, not a doubt, even when the read would have failed`() = runTest {
+        shouldCollect = false
 
-        val payload = resolver(TrackingIdResult.Unavailable).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
+        assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.Failed).resolve(context))
     }
 
     @Test
-    fun `operationsDomain added to the mobile config stops the collection`() = runTest {
+    fun `operationsDomain added to the mobile config stops the collection and keeps the set`() = runTest {
         val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
-        resolver.markSent(resolver.resolve(context))
+        resolver.markSent(resolver.resolve(context)!!)
 
         operationsDomainFromConfig = ANONYMIZER_DOMAIN
-        val payload = resolver.resolve(context)
 
-        assertEquals(emptyList<TrackingId>(), payload)
-        assertTrue(resolver.hasChanged(payload))
+        assertNull(resolver.resolve(context))
+        assertEquals(STORED_GOOGLE, lastSent)
     }
 
     @Test
     fun `operationsDomain removed from the mobile config resumes the collection`() = runTest {
         val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
         operationsDomainFromConfig = ANONYMIZER_DOMAIN
-        resolver.markSent(resolver.resolve(context))
+        assertNull(resolver.resolve(context))
 
         operationsDomainFromConfig = null
-        val payload = resolver.resolve(context)
 
-        assertEquals(listOf(googleId), payload)
+        assertEquals(listOf(googleId), resolver.resolve(context))
     }
 
     @Test
     fun `a blank operationsDomain in the stored configuration does not stop the collection`() = runTest {
         configuration = storedConfiguration(operationsDomain = "  ")
 
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
-
-        assertEquals(listOf(googleId), payload)
+        assertEquals(listOf(googleId), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
     @Test
     fun `a missing stored configuration does not stop the collection`() = runTest {
         configuration = null
 
-        val payload = resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
-
-        assertEquals(listOf(googleId), payload)
+        assertEquals(listOf(googleId), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
+    // endregion
+
+    // region tracking host
+
     @Test
-    fun `an outage is never a change, so it triggers no operation of its own`() = runTest {
+    fun `no tracking host keeps the set and the providers are not read`() = runTest {
         lastSent = STORED_GOOGLE
-        val outage = resolver(TrackingIdResult.Unavailable)
+        configuration = storedConfiguration(operationsDomain = null, domain = "gost-api.mindbox.ru")
+        val handler = handlerReturning(success(GOOGLE, GOOGLE_VALUE))
 
-        assertFalse(outage.hasChanged(outage.resolve(context)))
+        assertNull(resolver(listOf(handler)).resolve(context))
+        verify(exactly = 0) { handler.tryGetTrackingId(any()) }
     }
 
     @Test
-    fun `a hanging provider does not erase the stored value`() = runTest {
-        lastSent = STORED_GOOGLE
+    fun `a domain with a twin collects`() = runTest {
+        configuration = storedConfiguration(operationsDomain = null, domain = "https://api-staging.mindbox.ru/")
 
-        val payload = resolverWithHangingProvider().resolve(context)
-
-        // A read we could not finish says nothing about the user's choice.
-        assertEquals(listOf(googleId), payload)
+        assertEquals(listOf(googleId), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
     @Test
-    fun `a hanging provider is not an opt-out for a device that reported nothing`() = runTest {
-        val payload = resolverWithHangingProvider().resolve(context)
+    fun `a missing stored configuration does not deny the tracking host`() = runTest {
+        configuration = null
 
-        assertEquals(emptyList<TrackingId>(), payload)
+        assertEquals(listOf(googleId), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
-    @Test
-    fun `a denial that came in time is applied while the hanging provider keeps its value`() = runBlocking {
-        lastSent = STORED_BOTH
-        val resolver = resolverWithHangingProvider(TrackingIdResult.Denied(GOOGLE))
+    // endregion
 
-        val payload = resolver.resolve(context)
-
-        assertEquals(listOf(huaweiId), payload)
-        assertTrue(resolver.hasChanged(payload))
-    }
-
-    @Test
-    fun `a fresh value that came in time is applied while the hanging provider keeps its value`() = runBlocking {
-        lastSent = STORED_BOTH
-        val renewed = "7f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b"
-
-        val payload = resolverWithHangingProvider(success(GOOGLE, renewed)).resolve(context)
-
-        assertEquals(listOf(TrackingId(GOOGLE, renewed), huaweiId), payload)
-    }
-
-    @Test
-    fun `a denied provider is erased while an unreadable one keeps its value`() = runTest {
-        lastSent = STORED_BOTH
-
-        val payload = resolver(
-            TrackingIdResult.Denied(GOOGLE),
-            TrackingIdResult.Unavailable,
-        ).resolve(context)
-
-        assertEquals(listOf(huaweiId), payload)
-    }
-
-    @Test
-    fun `no providers at all keeps the stored value`() = runTest {
-        lastSent = STORED_GOOGLE
-
-        val payload = resolver().resolve(context)
-
-        assertEquals(listOf(googleId), payload)
-    }
-
-    @Test
-    fun `a provider removed from the integration is erased`() = runTest {
-        lastSent = STORED_GOOGLE
-
-        // Firebase was dropped, the new build passes RuStore only.
-        val payload = resolver(TrackingIdResult.NotSupported, configured = emptySet()).resolve(context)
-
-        assertEquals(emptyList<TrackingId>(), payload)
-    }
-
-    @Test
-    fun `a removed provider is erased next to a fresh one`() = runTest {
-        lastSent = STORED_GOOGLE
-
-        val payload = resolver(success(HUAWEI, HUAWEI_VALUE), configured = setOf(HUAWEI)).resolve(context)
-
-        assertEquals(listOf(huaweiId), payload)
-    }
-
-    @Test
-    fun `a removed provider is erased while the remaining one is unreadable`() = runTest {
-        lastSent = STORED_BOTH
-
-        val payload = resolver(TrackingIdResult.Unavailable, configured = setOf(HUAWEI)).resolve(context)
-
-        assertEquals(listOf(huaweiId), payload)
-    }
-
-    @Test
-    fun `a configured provider without a handler keeps its value`() = runTest {
-        lastSent = STORED_GOOGLE
-
-        // Handlers of services unavailable at startup are filtered out, or not set up yet.
-        val payload = resolver(configured = setOf(GOOGLE)).resolve(context)
-
-        assertEquals(listOf(googleId), payload)
-    }
-
-    @Test
-    fun `a hanging provider does not keep a removed one`() = runTest {
-        lastSent = STORED_BOTH
-
-        val payload = resolverWithHangingProvider(configured = setOf(HUAWEI)).resolve(context)
-
-        assertEquals(listOf(huaweiId), payload)
-    }
-
-    @Test
-    fun `erasing a removed provider is a change`() = runTest {
-        lastSent = STORED_GOOGLE
-        val resolver = resolver(TrackingIdResult.NotSupported, configured = emptySet())
-
-        assertTrue(resolver.hasChanged(resolver.resolve(context)))
-    }
-
-    @Test
-    fun `a fresh value replaces the stored one of the same type`() = runTest {
-        lastSent = STORED_BOTH
-
-        val payload = resolver(success(GOOGLE, "11111111-1111-1111-1111-111111111111")).resolve(context)
-
-        assertEquals(
-            listOf(TrackingId(GOOGLE, "11111111-1111-1111-1111-111111111111"), huaweiId),
-            payload,
-        )
-    }
-
-    @Test
-    fun `a lasting outage never erases the stored value`() = runTest {
-        lastSent = STORED_GOOGLE
-        val outage = resolver(TrackingIdResult.Unavailable)
-
-        val payloads = List(10) { outage.resolve(context).also(outage::markSent) }
-
-        assertEquals(List(10) { listOf(googleId) }, payloads)
-        assertEquals(STORED_GOOGLE, lastSent)
-    }
-
-    @Test
-    fun `an outage does not produce value-empty-value churn`() = runTest {
-        val available = resolver(success(GOOGLE, GOOGLE_VALUE))
-        val outage = resolver(TrackingIdResult.Unavailable)
-
-        available.markSent(available.resolve(context))
-        val duringOutage = listOf(outage.resolve(context), outage.resolve(context))
-        val afterRecovery = available.resolve(context)
-
-        assertEquals(listOf(listOf(googleId), listOf(googleId)), duringOutage)
-        assertEquals(listOf(googleId), afterRecovery)
-    }
+    // region hasChanged
 
     @Test
     fun `the same value is not a change`() {
@@ -516,8 +441,29 @@ class TrackingIdsResolverImplTest {
 
     @Test
     fun `an empty set is not a change when it was already reported`() {
-        lastSent = "[]"
+        lastSent = STORED_EMPTY
 
         assertFalse(resolver().hasChanged(emptyList()))
     }
+
+    @Test
+    fun `a set stored in clear by an older version counts as a change and is replaced`() {
+        lastSent = LEGACY_STORED_GOOGLE
+        val resolver = resolver()
+
+        assertTrue(resolver.hasChanged(listOf(googleId)))
+        resolver.markSent(listOf(googleId))
+        assertFalse(resolver.hasChanged(listOf(googleId)))
+    }
+
+    @Test
+    fun `the same value is a change again after a reset`() {
+        lastSent = STORED_GOOGLE
+
+        resolver().resetSent()
+
+        assertTrue(resolver().hasChanged(listOf(googleId)))
+    }
+
+    // endregion
 }

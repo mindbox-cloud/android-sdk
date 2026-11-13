@@ -10,5 +10,7 @@ internal sealed interface TrackingIdResult {
 
     object Unavailable : TrackingIdResult
 
+    object Failed : TrackingIdResult
+
     object NotSupported : TrackingIdResult
 }

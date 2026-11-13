@@ -44,6 +44,7 @@ import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.util.Collections
 import java.util.Queue
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
@@ -215,6 +216,16 @@ internal fun verifyThreadExecution(methodName: String, shouldBeMainThread: Boole
         !shouldBeMainThread && isMainThread -> logW("Method $methodName should not be called on the main thread")
     }
 }
+
+internal fun generateRandomUuid(): String = UUID.randomUUID().toString()
+
+internal fun String.maskAfter(visibleLength: Int): String =
+    take(visibleLength) + drop(visibleLength).replace(Regex("[^-]"), "*")
+
+internal fun String.sha256(): String =
+    MessageDigest.getInstance("SHA-256")
+        .digest(toByteArray())
+        .joinToString("") { byte -> "%02x".format(byte) }
 
 internal fun String.isUuid(): Boolean {
     return loggingRunCatching(false) {
