@@ -1319,11 +1319,9 @@ public object Mindbox : MindboxLog {
             val isNotificationEnabled = PushNotificationManager.isNotificationsEnabled(context)
 
             val changedTrackingIds = trackingIdsResolver.resolve(context)?.takeIf(trackingIdsResolver::hasChanged)
+            val isAppInfoChanged = pushTokens != savedPushTokens || isNotificationEnabled != savedIsNotificationEnabled
 
-            if (pushTokens == savedPushTokens &&
-                isNotificationEnabled == savedIsNotificationEnabled &&
-                changedTrackingIds == null
-            ) {
+            if (!isAppInfoChanged && changedTrackingIds == null) {
                 return@loggingRunCatchingSuspending
             }
 
@@ -1332,16 +1330,28 @@ public object Mindbox : MindboxLog {
                     "old isNotificationEnabled: $savedIsNotificationEnabled, " +
                     "isTrackingIdsChanged: ${changedTrackingIds != null}"
             )
-            val initData = UpdateData(
+            val updateData = UpdateData(
                 isNotificationsEnabled = isNotificationEnabled,
                 instanceId = MindboxPreferences.instanceId,
                 version = MindboxPreferences.infoUpdatedVersion,
                 tokens = pushTokens.toTokenData(),
-                trackingIds = changedTrackingIds,
             )
 
-            val isAppInfoChanged = pushTokens != savedPushTokens || isNotificationEnabled != savedIsNotificationEnabled
-            MindboxEventManager.appInfoUpdate(context, initData, refreshesKeepalive = isAppInfoChanged)
+            when {
+                changedTrackingIds == null -> MindboxEventManager.appInfoUpdate(context, updateData)
+                changedTrackingIds.isEmpty() -> MindboxEventManager.appInfoUpdate(
+                    context,
+                    updateData.copy(trackingIds = changedTrackingIds),
+                    refreshesKeepalive = isAppInfoChanged,
+                )
+                else -> {
+                    if (isAppInfoChanged) MindboxEventManager.appInfoUpdate(context, updateData)
+                    MindboxEventManager.appTrackingIdsUpdate(
+                        context,
+                        updateData.copy(version = MindboxPreferences.infoUpdatedVersion, trackingIds = changedTrackingIds),
+                    )
+                }
+            }
             changedTrackingIds?.let(trackingIdsResolver::markSent)
 
             if (isNotificationEnabled != savedIsNotificationEnabled) {

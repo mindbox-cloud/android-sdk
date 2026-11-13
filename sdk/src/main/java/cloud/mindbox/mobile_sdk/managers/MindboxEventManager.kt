@@ -63,16 +63,29 @@ internal object MindboxEventManager {
         if (refreshesKeepalive) updateLastInfoUpdateTime()
     }
 
+    fun appTrackingIdsUpdate(
+        context: Context,
+        initData: UpdateData,
+    ): Unit = loggingRunCatching {
+        asyncOperation(
+            context,
+            Event(eventType = EventType.AppTrackingIdsUpdated, body = gson.toJson(initData)),
+        )
+    }
+
     fun appKeepalive(
         context: Context,
         initData: UpdateData,
     ): Unit = loggingRunCatching {
         asyncOperation(
             context,
-            Event(eventType = EventType.AppKeepalive, body = gson.toJson(initData)),
+            Event(eventType = keepaliveEventType(initData.trackingIds), body = gson.toJson(initData)),
         )
         updateLastInfoUpdateTime()
     }
+
+    fun keepaliveEventType(trackingIds: List<TrackingId>?): EventType =
+        if (trackingIds.isNullOrEmpty()) EventType.AppKeepalive else EventType.AppTrackingKeepalive
 
     fun inAppShown(context: Context, body: String) {
         asyncOperation(context, IN_APP_OPERATION_VIEW_TYPE, body)

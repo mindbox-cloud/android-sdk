@@ -135,6 +135,8 @@ internal class GatewayManager(
             is EventType.AppInstalledWithoutCustomer,
             is EventType.AppInfoUpdated,
             is EventType.AppKeepalive,
+            is EventType.AppTrackingIdsUpdated,
+            is EventType.AppTrackingKeepalive,
             is EventType.PushClicked,
             is EventType.AsyncOperation,
             -> {
@@ -158,7 +160,7 @@ internal class GatewayManager(
         }
 
         val baseUrl = resolveTrackingHost(configuration)
-            ?.takeIf { event.carriesTrackingIds() }
+            ?.takeIf { event.eventType is TrackingHostEvent }
             ?.let(SdkValidation::toTrackingBaseUrl)
             ?: SdkValidation.toBaseUrl(resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig))
         return "$baseUrl${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
@@ -166,19 +168,26 @@ internal class GatewayManager(
 
     private val refusedByTrackingHost: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
 
-    private fun Event.forCurrentHosts(configuration: Configuration): Event = when {
-        !carriesTrackingIds() -> this
-        resolveTrackingHost(configuration) == null -> {
-            mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
-            withoutTrackingIds()
+    private fun Event.forCurrentHosts(configuration: Configuration): Event {
+        val trackingEvent = eventType as? TrackingHostEvent ?: return this
+        return when {
+            resolveTrackingHost(configuration) == null -> {
+                mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
+                onMainHost(trackingEvent)
+            }
+            transactionId in refusedByTrackingHost -> {
+                mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
+                trackingIdsResolver().resetSent()
+                onMainHost(trackingEvent)
+            }
+            else -> this
         }
-        transactionId in refusedByTrackingHost -> {
-            mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
-            trackingIdsResolver().resetSent()
-            withoutTrackingIds()
-        }
-        else -> this
     }
+
+    private fun Event.onMainHost(trackingEvent: TrackingHostEvent): Event = copy(
+        eventType = trackingEvent.mainHostCounterpart,
+        body = body?.withoutTrackingIds(),
+    )
 
     fun sendAsyncEvent(
         configuration: Configuration,
@@ -236,7 +245,7 @@ internal class GatewayManager(
                     onSuccess.invoke(it.toString())
                 },
                 errorsListener = { volleyError ->
-                    if (outgoing.carriesTrackingIds()) refusedByTrackingHost.add(outgoing.transactionId)
+                    if (outgoing.eventType is TrackingHostEvent) refusedByTrackingHost.add(outgoing.transactionId)
                     handleError(volleyError, onSuccess, onError)
                 },
             ).apply {
@@ -256,6 +265,8 @@ internal class GatewayManager(
         is EventType.AppInstalledWithoutCustomer,
         is EventType.AppInfoUpdated,
         is EventType.AppKeepalive,
+        is EventType.AppTrackingIdsUpdated,
+        is EventType.AppTrackingKeepalive,
         is EventType.PushClicked,
         is EventType.TrackVisit,
         is EventType.AsyncOperation,

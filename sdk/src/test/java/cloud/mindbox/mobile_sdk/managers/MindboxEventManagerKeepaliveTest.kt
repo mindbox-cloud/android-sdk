@@ -2,7 +2,9 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.TokenData
+import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
@@ -18,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
@@ -65,9 +68,30 @@ class MindboxEventManagerKeepaliveTest {
     }
 
     @Test
+    fun `appTrackingIdsUpdate leaves the Keepalive clock alone`() {
+        MindboxEventManager.appTrackingIdsUpdate(context, updateData)
+
+        verify(exactly = 0) { MindboxPreferences.lastInfoUpdateTime = any() }
+    }
+
+    @Test
     fun `appKeepalive moves the Keepalive clock`() {
         MindboxEventManager.appKeepalive(context, updateData)
 
         verify(exactly = 1) { MindboxPreferences.lastInfoUpdateTime = 1_000L }
+    }
+
+    @Test
+    fun `a keepalive with a non-empty set is a tracking keepalive`() {
+        assertEquals(
+            EventType.AppTrackingKeepalive,
+            MindboxEventManager.keepaliveEventType(listOf(TrackingId("google", "g"))),
+        )
+    }
+
+    @Test
+    fun `a keepalive with an empty or unread set stays an ordinary keepalive`() {
+        assertEquals(EventType.AppKeepalive, MindboxEventManager.keepaliveEventType(emptyList()))
+        assertEquals(EventType.AppKeepalive, MindboxEventManager.keepaliveEventType(null))
     }
 }

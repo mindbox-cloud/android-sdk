@@ -10,48 +10,35 @@ class EventTrackingIdsTest {
     private val idsBody = """{"instanceId":"i","version":3,"tokens":[],"ids":[{"type":"google","value":"g"}]}"""
 
     @Test
-    fun `an application operation with a non-empty ids array carries tracking ids`() {
-        assertTrue(Event(eventType = EventType.AppInfoUpdated, body = idsBody).carriesTrackingIds())
-        assertTrue(Event(eventType = EventType.AppInstalled, body = idsBody).carriesTrackingIds())
-        assertTrue(Event(eventType = EventType.AppInstalledWithoutCustomer, body = idsBody).carriesTrackingIds())
-        assertTrue(Event(eventType = EventType.AppKeepalive, body = idsBody).carriesTrackingIds())
+    fun `the tracking events are the only ones bound to the tracking host`() {
+        val tracking: List<EventType> = listOf(EventType.AppTrackingIdsUpdated, EventType.AppTrackingKeepalive)
+        val ordinary: List<EventType> = listOf(
+            EventType.AppInfoUpdated,
+            EventType.AppKeepalive,
+            EventType.AppInstalled,
+            EventType.AsyncOperation("Custom.Op"),
+        )
+
+        assertTrue(tracking.all { it is TrackingHostEvent })
+        assertFalse(ordinary.any { it is TrackingHostEvent })
     }
 
     @Test
-    fun `an erase does not need the tracking host, it is an ordinary operation for the main host`() {
-        assertFalse(Event(eventType = EventType.AppInfoUpdated, body = """{"ids":[]}""").carriesTrackingIds())
-        assertFalse(Event(eventType = EventType.AppKeepalive, body = """{"ids":[]}""").carriesTrackingIds())
+    fun `the tracking events use the operation names of their main host counterparts`() {
+        assertEquals(EventType.AppInfoUpdated, EventType.AppTrackingIdsUpdated.mainHostCounterpart)
+        assertEquals(EventType.AppInfoUpdated.operation, EventType.AppTrackingIdsUpdated.operation)
+        assertEquals(EventType.AppKeepalive, EventType.AppTrackingKeepalive.mainHostCounterpart)
+        assertEquals(EventType.AppKeepalive.operation, EventType.AppTrackingKeepalive.operation)
     }
 
     @Test
-    fun `a missing or malformed ids field does not carry tracking ids`() {
-        assertFalse(Event(eventType = EventType.AppInfoUpdated, body = """{"instanceId":"i"}""").carriesTrackingIds())
-        assertFalse(Event(eventType = EventType.AppInfoUpdated, body = """{"ids":null}""").carriesTrackingIds())
-        assertFalse(Event(eventType = EventType.AppInfoUpdated, body = """{"ids":"g"}""").carriesTrackingIds())
-        assertFalse(Event(eventType = EventType.AppInfoUpdated, body = null).carriesTrackingIds())
-        assertFalse(Event(eventType = EventType.AppInfoUpdated, body = "not json").carriesTrackingIds())
-    }
-
-    @Test
-    fun `a custom operation with an ids field is not a tracking ids event`() {
-        assertFalse(Event(eventType = EventType.AsyncOperation("Custom.Op"), body = idsBody).carriesTrackingIds())
-    }
-
-    @Test
-    fun `withoutTrackingIds removes only the ids field and keeps the identity of the event`() {
-        val event = Event(uid = 7L, eventType = EventType.AppInfoUpdated, body = idsBody)
-
-        val stripped = event.withoutTrackingIds()
-
-        assertEquals("""{"instanceId":"i","version":3,"tokens":[]}""", stripped.body)
-        assertEquals(event.transactionId, stripped.transactionId)
-        assertEquals(event.uid, stripped.uid)
-        assertFalse(stripped.carriesTrackingIds())
+    fun `withoutTrackingIds removes only the ids field`() {
+        assertEquals("""{"instanceId":"i","version":3,"tokens":[]}""", idsBody.withoutTrackingIds())
     }
 
     @Test
     fun `withoutTrackingIds leaves an unparsable body untouched`() {
-        assertEquals("not json", Event(eventType = EventType.AppInfoUpdated, body = "not json").withoutTrackingIds().body)
+        assertEquals("not json", "not json".withoutTrackingIds())
     }
 
     @Test

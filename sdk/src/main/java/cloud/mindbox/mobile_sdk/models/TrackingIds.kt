@@ -17,23 +17,9 @@ internal data class TrackingId(
     }
 }
 
-internal fun Event.carriesTrackingIds(): Boolean {
-    if (!eventType.isApplicationEvent) return false
-    val ids = body?.let { raw ->
-        runCatching {
-            JsonParser.parseString(raw).asJsonObject.getAsJsonArray(TrackingId.FIELD_IDS)
-        }.getOrNull()
-    }
-    return ids != null && !ids.isEmpty
-}
-
-internal fun Event.withoutTrackingIds(): Event = copy(
-    body = body?.let { raw ->
-        runCatching {
-            JsonParser.parseString(raw).asJsonObject.apply { remove(TrackingId.FIELD_IDS) }.toString()
-        }.getOrDefault(raw)
-    },
-)
+internal fun String.withoutTrackingIds(): String = runCatching {
+    JsonParser.parseString(this).asJsonObject.apply { remove(TrackingId.FIELD_IDS) }.toString()
+}.getOrDefault(this)
 
 internal fun String.withMaskedTrackingIds(): String = runCatching {
     val json = JsonParser.parseString(this).asJsonObject
