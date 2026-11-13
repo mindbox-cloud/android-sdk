@@ -1421,6 +1421,7 @@ public object Mindbox : MindboxLog {
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()
         BackgroundWorkManager.cancelAllWork(context)
+        MindboxDI.appModule.deliveryPauseManager.reset()
         MindboxPreferences.resetAppInfoUpdated()
         mindboxScope = createMindboxScope()
         val mobileConfigRepository = MindboxDI.appModule.mobileConfigRepositoryIfCreated

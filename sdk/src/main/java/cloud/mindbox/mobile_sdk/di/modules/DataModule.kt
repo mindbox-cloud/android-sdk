@@ -356,6 +356,9 @@ internal fun DataModule(
     override val timeProvider: SystemTimeProvider by lazy {
         SystemTimeProvider()
     }
+    override val deliveryPauseManager: DeliveryPauseManager by lazy {
+        DeliveryPauseManager(monotonicNow = timeProvider::monotonicMillis)
+    }
 
     override val gson: Gson by lazy {
         GsonBuilder()

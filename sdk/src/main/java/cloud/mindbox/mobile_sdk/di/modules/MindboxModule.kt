@@ -131,6 +131,7 @@ internal interface DataModule : MindboxModule {
     val embeddedVariantValidator: EmbeddedVariantValidator
     val migrationManager: MigrationManager
     val timeProvider: SystemTimeProvider
+    val deliveryPauseManager: DeliveryPauseManager
     val slidingExpirationParametersValidator: TimeSpanPositiveValidator
     val mobileConfigSettingsManager: MobileConfigSettingsManager
     val integerPositiveValidator: IntegerPositiveValidator
