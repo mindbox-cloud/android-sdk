@@ -109,7 +109,7 @@ class GatewayManagerTest {
             deviceUuid = "test-device-uuid-123",
             event = event,
             shouldCountOffset = false,
-            isSentListener = isSentListener,
+            onResult = { result -> isSentListener(result.isRemovedFromQueue) },
         )
         val request = slot<MindboxRequest>()
         verify(atLeast = 0, atMost = 1) { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }

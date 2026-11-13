@@ -9,6 +9,7 @@ import cloud.mindbox.mobile_sdk.inapp.data.dto.GeoTargetingDto
 import cloud.mindbox.mobile_sdk.inapp.domain.models.*
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
@@ -45,6 +46,8 @@ internal class GatewayManager(
         private const val TRACKING_HOST_TIMEOUT_DELAY = 10000
         private const val MAX_RETRIES = 0
         private const val MONITORING_DELAY = 5000
+        private const val HTTP_TOO_MANY_REQUESTS = 429
+        private val HTTP_SERVER_ERRORS = 500..599
 
         private const val OPERATION_MOBILE_SDK_LOGS = "MobileSdk.Logs"
         private const val OPERATION_CHECK_PRODUCT_SEGMENTS = "Tracker.CheckProductSegments"
@@ -195,25 +198,32 @@ internal class GatewayManager(
         deviceUuid: String,
         event: Event,
         shouldCountOffset: Boolean,
-        isSentListener: (Boolean) -> Unit,
+        onResult: (AsyncEventSendResult) -> Unit,
     ) {
         val outgoing = loggingRunCatching(defaultValue = null) { event.forCurrentHosts(configuration) }
         if (outgoing == null) {
-            isSentListener.invoke(false)
+            onResult(AsyncEventSendResult.RETRY_LATER)
             return
         }
         val isOnTrackingHost = outgoing.eventType is TrackingHostEvent
-        val report: (Boolean) -> Unit = { isSent ->
-            if (isSent) refusedByTrackingHost.remove(event.transactionId)
-            isSentListener.invoke(isSent)
+        val report: (AsyncEventSendResult) -> Unit = { result ->
+            if (result.isRemovedFromQueue) refusedByTrackingHost.remove(event.transactionId)
+            onResult(result)
         }
-        sendEvent(
+        enqueueEventRequest(
             configuration = configuration,
             deviceUuid = deviceUuid,
             event = outgoing,
             shouldCountOffset = shouldCountOffset,
-            onSuccess = { report(true) },
-            onError = { error -> report(!isOnTrackingHost && isAsyncSent(error.statusCode)) },
+            onSuccess = { report(AsyncEventSendResult.DELIVERED) },
+            onFailure = { report(AsyncEventSendResult.RETRY_LATER) },
+            onVolleyError = { volleyError ->
+                if (isOnTrackingHost) {
+                    report(AsyncEventSendResult.RETRY_LATER)
+                } else {
+                    handleAsyncError(volleyError, report)
+                }
+            },
         )
     }
 
@@ -241,6 +251,24 @@ internal class GatewayManager(
         shouldCountOffset: Boolean,
         onSuccess: (String) -> Unit,
         onError: (MindboxError) -> Unit,
+    ) = enqueueEventRequest(
+        configuration = configuration,
+        deviceUuid = deviceUuid,
+        event = event,
+        shouldCountOffset = shouldCountOffset,
+        onSuccess = onSuccess,
+        onFailure = onError,
+        onVolleyError = { volleyError -> handleError(volleyError, onSuccess, onError) },
+    )
+
+    private fun enqueueEventRequest(
+        configuration: Configuration,
+        deviceUuid: String,
+        event: Event,
+        shouldCountOffset: Boolean,
+        onSuccess: (String) -> Unit,
+        onFailure: (MindboxError) -> Unit,
+        onVolleyError: (VolleyError) -> Unit,
     ) {
         try {
             val isOnTrackingHost = event.eventType is TrackingHostEvent
@@ -258,7 +286,7 @@ internal class GatewayManager(
                 },
                 errorsListener = { volleyError ->
                     if (isOnTrackingHost) refusedByTrackingHost.add(event.transactionId)
-                    handleError(volleyError, onSuccess, onError)
+                    onVolleyError(volleyError)
                 },
             ).apply {
                 setShouldCache(false)
@@ -269,7 +297,47 @@ internal class GatewayManager(
             mindboxServiceGenerator.addToRequestQueue(request)
         } catch (e: Exception) {
             MindboxLoggerImpl.e(this, "Sending event was failure with exception", e)
-            onError.invoke(MindboxError.Unknown(e))
+            onFailure.invoke(MindboxError.Unknown(e))
+        }
+    }
+
+    private fun handleAsyncError(
+        volleyError: VolleyError,
+        onResult: (AsyncEventSendResult) -> Unit,
+    ) {
+        when (val statusCode = volleyError.networkResponse?.statusCode) {
+            null -> {
+                mindboxLogI("[GD] decision: no response → keep")
+                onResult(AsyncEventSendResult.RETRY_LATER)
+            }
+
+            HTTP_TOO_MANY_REQUESTS -> {
+                mindboxLogI("[GD] decision: HTTP $statusCode → keep")
+                onResult(AsyncEventSendResult.THROTTLED)
+            }
+
+            in HTTP_SERVER_ERRORS -> {
+                mindboxLogI("[GD] decision: HTTP $statusCode → keep")
+                onResult(AsyncEventSendResult.RETRY_LATER)
+            }
+
+            else -> handleError(
+                volleyError = volleyError,
+                onSuccess = {
+                    mindboxLogI("[GD] decision: HTTP $statusCode → delete")
+                    onResult(AsyncEventSendResult.DELIVERED)
+                },
+                onError = { error ->
+                    val result = if (isAsyncSent(error.statusCode)) {
+                        AsyncEventSendResult.DISCARDED
+                    } else {
+                        AsyncEventSendResult.RETRY_LATER
+                    }
+                    val decision = if (result.isRemovedFromQueue) "delete" else "keep"
+                    mindboxLogI("[GD] decision: HTTP $statusCode → $decision")
+                    onResult(result)
+                },
+            )
         }
     }
 
@@ -291,7 +359,7 @@ internal class GatewayManager(
         timeMls: Long,
         shouldCountOffset: Boolean,
     ): String = if (shouldCountOffset) {
-        (System.currentTimeMillis() - timeMls).toString()
+        (System.currentTimeMillis() - timeMls).coerceAtLeast(0L).toString()
     } else {
         "0"
     }

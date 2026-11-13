@@ -161,14 +161,12 @@ internal object MindboxEventManager {
                             "isInstallEvent: $isInstallEvent, configuration is null: ${configuration == null}"
                     )
                 } else {
-                    WorkerDelegate().sendEvent(
+                    WorkerDelegate().sendEventOrPostpone(
                         context = context,
                         configuration = configuration,
                         deviceUuid = deviceUuid,
                         event = event,
                         parent = this@MindboxEventManager,
-                        shouldStartWorker = true,
-                        shouldCountOffset = false
                     )
                     if (isInstallEvent) MindboxPreferences.isFirstInitialize = false
                 }
