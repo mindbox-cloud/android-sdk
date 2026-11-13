@@ -42,6 +42,7 @@ class WorkerDelegateTest {
     private val resultsByEventType = mutableMapOf<EventType, AsyncEventSendResult>()
     private val resultsByTransactionId = mutableMapOf<String, AsyncEventSendResult>()
     private var monotonicNow = Milliseconds(0L)
+    private var onSend: (Event) -> Unit = {}
     private val deliveryPauseManager = DeliveryPauseManager { monotonicNow }
 
     private val configuration = Configuration(
@@ -85,6 +86,7 @@ class WorkerDelegateTest {
         every { gatewayManager.sendAsyncEvent(any(), any(), any(), any(), any()) } answers {
             val event = thirdArg<Event>()
             sentTransactionIds.add(event.transactionId)
+            onSend(event)
             val result = resultsByTransactionId[event.transactionId] ?: resultsByEventType.getValue(event.eventType)
             lastArg<(AsyncEventSendResult) -> Unit>().invoke(result)
         }
@@ -224,6 +226,35 @@ class WorkerDelegateTest {
         verify(exactly = 3) { BackgroundWorkManager.startOneTimeService(context) }
         verify(exactly = 1) { MindboxLoggerImpl.i(any(), "[GD] decision: operation Refused throttled, skip for 180 s") }
         verify(exactly = 2) { MindboxLoggerImpl.i(any(), "[GD] decision: operation Refused paused, postpone, 180 s left") }
+    }
+
+    @Test
+    fun `throttling answer to a request sent before the reset does not hold the operation after it`() {
+        resultsByEventType[operation("Refused")] = AsyncEventSendResult.THROTTLED
+        val sentBeforeReset = event("Refused")
+        val sentAfterReset = event("Refused")
+        queue.addAll(listOf(sentBeforeReset, sentAfterReset))
+        onSend = { if (it == sentBeforeReset) deliveryPauseManager.reset() }
+
+        sendImmediately(sentBeforeReset)
+        sendImmediately(sentAfterReset)
+
+        assertEquals(listOf(sentBeforeReset, sentAfterReset).map { it.transactionId }, sentTransactionIds)
+        verify(exactly = 1) { MindboxLoggerImpl.i(any(), "[GD] decision: operation Refused throttled, skip for 180 s") }
+    }
+
+    @Test
+    fun `worker run stops sending events taken before the reset`() {
+        resultsByEventType[operation("Refused")] = AsyncEventSendResult.THROTTLED
+        resultsByEventType[operation("Taken")] = AsyncEventSendResult.THROTTLED
+        val sentBeforeReset = event("Refused")
+        val takenBeforeReset = event("Taken")
+        queue.addAll(listOf(sentBeforeReset, takenBeforeReset))
+        onSend = { if (it == sentBeforeReset) deliveryPauseManager.reset() }
+
+        WorkerDelegate().sendEventsWithResult(context, this)
+
+        assertEquals(listOf(sentBeforeReset.transactionId), sentTransactionIds)
     }
 
     @Test

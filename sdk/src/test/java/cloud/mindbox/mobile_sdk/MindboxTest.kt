@@ -559,7 +559,7 @@ class MindboxTest {
     @Test
     fun `a soft re-init lifts delivery pauses`() {
         val deliveryPauseManager = DeliveryPauseManager { Milliseconds(0L) }
-        deliveryPauseManager.register(EventType.TrackVisit, AsyncEventSendResult.THROTTLED)
+        deliveryPauseManager.register(EventType.TrackVisit, AsyncEventSendResult.THROTTLED, deliveryPauseManager.generation)
         val appModule = MindboxDI.appModule
         every { appModule.deliveryPauseManager } returns deliveryPauseManager
         every { MindboxPreferences.resetAppInfoUpdated() } just runs

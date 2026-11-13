@@ -20,6 +20,10 @@ internal class DeliveryPauseManager(
 
     private val states = mutableMapOf<String, OperationState>()
 
+    @Volatile
+    var generation: Int = 0
+        private set
+
     @Synchronized
     fun remainingPause(eventType: EventType): Milliseconds? = remainingPause(eventType.deliveryKey)
 
@@ -27,7 +31,8 @@ internal class DeliveryPauseManager(
     fun wasThrottled(eventType: EventType): Boolean = states.containsKey(eventType.deliveryKey)
 
     @Synchronized
-    fun register(eventType: EventType, result: AsyncEventSendResult): Milliseconds? {
+    fun register(eventType: EventType, result: AsyncEventSendResult, sentInGeneration: Int): Milliseconds? {
+        if (sentInGeneration != generation) return null
         val key = eventType.deliveryKey
         if (remainingPause(key) != null) return null
         return when (result) {
@@ -52,6 +57,7 @@ internal class DeliveryPauseManager(
     @Synchronized
     fun reset() {
         states.clear()
+        generation++
     }
 
     private fun remainingPause(key: String): Milliseconds? {

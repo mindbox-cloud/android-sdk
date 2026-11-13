@@ -53,6 +53,7 @@ internal class WorkerDelegate {
                 return ListenableWorker.Result.failure()
             }
 
+            val generation = MindboxDI.appModule.deliveryPauseManager.generation
             val events = DbManager.getFilteredEventsForBackgroundSend()
             return if (events.isEmpty()) {
                 mindboxLogI("Events list is empty")
@@ -68,7 +69,7 @@ internal class WorkerDelegate {
             } else {
                 MindboxLoggerImpl.d(parent, "Will be sent ${events.size}")
 
-                val result = sendEvents(context, events, configuration, parent)
+                val result = sendEvents(context, events, configuration, parent, generation)
 
                 when {
                     isWorkerStopped -> ListenableWorker.Result.failure()
@@ -94,6 +95,7 @@ internal class WorkerDelegate {
         events: List<Event>,
         configuration: Configuration,
         parent: Any,
+        generation: Int,
     ): EventsDeliveryResult = loggingRunCatching(defaultValue = EventsDeliveryResult(hasFailedDelivery = true)) {
         val eventsCount = events.size - 1
         val deviceUuid = MindboxPreferences.deviceUuid
@@ -104,7 +106,8 @@ internal class WorkerDelegate {
         var hasFirstThrottling = false
 
         for ((index, event) in events.withIndex()) {
-            if (isWorkerStopped || deliveredCount == MAX_DELIVERED_EVENTS_PER_RUN) break
+            if (isWorkerStopped || deliveryPauseManager.generation != generation) break
+            if (deliveredCount == MAX_DELIVERED_EVENTS_PER_RUN) break
             val eventType = event.eventType
             val remainingPause = deliveryPauseManager.remainingPause(eventType)
             if (remainingPause != null) {
@@ -127,6 +130,7 @@ internal class WorkerDelegate {
                 eventsCount = eventsCount,
                 shouldStartWorker = false,
                 shouldCountOffset = true,
+                generation = generation,
             )
             when (result) {
                 AsyncEventSendResult.DELIVERED -> deliveredCount++
@@ -155,6 +159,7 @@ internal class WorkerDelegate {
         eventsCount: Int = 1,
         shouldStartWorker: Boolean = false,
         shouldCountOffset: Boolean = true,
+        generation: Int,
     ): AsyncEventSendResult {
         val countDownLatch = CountDownLatch(1)
         var sendResult = AsyncEventSendResult.RETRY_LATER
@@ -187,7 +192,7 @@ internal class WorkerDelegate {
         } catch (e: InterruptedException) {
             MindboxLoggerImpl.e(parent, "doWork -> sending was interrupted", e)
         }
-        MindboxDI.appModule.deliveryPauseManager.register(event.eventType, sendResult)?.let { pause ->
+        MindboxDI.appModule.deliveryPauseManager.register(event.eventType, sendResult, generation)?.let { pause ->
             mindboxLogI(
                 "[GD] decision: operation ${event.eventType.operation} throttled, skip for ${pause.toSeconds()} s"
             )
@@ -218,6 +223,7 @@ internal class WorkerDelegate {
             parent = parent,
             shouldStartWorker = true,
             shouldCountOffset = false,
+            generation = MindboxDI.appModule.deliveryPauseManager.generation,
         )
     }
 
