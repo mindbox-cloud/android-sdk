@@ -24,6 +24,7 @@ import kotlinx.coroutines.async
 private const val READ_TRACKING_IDS_TIMEOUT = 5000L
 private const val INVALIDATED_SENT_MARK = "invalidated"
 private const val SENT_TYPES_SEPARATOR = ","
+private const val SENT_STATE_SEPARATOR = "|"
 private const val LEGACY_SENT_SET_PREFIX = "["
 
 internal fun trackingIdTypesOf(
@@ -91,26 +92,41 @@ internal class TrackingIdsResolverImpl(
     }
 
     override fun hasChanged(trackingIds: List<TrackingId>): Boolean {
-        val lastSent = MindboxPreferences.lastSentTrackingIds
-        return if (lastSent.isBlank()) trackingIds.isNotEmpty() else trackingIds.fingerprint() != lastSent
+        val sent = sentState() ?: return trackingIds.isNotEmpty()
+        return trackingIds.fingerprint() != sent.digest
     }
 
     override fun markSent(trackingIds: List<TrackingId>): Unit = loggingRunCatching {
-        MindboxPreferences.lastSentTrackingIds = trackingIds.fingerprint()
-        MindboxPreferences.lastSentTrackingIdTypes = trackingIds.joinToString(SENT_TYPES_SEPARATOR) { it.type }
+        storeSentState(digest = trackingIds.fingerprint(), types = trackingIds.map { it.type })
         mindboxLogI("Sent tracking ids: ${trackingIds.joinToString { it.type }.ifEmpty { "none" }}")
     }
 
     override fun invalidateSent() {
-        if (MindboxPreferences.lastSentTrackingIdTypes.isBlank()) {
-            MindboxPreferences.lastSentTrackingIdTypes = legacySentTypes().joinToString(SENT_TYPES_SEPARATOR)
-        }
-        MindboxPreferences.lastSentTrackingIds = INVALIDATED_SENT_MARK
+        storeSentState(digest = INVALIDATED_SENT_MARK, types = sentState()?.types.orEmpty())
     }
 
     override fun resetSent() {
         MindboxPreferences.lastSentTrackingIds = ""
-        MindboxPreferences.lastSentTrackingIdTypes = ""
+    }
+
+    private class SentState(val digest: String, val types: Set<String>)
+
+    private fun sentState(): SentState? {
+        val stored = MindboxPreferences.lastSentTrackingIds
+        return when {
+            stored.isBlank() -> null
+            stored.startsWith(LEGACY_SENT_SET_PREFIX) -> SentState(digest = stored, types = legacySentTypes(stored))
+            else -> SentState(
+                digest = stored.substringBefore(SENT_STATE_SEPARATOR),
+                types = stored.substringAfter(SENT_STATE_SEPARATOR, missingDelimiterValue = "")
+                    .split(SENT_TYPES_SEPARATOR)
+                    .filterTo(mutableSetOf()) { it.isNotBlank() },
+            )
+        }
+    }
+
+    private fun storeSentState(digest: String, types: Collection<String>) {
+        MindboxPreferences.lastSentTrackingIds = digest + SENT_STATE_SEPARATOR + types.joinToString(SENT_TYPES_SEPARATOR)
     }
 
     private fun List<TrackingIdResult>.unreadSentTypes(): List<String> {
@@ -122,20 +138,12 @@ internal class TrackingIdsResolverImpl(
                 else -> null
             }
         }
-        return sentTypes().filter { type -> type !in answered && (configured == null || type in configured) }
+        return sentState()?.types.orEmpty()
+            .filter { type -> type !in answered && (configured == null || type in configured) }
     }
 
-    private fun sentTypes(): Set<String> =
-        MindboxPreferences.lastSentTrackingIdTypes
-            .takeIf { it.isNotBlank() }
-            ?.split(SENT_TYPES_SEPARATOR)
-            ?.toSet()
-            ?: legacySentTypes()
-
-    private fun legacySentTypes(): Set<String> =
-        MindboxPreferences.lastSentTrackingIds
-            .takeIf { it.startsWith(LEGACY_SENT_SET_PREFIX) }
-            ?.let { gson.fromJson<List<TrackingId>>(it).getOrNull() }
+    private fun legacySentTypes(storedInClear: String): Set<String> =
+        gson.fromJson<List<TrackingId>>(storedInClear).getOrNull()
             ?.mapTo(mutableSetOf()) { it.type }
             .orEmpty()
 

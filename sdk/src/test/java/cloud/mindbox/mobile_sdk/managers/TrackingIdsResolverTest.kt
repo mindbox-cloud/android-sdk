@@ -37,8 +37,9 @@ private const val GOOGLE_VALUE = "38400000-8cf0-11bd-b23e-10b96e40000d"
 private const val HUAWEI_VALUE = "1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"
 private const val LEGACY_STORED_GOOGLE =
     """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"}]"""
-private val STORED_GOOGLE = LEGACY_STORED_GOOGLE.sha256()
-private val STORED_EMPTY = "[]".sha256()
+private val GOOGLE_DIGEST = LEGACY_STORED_GOOGLE.sha256()
+private val STORED_GOOGLE = "$GOOGLE_DIGEST|google"
+private val STORED_EMPTY = "[]".sha256() + "|"
 private const val ANONYMIZER_DOMAIN = "anonymizer.example.com"
 private const val COROUTINE_EXTENSIONS = "cloud.mindbox.mobile_sdk.utils.CoroutineExtensionsKt"
 
@@ -49,7 +50,6 @@ class TrackingIdsResolverImplTest {
 
     private var shouldCollect = true
     private var lastSent = ""
-    private var lastSentTypes = ""
     private var operationsDomainFromConfig: String? = null
     private var configuration: Configuration? = storedConfiguration(operationsDomain = null)
 
@@ -59,8 +59,6 @@ class TrackingIdsResolverImplTest {
         every { MindboxPreferences.shouldCollectTrackingIds } answers { shouldCollect }
         every { MindboxPreferences.lastSentTrackingIds } answers { lastSent }
         every { MindboxPreferences.lastSentTrackingIds = any() } answers { lastSent = firstArg() }
-        every { MindboxPreferences.lastSentTrackingIdTypes } answers { lastSentTypes }
-        every { MindboxPreferences.lastSentTrackingIdTypes = any() } answers { lastSentTypes = firstArg() }
         every { MindboxPreferences.operationsDomainFromConfig } answers { operationsDomainFromConfig }
         mockkObject(DbManager)
         every { DbManager.getConfigurations() } answers { configuration }
@@ -172,13 +170,12 @@ class TrackingIdsResolverImplTest {
     }
 
     @Test
-    fun `markSent keeps a digest only, never the identifier itself`() = runTest {
+    fun `markSent keeps a digest and the types, never the identifier itself`() = runTest {
         val resolver = resolver(success(GOOGLE, GOOGLE_VALUE))
 
         resolver.markSent(resolver.resolve(context)!!)
 
         assertFalse(lastSent.contains(GOOGLE_VALUE))
-        assertFalse(lastSent.contains(GOOGLE))
     }
 
     @Test
@@ -196,7 +193,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `limit ad tracking erases the type that was reported`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
 
         assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.Denied(GOOGLE)).resolve(context))
     }
@@ -219,7 +215,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `a provider removed from init erases the type it reported`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
 
         assertEquals(emptyList<TrackingId>(), resolver(handlers = emptyList(), configured = emptySet()).resolve(context))
     }
@@ -237,7 +232,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `a provider dropped from the integration is simply absent from the set`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
         val hmsOnly = resolver(handlers = listOf(handlerReturning(success(HUAWEI, HUAWEI_VALUE))), configured = setOf(HUAWEI))
 
         assertEquals(listOf(huaweiId), hmsOnly.resolve(context))
@@ -246,7 +240,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `the empty set keeps being reported, so a lost erase heals itself`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
         val resolver = resolver(TrackingIdResult.Denied(GOOGLE))
 
         val erase = resolver.resolve(context)!!
@@ -297,7 +290,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `services missing for a reported type are null`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
 
         assertNull(resolver(TrackingIdResult.Unavailable).resolve(context))
     }
@@ -305,7 +297,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `providers not initialised yet are null when their type was reported`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
 
         assertNull(resolver(handlers = emptyList(), configured = setOf(GOOGLE)).resolve(context))
     }
@@ -313,7 +304,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `an unknown set of providers is null when a type was reported`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
 
         assertNull(resolver(handlers = emptyList(), configured = null).resolve(context))
     }
@@ -328,7 +318,6 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `a reported type that answers next to a missing provider is read`() = runTest {
         lastSent = STORED_GOOGLE
-        lastSentTypes = GOOGLE
 
         val payload = resolver(success(GOOGLE, GOOGLE_VALUE), TrackingIdResult.Unavailable).resolve(context)
 
@@ -561,15 +550,30 @@ class TrackingIdsResolverImplTest {
 
         resolver().resetSent()
 
-        assertEquals("", lastSentTypes)
+        assertEquals("", lastSent)
         assertFalse(resolver().hasChanged(emptyList()))
     }
 
     @Test
-    fun `markSent records the types next to the digest`() {
+    fun `markSent records the digest and the types in one value`() {
+        resolver().markSent(listOf(googleId))
+
+        assertEquals("$GOOGLE_DIGEST|google", lastSent)
+    }
+
+    @Test
+    fun `markSent of two types protects both of them`() = runTest {
         resolver().markSent(listOf(googleId, huaweiId))
 
-        assertEquals(setOf(GOOGLE, HUAWEI), lastSentTypes.split(",").toSet())
+        assertNull(resolver(success(GOOGLE, GOOGLE_VALUE), TrackingIdResult.Unavailable).resolve(context))
+    }
+
+    @Test
+    fun `a mark stored without types protects nothing`() = runTest {
+        lastSent = GOOGLE_DIGEST
+
+        assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.Unavailable).resolve(context))
+        assertFalse(resolver().hasChanged(listOf(googleId)))
     }
 
     @Test
@@ -588,7 +592,7 @@ class TrackingIdsResolverImplTest {
 
         resolver().invalidateSent()
 
-        assertEquals(GOOGLE, lastSentTypes)
+        assertEquals("invalidated|google", lastSent)
     }
 
     @Test
@@ -597,8 +601,14 @@ class TrackingIdsResolverImplTest {
 
         resolver().invalidateSent()
 
-        assertEquals(GOOGLE, lastSentTypes)
-        assertFalse(lastSent.contains(GOOGLE_VALUE))
+        assertEquals("invalidated|google", lastSent)
+    }
+
+    @Test
+    fun `an invalidation before anything was sent makes an erase a change`() {
+        resolver().invalidateSent()
+
+        assertTrue(resolver().hasChanged(emptyList()))
     }
 
     // endregion

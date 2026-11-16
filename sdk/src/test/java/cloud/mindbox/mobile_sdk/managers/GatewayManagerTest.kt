@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.launch
 import io.mockk.verify
 import io.mockk.slot
+import cloud.mindbox.mobile_sdk.models.MindboxError
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
@@ -230,6 +231,49 @@ class GatewayManagerTest {
 
         assertNull(request)
         assertEquals(listOf(false), isSent)
+    }
+
+    @Test
+    fun `a tracking event is never sent to the main host as it is`() {
+        val errors = mutableListOf<MindboxError>()
+        clearMocks(mockMindboxServiceGenerator, answers = false)
+
+        gatewayManager.sendEvent(
+            configuration = mockConfiguration.copy(operationsDomain = "anonymizer.client.ru"),
+            deviceUuid = "test-device-uuid-123",
+            event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody),
+            shouldCountOffset = false,
+            onSuccess = {},
+            onError = errors::add,
+        )
+
+        verify(exactly = 0) { mockMindboxServiceGenerator.addToRequestQueue(any<MindboxRequest>()) }
+        assertEquals(1, errors.size)
+        assertNull(errors.single().statusCode)
+    }
+
+    @Test
+    fun `an anonymizer that appears after the host was chosen keeps the event queued`() {
+        every { MindboxPreferences.operationsDomainFromConfig } returnsMany listOf(null, "anonymizer.client.ru")
+        val isSent = mutableListOf<Boolean>()
+
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody), isSent::add)
+
+        assertNull(request)
+        assertEquals(listOf(false), isSent)
+    }
+
+    @Test
+    fun `a tracking event dropped by the main host retry is no longer remembered as refused`() {
+        val isSent = LinkedBlockingQueue<Boolean>()
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+        sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
+        sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(validationError(400))
+        assertEquals(true, isSent.poll(5, TimeUnit.SECONDS))
+
+        val again = sentRequest(mockConfiguration, event)!!
+
+        assertTrue(again.fullUrl, again.fullUrl.startsWith("https://api-tracking.mindbox.ru/"))
     }
 
     private fun validationError(statusCode: Int) = VolleyError(

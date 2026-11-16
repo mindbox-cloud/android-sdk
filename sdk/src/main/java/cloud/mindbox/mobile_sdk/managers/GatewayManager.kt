@@ -160,10 +160,12 @@ internal class GatewayManager(
             }
         }
 
-        val baseUrl = resolveTrackingHost(configuration)
-            ?.takeIf { event.eventType is TrackingHostEvent }
-            ?.let(SdkValidation::toTrackingBaseUrl)
-            ?: SdkValidation.toBaseUrl(resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig))
+        val baseUrl = if (event.eventType is TrackingHostEvent) {
+            val trackingHost = checkNotNull(resolveTrackingHost(configuration)) { "No tracking host for the tracking event #${event.uid}" }
+            SdkValidation.toTrackingBaseUrl(trackingHost)
+        } else {
+            SdkValidation.toBaseUrl(resolveOperationsDomain(configuration, MindboxPreferences.operationsDomainFromConfig))
+        }
         return "$baseUrl${event.eventType.endpoint}${urlQueries.toUrlQueryString()}"
     }
 
@@ -201,13 +203,17 @@ internal class GatewayManager(
             return
         }
         val isOnTrackingHost = outgoing.eventType is TrackingHostEvent
+        val report: (Boolean) -> Unit = { isSent ->
+            if (isSent) refusedByTrackingHost.remove(event.transactionId)
+            isSentListener.invoke(isSent)
+        }
         sendEvent(
             configuration = configuration,
             deviceUuid = deviceUuid,
             event = outgoing,
             shouldCountOffset = shouldCountOffset,
-            onSuccess = { isSentListener.invoke(true) },
-            onError = { error -> isSentListener.invoke(!isOnTrackingHost && isAsyncSent(error.statusCode)) },
+            onSuccess = { report(true) },
+            onError = { error -> report(!isOnTrackingHost && isAsyncSent(error.statusCode)) },
         )
     }
 
@@ -248,7 +254,6 @@ internal class GatewayManager(
                 jsonRequest = jsonRequest,
                 listener = {
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
-                    refusedByTrackingHost.remove(event.transactionId)
                     onSuccess.invoke(it.toString())
                 },
                 errorsListener = { volleyError ->
