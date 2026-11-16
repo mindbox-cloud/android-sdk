@@ -259,6 +259,11 @@ class SdkValidationDomainTest {
     }
 
     @Test
+    fun `deriveTrackingHost drops a path after the host`() {
+        assertEquals("api-tracking.mindbox.ru", SdkValidation.deriveTrackingHost("api.mindbox.ru/v3/operations"))
+    }
+
+    @Test
     fun `deriveTrackingHost is null when the first label is not api`() {
         assertNull(SdkValidation.deriveTrackingHost("gost-api.mindbox.ru"))
         assertNull(SdkValidation.deriveTrackingHost("apix.mindbox.ru"))

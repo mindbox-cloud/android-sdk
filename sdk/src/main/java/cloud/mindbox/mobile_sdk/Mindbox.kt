@@ -97,17 +97,11 @@ public object Mindbox : MindboxLog {
 
     internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
 
-    private var pushConverters: List<PushConverter> by SingleInitDelegate()
-
-    @Volatile
-    private var arePushServicesPassed: Boolean = false
+    private val passedPushConverters = SingleInitDelegate<PushConverter>()
+    private var pushConverters: List<PushConverter> by passedPushConverters
 
     internal val configuredTrackingIdTypes: Set<String>?
-        get() = trackingIdTypesOf(
-            configured = pushConverters,
-            live = pushServiceHandlers,
-            arePushServicesPassed = arePushServicesPassed,
-        )
+        get() = trackingIdTypesOf(configured = passedPushConverters, live = pushServiceHandlers)
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
@@ -581,7 +575,6 @@ public object Mindbox : MindboxLog {
         // (mirrors the iOS SDK's init-time prewarm; a real show always preempts it).
         MindboxDI.appModule.inAppWebViewPrewarmManager.prewarmOnInit()
         pushConverters = selectPushServiceHandler(pushServices)
-        arePushServicesPassed = true
         logI(
             "init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
                 "configuration: $configuration, pushServices: " +
@@ -838,7 +831,6 @@ public object Mindbox : MindboxLog {
         verifyThreadExecution(methodName = "initPushServices")
         initComponents(context)
         pushConverters = selectPushServiceHandler(pushServices)
-        arePushServicesPassed = true
         mindboxScope.launch {
             InitializeLock.await(InitializeLock.State.MIGRATION)
             setPushServiceHandler(context, pushServices)

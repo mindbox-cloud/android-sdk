@@ -1,8 +1,10 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.TrackingId
@@ -10,6 +12,7 @@ import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.setMindboxScope
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -18,12 +21,15 @@ import io.mockk.runs
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 class MindboxEventManagerKeepaliveTest {
 
@@ -84,6 +90,50 @@ class MindboxEventManagerKeepaliveTest {
         MindboxEventManager.appKeepalive(context, updateData)
 
         verify(exactly = 1) { MindboxPreferences.lastInfoUpdateTime = 1_000L }
+    }
+
+    private fun queuedEventType(send: () -> Unit): EventType {
+        setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
+        mockkObject(InitializeLock)
+        coEvery { InitializeLock.await(any()) } just runs
+        mockkObject(DbManager)
+        val queued = LinkedBlockingQueue<Event>()
+        every { DbManager.addEventToQueue(any(), any()) } answers { queued.put(secondArg()) }
+        every { DbManager.getConfigurations() } returns null
+
+        send()
+
+        return checkNotNull(queued.poll(5, TimeUnit.SECONDS)) { "No event was queued" }.eventType
+    }
+
+    private val googleIds = listOf(TrackingId("google", "g"))
+
+    @Test
+    fun `appTrackingIdsUpdate queues a tracking ids event`() {
+        val type = queuedEventType { MindboxEventManager.appTrackingIdsUpdate(context, updateData.copy(trackingIds = googleIds)) }
+
+        assertEquals(EventType.AppTrackingIdsUpdated, type)
+    }
+
+    @Test
+    fun `appInfoUpdate queues an ordinary update even with an erase`() {
+        val type = queuedEventType { MindboxEventManager.appInfoUpdate(context, updateData.copy(trackingIds = emptyList())) }
+
+        assertEquals(EventType.AppInfoUpdated, type)
+    }
+
+    @Test
+    fun `appKeepalive with a set queues a tracking keepalive`() {
+        val type = queuedEventType { MindboxEventManager.appKeepalive(context, updateData.copy(trackingIds = googleIds)) }
+
+        assertEquals(EventType.AppTrackingKeepalive, type)
+    }
+
+    @Test
+    fun `appKeepalive without a set queues an ordinary keepalive`() {
+        val type = queuedEventType { MindboxEventManager.appKeepalive(context, updateData) }
+
+        assertEquals(EventType.AppKeepalive, type)
     }
 
     @Test

@@ -12,6 +12,7 @@ import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.sha256
+import cloud.mindbox.mobile_sdk.utils.SingleInitDelegate
 import cloud.mindbox.mobile_sdk.utils.awaitAllWithTimeout
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
@@ -26,11 +27,10 @@ private const val SENT_TYPES_SEPARATOR = ","
 private const val LEGACY_SENT_SET_PREFIX = "["
 
 internal fun trackingIdTypesOf(
-    configured: List<PushConverter>,
+    configured: SingleInitDelegate<PushConverter>,
     live: List<PushServiceHandler>,
-    arePushServicesPassed: Boolean,
-): Set<String>? = (configured.filterIsInstance<PushServiceHandler>() + live)
-    .takeIf { it.isNotEmpty() || arePushServicesPassed }
+): Set<String>? = (configured.value.filterIsInstance<PushServiceHandler>() + live)
+    .takeIf { it.isNotEmpty() || configured.isAssigned }
     ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
 
 internal interface TrackingIdsResolver {
@@ -67,16 +67,14 @@ internal class TrackingIdsResolverImpl(
         val readings = pushServiceHandlers().associateBy { handler ->
             scope().async(ioDispatcher) { handler.tryGetTrackingId(context) }
         }
-        var isTimedOut = false
         val results = readings.keys.awaitAllWithTimeout(
             timeMillis = timeoutMillis,
             onCancel = { reading ->
-                isTimedOut = true
                 val handler = readings.getValue(reading)
                 mindboxLogI("Timed out reading ${handler.trackingIdType} from ${handler.notificationProvider}")
             })
 
-        if (isTimedOut || results.size != readings.size || results.any { it is TrackingIdResult.Failed }) {
+        if (results.size != readings.size || results.any { it is TrackingIdResult.Failed }) {
             mindboxLogI("Tracking ids could not be read, the operation goes without them")
             return null
         }

@@ -80,7 +80,6 @@ internal object SdkValidation {
 
     fun deriveTrackingHost(domain: String): String? {
         val host = extractHost(domain).substringBefore('/')
-        if (host.isBlank() || PatternsCompat.IP_ADDRESS.matcher(host).matches()) return null
         val first = host.substringBefore('.')
         val rest = host.substringAfter('.', missingDelimiterValue = "")
         if (rest.isBlank() || !TRACKING_HOST_LABEL_REGEX.matches(first)) return null

@@ -208,6 +208,19 @@ class MindboxTest {
     }
 
     @Test
+    fun `updateAppInfo gives the tracking event a version of its own next to a token change`() = runTest {
+        every { MindboxPreferences.infoUpdatedVersion } returnsMany listOf(1, 2)
+        coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns true
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "NEW_TOKEN"))
+
+        verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, match { it.version == 1 }, refreshesKeepalive = true) }
+        verify(exactly = 1) { MindboxEventManager.appTrackingIdsUpdate(context, match { it.version == 2 }) }
+    }
+
+    @Test
     fun `updateAppInfo sends a token change without the unchanged tracking ids`() = runTest {
         coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
         coEvery { trackingIdsResolver.resolve(any()) } returns googleIds

@@ -7,12 +7,17 @@ import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.sha256
+import cloud.mindbox.mobile_sdk.utils.awaitAllWithTimeout
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.unmockkObject
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -35,6 +40,7 @@ private const val LEGACY_STORED_GOOGLE =
 private val STORED_GOOGLE = LEGACY_STORED_GOOGLE.sha256()
 private val STORED_EMPTY = "[]".sha256()
 private const val ANONYMIZER_DOMAIN = "anonymizer.example.com"
+private const val COROUTINE_EXTENSIONS = "cloud.mindbox.mobile_sdk.utils.CoroutineExtensionsKt"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TrackingIdsResolverImplTest {
@@ -143,6 +149,13 @@ class TrackingIdsResolverImplTest {
     }
 
     @Test
+    fun `two providers of one type report it once`() = runTest {
+        val payload = resolver(success(GOOGLE, GOOGLE_VALUE), success(GOOGLE, HUAWEI_VALUE)).resolve(context)
+
+        assertEquals(listOf(googleId), payload)
+    }
+
+    @Test
     fun `resolve alone persists nothing`() = runTest {
         resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
 
@@ -181,8 +194,9 @@ class TrackingIdsResolverImplTest {
     // region no identifier: an empty set erases what the backend has
 
     @Test
-    fun `opt-out reports an empty set`() = runTest {
+    fun `limit ad tracking erases the type that was reported`() = runTest {
         lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
 
         assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.Denied(GOOGLE)).resolve(context))
     }
@@ -232,6 +246,7 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `the empty set keeps being reported, so a lost erase heals itself`() = runTest {
         lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
         val resolver = resolver(TrackingIdResult.Denied(GOOGLE))
 
         val erase = resolver.resolve(context)!!
@@ -318,6 +333,20 @@ class TrackingIdsResolverImplTest {
         val payload = resolver(success(GOOGLE, GOOGLE_VALUE), TrackingIdResult.Unavailable).resolve(context)
 
         assertEquals(listOf(googleId), payload)
+    }
+
+    @Test
+    fun `fewer answers than providers read is null`() = runTest {
+        mockkStatic(COROUTINE_EXTENSIONS)
+        coEvery { any<Collection<Deferred<TrackingIdResult>>>().awaitAllWithTimeout(any(), any()) } returns emptyList()
+
+        val payload = try {
+            resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context)
+        } finally {
+            unmockkStatic(COROUTINE_EXTENSIONS)
+        }
+
+        assertNull(payload)
     }
 
     @Test
@@ -414,6 +443,13 @@ class TrackingIdsResolverImplTest {
         operationsDomainFromConfig = null
 
         assertEquals(listOf(googleId), resolver.resolve(context))
+    }
+
+    @Test
+    fun `a blank operationsDomain in the mobile config does not stop the collection`() = runTest {
+        operationsDomainFromConfig = "  "
+
+        assertEquals(listOf(googleId), resolver(success(GOOGLE, GOOGLE_VALUE)).resolve(context))
     }
 
     @Test

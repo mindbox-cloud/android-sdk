@@ -169,7 +169,8 @@ internal class GatewayManager(
 
     private val refusedByTrackingHost: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
 
-    private fun Event.forCurrentHosts(configuration: Configuration): Event {
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal fun Event.forCurrentHosts(configuration: Configuration): Event {
         val trackingEvent = eventType as? TrackingHostEvent ?: return this
         when {
             resolveTrackingHost(configuration) == null ->

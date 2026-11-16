@@ -27,6 +27,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -185,6 +186,52 @@ class GatewayManagerTest {
         verify(exactly = 1) { trackingIdsResolver.invalidateSent() }
     }
 
+    @Test
+    fun `a tracking event without a tracking host becomes the ordinary event without ids`() {
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+
+        val outgoing = with(gatewayManager) { event.forCurrentHosts(mockConfiguration.copy(domain = "gost-api.mindbox.ru")) }
+
+        assertEquals(EventType.AppInfoUpdated, outgoing.eventType)
+        assertEquals("""{"instanceId":"i"}""", outgoing.body)
+        assertEquals(event.transactionId, outgoing.transactionId)
+    }
+
+    @Test
+    fun `the main host retry of a refused tracking keepalive carries no ids`() {
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
+        sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
+
+        val outgoing = with(gatewayManager) { event.forCurrentHosts(mockConfiguration) }
+
+        assertEquals(EventType.AppKeepalive, outgoing.eventType)
+        assertEquals("""{"instanceId":"i"}""", outgoing.body)
+    }
+
+    @Test
+    fun `a tracking event bound for the tracking host keeps its ids`() {
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+
+        val outgoing = with(gatewayManager) { event.forCurrentHosts(mockConfiguration) }
+
+        assertEquals(event, outgoing)
+    }
+
+    @Test
+    fun `an event whose host could not be chosen stays queued and is not sent`() {
+        every { trackingIdsResolver.invalidateSent() } throws IllegalStateException("preferences are unavailable")
+        val isSent = mutableListOf<Boolean>()
+
+        val request = sentRequest(
+            mockConfiguration.copy(domain = "gost-api.mindbox.ru"),
+            Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody),
+            isSent::add,
+        )
+
+        assertNull(request)
+        assertEquals(listOf(false), isSent)
+    }
+
     private fun validationError(statusCode: Int) = VolleyError(
         NetworkResponse(statusCode, """{"status":"ValidationError","validationMessages":[]}""".toByteArray(), false, 0L, emptyList()),
     )
@@ -223,14 +270,14 @@ class GatewayManagerTest {
     }
 
     @Test
-    fun `a request to the tracking host gives up after 10 seconds`() {
+    fun `a request to the tracking host limits each connection and each read to 10 seconds`() {
         val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody))!!
 
         assertEquals(10_000, request.timeoutMs)
     }
 
     @Test
-    fun `a request to the main host keeps the 60 seconds timeout`() {
+    fun `a request to the main host keeps the 60 seconds limit per connection and per read`() {
         val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppInfoUpdated, body = idsBody))!!
 
         assertEquals(60_000, request.timeoutMs)
@@ -247,13 +294,25 @@ class GatewayManagerTest {
     }
 
     @Test
-    fun `a failure on the main host does not mark the event as refused by the tracking host`() {
-        val event = Event(eventType = EventType.AppInfoUpdated, body = idsBody)
+    fun `a tracking event whose main host retry failed keeps going to the main host`() {
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+        sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
         sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
 
-        sentRequest(mockConfiguration, event)
+        val third = sentRequest(mockConfiguration, event)!!
 
-        verify(exactly = 0) { trackingIdsResolver.invalidateSent() }
+        assertTrue(third.fullUrl, third.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `a tracking event delivered by the main host retry is no longer remembered as refused`() {
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+        sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
+        sentRequest(mockConfiguration, event)!!.listener!!.onResponse(mockk<JSONObject>(relaxed = true))
+
+        val again = sentRequest(mockConfiguration, event)!!
+
+        assertTrue(again.fullUrl, again.fullUrl.startsWith("https://api-tracking.mindbox.ru/"))
     }
 
     @Test
