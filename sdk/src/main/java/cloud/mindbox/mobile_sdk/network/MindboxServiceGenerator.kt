@@ -54,7 +54,7 @@ internal class MindboxServiceGenerator(private val requestQueue: RequestQueue) {
             builder.appendLine(request.headers
                 .map { (key, value) -> "$key: $value" }
                 .joinToString(separator = System.getProperty("line.separator") ?: "\n"))
-            builder.appendLine(request.jsonRequest?.toString()?.withMaskedTrackingIds())
+            request.jsonRequest?.let { body -> builder.appendLine(body.toString().withMaskedTrackingIds()) }
             builder.append("---> End of request")
 
             mindboxLogD(builder.toString())

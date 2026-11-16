@@ -176,9 +176,9 @@ internal class GatewayManager(
         val trackingEvent = eventType as? TrackingHostEvent ?: return this
         when {
             resolveTrackingHost(configuration) == null ->
-                mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
+                this@GatewayManager.mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
             transactionId in refusedByTrackingHost ->
-                mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
+                this@GatewayManager.mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
             else -> return this
         }
         trackingIdsResolver().invalidateSent()

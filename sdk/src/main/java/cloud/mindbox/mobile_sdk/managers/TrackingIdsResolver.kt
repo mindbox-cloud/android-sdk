@@ -104,7 +104,7 @@ internal class TrackingIdsResolverImpl(
         synchronized(sentStateLock) {
             storeSentState(digest = trackingIds.fingerprint(), types = trackingIds.map { it.type })
         }
-        mindboxLogI("Sent tracking ids: ${trackingIds.joinToString { it.type }.ifEmpty { "none" }}")
+        mindboxLogI("Tracking ids queued for sending: ${trackingIds.joinToString { it.type }.ifEmpty { "none, the set is erased" }}")
     }
 
     override fun invalidateSent(): Unit = synchronized(sentStateLock) {
