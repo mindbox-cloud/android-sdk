@@ -2,8 +2,11 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogE
+import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.withMaskedTrackingIds
 import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
@@ -35,11 +38,10 @@ internal object DbManager {
     fun addEventToQueue(context: Context, event: Event) = LoggingExceptionHandler.runCatching {
         try {
             mindboxDb.eventsDao().insert(event)
-            MindboxLoggerImpl.d(this, "Event ${event.eventType.operation} was added to queue")
+            mindboxLogI("Event ${event.eventType.operation} was added to queue")
         } catch (exception: RuntimeException) {
-            MindboxLoggerImpl.e(
-                this,
-                "Error writing object to the database: ${event.body}",
+            mindboxLogE(
+                "Error writing object to the database: ${event.body?.withMaskedTrackingIds()}",
                 exception,
             )
         }

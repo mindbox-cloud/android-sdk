@@ -11,6 +11,9 @@ import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import io.mockk.*
+import cloud.mindbox.mobile_sdk.models.TrackingId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -20,7 +23,7 @@ import org.junit.Test
 class MobileConfigSettingsManagerImplTest {
 
     private val mockTimeProvider = mockk<TimeProvider>()
-    private val trackingIdsResolver = mockk<TrackingIdsResolver>()
+    private val trackingIdsResolver = mockk<TrackingIdsResolver>(relaxUnitFun = true)
     private lateinit var sessionStorageManager: SessionStorageManager
     private lateinit var mobileConfigSettingsManager: MobileConfigSettingsManagerImpl
     private val now = 100_000L
@@ -32,6 +35,7 @@ class MobileConfigSettingsManagerImplTest {
 
         sessionStorageManager = spyk(SessionStorageManager(mockTimeProvider))
         coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+        every { trackingIdsResolver.hasChanged(any()) } returns false
         mobileConfigSettingsManager = MobileConfigSettingsManagerImpl(
             mockk(),
             sessionStorageManager,
@@ -153,4 +157,45 @@ class MobileConfigSettingsManagerImplTest {
 
         verify(exactly = 0) { MindboxEventManager.appKeepalive(any(), any()) }
     }
+
+    // region tracking ids on keepalive
+
+    private suspend fun keepalive() {
+        every { MindboxPreferences.lastInfoUpdateTime } returns null
+        every { Mindbox.mindboxScope } returns CoroutineScope(Dispatchers.Unconfined)
+        mobileConfigSettingsManager.checkPushTokenKeepalive(getSlidingExpiration(pushTokenKeepalive = Milliseconds(10000L)))
+    }
+
+    @Test
+    fun `keepalive carries the current set, even if unchanged`() = runTest {
+        val ids = listOf(TrackingId("google", "38400000-8cf0-11bd-b23e-10b96e40000d"))
+        coEvery { trackingIdsResolver.resolve(any()) } returns ids
+
+        keepalive()
+
+        verify(exactly = 1) { MindboxEventManager.appKeepalive(any(), match { it.trackingIds == ids }) }
+        verify(exactly = 1) { trackingIdsResolver.markSent(ids) }
+    }
+
+    @Test
+    fun `keepalive carries an empty array when the set is empty`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns emptyList()
+
+        keepalive()
+
+        verify(exactly = 1) { MindboxEventManager.appKeepalive(any(), match { it.trackingIds == emptyList<TrackingId>() }) }
+        verify(exactly = 1) { trackingIdsResolver.markSent(emptyList()) }
+    }
+
+    @Test
+    fun `keepalive leaves the ids field out when there is no tracking host`() = runTest {
+        coEvery { trackingIdsResolver.resolve(any()) } returns null
+
+        keepalive()
+
+        verify(exactly = 1) { MindboxEventManager.appKeepalive(any(), match { it.trackingIds == null }) }
+        verify(exactly = 0) { trackingIdsResolver.markSent(any()) }
+    }
+
+    // endregion
 }

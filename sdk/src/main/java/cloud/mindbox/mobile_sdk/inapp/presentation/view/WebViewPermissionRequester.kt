@@ -6,7 +6,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import cloud.mindbox.mobile_sdk.Mindbox
+import cloud.mindbox.mobile_sdk.generateRandomUuid
 import cloud.mindbox.mobile_sdk.inapp.data.managers.PermissionManagerImpl
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionManager
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.PermissionStatus
@@ -137,7 +137,7 @@ internal class PushPermissionLauncherImpl(
                 dialogShown = false
             )
         }
-        val requestId: String = Mindbox.generateRandomUuid()
+        val requestId: String = generateRandomUuid()
         val deferredResult = RuntimePermissionRequestBridge.register(requestId)
         withContext(Dispatchers.Main.immediate) {
             activity.startActivity(

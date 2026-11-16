@@ -5,15 +5,17 @@ import kotlin.reflect.KProperty
 
 internal class SingleInitDelegate<T> : ReadWriteProperty<Any?, List<T>> {
 
-    private var value: List<T> = emptyList()
+    @Volatile
+    var assigned: List<T>? = null
+        private set
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): List<T> {
-        return value
+        return assigned.orEmpty()
     }
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: List<T>) {
-        if (this.value.isEmpty() && value.isNotEmpty()) {
-            this.value = value
+        if (assigned.isNullOrEmpty()) {
+            assigned = value
         }
     }
 }
