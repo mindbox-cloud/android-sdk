@@ -28,8 +28,9 @@ private const val LEGACY_SENT_SET_PREFIX = "["
 internal fun trackingIdTypesOf(
     configured: List<PushConverter>,
     live: List<PushServiceHandler>,
+    arePushServicesPassed: Boolean,
 ): Set<String>? = (configured.filterIsInstance<PushServiceHandler>() + live)
-    .takeIf { it.isNotEmpty() }
+    .takeIf { it.isNotEmpty() || arePushServicesPassed }
     ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
 
 internal interface TrackingIdsResolver {
