@@ -43,6 +43,7 @@ internal object MindboxPreferences {
     private const val KEY_EMBEDDED_BLOCK_PLACE_RECORDS = "key_embedded_block_place_records"
     private const val KEY_SHOULD_COLLECT_TRACKING_IDS = "key_should_collect_tracking_ids"
     private const val KEY_LAST_SENT_TRACKING_IDS = "key_last_sent_tracking_ids"
+    private const val KEY_LAST_SENT_TRACKING_ID_TYPES = "key_last_sent_tracking_id_types"
 
     private val prefScope = CoroutineScope(Dispatchers.Default)
 
@@ -299,6 +300,16 @@ internal object MindboxPreferences {
         set(value) {
             loggingRunCatching {
                 SharedPreferencesManager.put(KEY_LAST_SENT_TRACKING_IDS, value)
+            }
+        }
+
+    var lastSentTrackingIdTypes: String
+        get() = loggingRunCatching(defaultValue = "") {
+            SharedPreferencesManager.getString(KEY_LAST_SENT_TRACKING_ID_TYPES, "") ?: ""
+        }
+        set(value) {
+            loggingRunCatching {
+                SharedPreferencesManager.put(KEY_LAST_SENT_TRACKING_ID_TYPES, value)
             }
         }
 

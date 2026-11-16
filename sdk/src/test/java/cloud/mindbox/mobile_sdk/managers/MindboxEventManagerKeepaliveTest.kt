@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
+import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.TokenData
@@ -37,8 +38,11 @@ class MindboxEventManagerKeepaliveTest {
         tokens = listOf(TokenData(token = "token", notificationProvider = "FCM")),
     )
 
+    private lateinit var originalScope: CoroutineScope
+
     @Before
     fun setUp() {
+        originalScope = Mindbox.mindboxScope
         setMindboxScope(CoroutineScope(Job().apply { cancel() }))
         mockkObject(MindboxDI)
         every { MindboxDI.appModule } returns mockk(relaxed = true) {
@@ -51,6 +55,7 @@ class MindboxEventManagerKeepaliveTest {
     @After
     fun tearDown() {
         unmockkAll()
+        setMindboxScope(originalScope)
     }
 
     @Test

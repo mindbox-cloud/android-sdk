@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.managers
 
 import cloud.mindbox.mobile_sdk.models.operation.request.SegmentationCheckRequest
+import com.android.volley.NetworkResponse
 import com.android.volley.Request
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
@@ -19,7 +20,6 @@ import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventType
-import cloud.mindbox.mobile_sdk.models.MindboxError
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import io.mockk.clearMocks
@@ -34,6 +34,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.util.UUID
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GatewayManagerTest {
@@ -98,15 +100,14 @@ class GatewayManagerTest {
 
     private val idsBody = """{"instanceId":"i","ids":[{"type":"google","value":"g"}]}"""
 
-    private fun sentRequest(config: Configuration, event: Event, onError: (MindboxError) -> Unit = {}): MindboxRequest? {
+    private fun sentRequest(config: Configuration, event: Event, isSentListener: (Boolean) -> Unit = {}): MindboxRequest? {
         clearMocks(mockMindboxServiceGenerator, answers = false)
-        gatewayManager.sendEvent(
+        gatewayManager.sendAsyncEvent(
             configuration = config,
             deviceUuid = "test-device-uuid-123",
             event = event,
             shouldCountOffset = false,
-            onSuccess = {},
-            onError = onError,
+            isSentListener = isSentListener,
         )
         val request = slot<MindboxRequest>()
         verify(atLeast = 0, atMost = 1) { mockMindboxServiceGenerator.addToRequestQueue(capture(request)) }
@@ -154,7 +155,7 @@ class GatewayManagerTest {
         assertTrue(retry.fullUrl, retry.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
         assertTrue(retry.fullUrl.contains("operation=MobilePush.ApplicationInfoUpdated"))
         assertTrue(retry.fullUrl.contains("transactionId=${event.transactionId}"))
-        verify(exactly = 1) { trackingIdsResolver.resetSent() }
+        verify(exactly = 1) { trackingIdsResolver.invalidateSent() }
     }
 
     @Test
@@ -174,14 +175,65 @@ class GatewayManagerTest {
 
         sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
 
-        verify(exactly = 0) { trackingIdsResolver.resetSent() }
+        verify(exactly = 0) { trackingIdsResolver.invalidateSent() }
     }
 
     @Test
-    fun `a tracking ids event sent without a tracking host does not reset the sent mark`() {
+    fun `a tracking ids event stripped for lack of a tracking host invalidates the sent mark`() {
         sentRequest(mockConfiguration.copy(domain = "gost-api.mindbox.ru"), Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody))
 
-        verify(exactly = 0) { trackingIdsResolver.resetSent() }
+        verify(exactly = 1) { trackingIdsResolver.invalidateSent() }
+    }
+
+    private fun validationError(statusCode: Int) = VolleyError(
+        NetworkResponse(statusCode, """{"status":"ValidationError","validationMessages":[]}""".toByteArray(), false, 0L, emptyList()),
+    )
+
+    @Test
+    fun `a 4xx answer of the tracking host keeps the event queued for the main host retry`() {
+        val isSent = LinkedBlockingQueue<Boolean>()
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+
+        sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(validationError(400))
+
+        assertEquals(false, isSent.poll(5, TimeUnit.SECONDS))
+        val retry = sentRequest(mockConfiguration, event)!!
+        assertTrue(retry.fullUrl, retry.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
+    }
+
+    @Test
+    fun `a 4xx answer of the main host still drops the event`() {
+        val isSent = LinkedBlockingQueue<Boolean>()
+        val event = Event(eventType = EventType.AppInfoUpdated, body = idsBody)
+
+        sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(validationError(400))
+
+        assertEquals(true, isSent.poll(5, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun `a 4xx answer to the main host retry of a tracking event drops the event`() {
+        val isSent = LinkedBlockingQueue<Boolean>()
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
+        sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
+
+        sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(validationError(400))
+
+        assertEquals(true, isSent.poll(5, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun `a request to the tracking host gives up after 10 seconds`() {
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody))!!
+
+        assertEquals(10_000, request.timeoutMs)
+    }
+
+    @Test
+    fun `a request to the main host keeps the 60 seconds timeout`() {
+        val request = sentRequest(mockConfiguration, Event(eventType = EventType.AppInfoUpdated, body = idsBody))!!
+
+        assertEquals(60_000, request.timeoutMs)
     }
 
     @Test
@@ -201,7 +253,7 @@ class GatewayManagerTest {
 
         sentRequest(mockConfiguration, event)
 
-        verify(exactly = 0) { trackingIdsResolver.resetSent() }
+        verify(exactly = 0) { trackingIdsResolver.invalidateSent() }
     }
 
     @Test

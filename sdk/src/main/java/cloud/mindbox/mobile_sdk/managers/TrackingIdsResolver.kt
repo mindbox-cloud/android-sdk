@@ -3,9 +3,11 @@ package cloud.mindbox.mobile_sdk.managers
 import android.content.Context
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.SdkValidation
+import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.TrackingId
+import cloud.mindbox.mobile_sdk.pushes.PushConverter
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -19,6 +21,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 
 private const val READ_TRACKING_IDS_TIMEOUT = 5000L
+private const val INVALIDATED_SENT_MARK = "invalidated"
+private const val SENT_TYPES_SEPARATOR = ","
+private const val LEGACY_SENT_SET_PREFIX = "["
+
+internal fun trackingIdTypesOf(
+    configured: List<PushConverter>,
+    live: List<PushServiceHandler>,
+): Set<String>? = (configured.filterIsInstance<PushServiceHandler>() + live)
+    .takeIf { it.isNotEmpty() }
+    ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
 
 internal interface TrackingIdsResolver {
 
@@ -28,11 +40,14 @@ internal interface TrackingIdsResolver {
 
     fun markSent(trackingIds: List<TrackingId>)
 
+    fun invalidateSent()
+
     fun resetSent()
 }
 
 internal class TrackingIdsResolverImpl(
     private val pushServiceHandlers: () -> List<PushServiceHandler> = { Mindbox.pushServiceHandlers },
+    private val configuredTrackingIdTypes: () -> Set<String>? = { Mindbox.configuredTrackingIdTypes },
     private val scope: () -> CoroutineScope = { Mindbox.mindboxScope },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val timeoutMillis: Long = READ_TRACKING_IDS_TIMEOUT,
@@ -60,8 +75,13 @@ internal class TrackingIdsResolverImpl(
                 mindboxLogI("Timed out reading ${handler.trackingIdType} from ${handler.notificationProvider}")
             })
 
-        if (isTimedOut || results.any { it is TrackingIdResult.Failed }) {
+        if (isTimedOut || results.size != readings.size || results.any { it is TrackingIdResult.Failed }) {
             mindboxLogI("Tracking ids could not be read, the operation goes without them")
+            return null
+        }
+        val unreadSentTypes = results.unreadSentTypes()
+        if (unreadSentTypes.isNotEmpty()) {
+            mindboxLogI("Providers of the sent ${unreadSentTypes.joinToString()} are not ready, the operation goes without tracking ids")
             return null
         }
         return results
@@ -78,12 +98,47 @@ internal class TrackingIdsResolverImpl(
 
     override fun markSent(trackingIds: List<TrackingId>): Unit = loggingRunCatching {
         MindboxPreferences.lastSentTrackingIds = trackingIds.fingerprint()
+        MindboxPreferences.lastSentTrackingIdTypes = trackingIds.joinToString(SENT_TYPES_SEPARATOR) { it.type }
         mindboxLogI("Sent tracking ids: ${trackingIds.joinToString { it.type }.ifEmpty { "none" }}")
+    }
+
+    override fun invalidateSent() {
+        if (MindboxPreferences.lastSentTrackingIdTypes.isBlank()) {
+            MindboxPreferences.lastSentTrackingIdTypes = legacySentTypes().joinToString(SENT_TYPES_SEPARATOR)
+        }
+        MindboxPreferences.lastSentTrackingIds = INVALIDATED_SENT_MARK
     }
 
     override fun resetSent() {
         MindboxPreferences.lastSentTrackingIds = ""
+        MindboxPreferences.lastSentTrackingIdTypes = ""
     }
+
+    private fun List<TrackingIdResult>.unreadSentTypes(): List<String> {
+        val configured = configuredTrackingIdTypes()
+        val answered = mapNotNull { result ->
+            when (result) {
+                is TrackingIdResult.Success -> result.trackingId.type
+                is TrackingIdResult.Denied -> result.type
+                else -> null
+            }
+        }
+        return sentTypes().filter { type -> type !in answered && (configured == null || type in configured) }
+    }
+
+    private fun sentTypes(): Set<String> =
+        MindboxPreferences.lastSentTrackingIdTypes
+            .takeIf { it.isNotBlank() }
+            ?.split(SENT_TYPES_SEPARATOR)
+            ?.toSet()
+            ?: legacySentTypes()
+
+    private fun legacySentTypes(): Set<String> =
+        MindboxPreferences.lastSentTrackingIds
+            .takeIf { it.startsWith(LEGACY_SENT_SET_PREFIX) }
+            ?.let { gson.fromJson<List<TrackingId>>(it).getOrNull() }
+            ?.mapTo(mutableSetOf()) { it.type }
+            .orEmpty()
 
     private fun hasTrackingHost(): Boolean {
         val domain = DbManager.getConfigurations()?.domain ?: return true

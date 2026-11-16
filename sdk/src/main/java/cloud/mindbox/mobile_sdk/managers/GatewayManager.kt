@@ -42,6 +42,7 @@ internal class GatewayManager(
 
     companion object {
         private const val TIMEOUT_DELAY = 60000
+        private const val TRACKING_HOST_TIMEOUT_DELAY = 10000
         private const val MAX_RETRIES = 0
         private const val MONITORING_DELAY = 5000
 
@@ -170,18 +171,15 @@ internal class GatewayManager(
 
     private fun Event.forCurrentHosts(configuration: Configuration): Event {
         val trackingEvent = eventType as? TrackingHostEvent ?: return this
-        return when {
-            resolveTrackingHost(configuration) == null -> {
+        when {
+            resolveTrackingHost(configuration) == null ->
                 mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
-                onMainHost(trackingEvent)
-            }
-            transactionId in refusedByTrackingHost -> {
+            transactionId in refusedByTrackingHost ->
                 mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
-                trackingIdsResolver().resetSent()
-                onMainHost(trackingEvent)
-            }
-            else -> this
+            else -> return this
         }
+        trackingIdsResolver().invalidateSent()
+        return onMainHost(trackingEvent)
     }
 
     private fun Event.onMainHost(trackingEvent: TrackingHostEvent): Event = copy(
@@ -195,14 +193,22 @@ internal class GatewayManager(
         event: Event,
         shouldCountOffset: Boolean,
         isSentListener: (Boolean) -> Unit,
-    ) = sendEvent(
-        configuration = configuration,
-        deviceUuid = deviceUuid,
-        event = event,
-        shouldCountOffset = shouldCountOffset,
-        onSuccess = { isSentListener.invoke(true) },
-        onError = { error -> isSentListener.invoke(isAsyncSent(error.statusCode)) },
-    )
+    ) {
+        val outgoing = loggingRunCatching(defaultValue = null) { event.forCurrentHosts(configuration) }
+        if (outgoing == null) {
+            isSentListener.invoke(false)
+            return
+        }
+        val isOnTrackingHost = outgoing.eventType is TrackingHostEvent
+        sendEvent(
+            configuration = configuration,
+            deviceUuid = deviceUuid,
+            event = outgoing,
+            shouldCountOffset = shouldCountOffset,
+            onSuccess = { isSentListener.invoke(true) },
+            onError = { error -> isSentListener.invoke(!isOnTrackingHost && isAsyncSent(error.statusCode)) },
+        )
+    }
 
     fun <T : OperationResponseBaseInternal> sendEvent(
         configuration: Configuration,
@@ -230,10 +236,10 @@ internal class GatewayManager(
         onError: (MindboxError) -> Unit,
     ) {
         try {
-            val outgoing = event.forCurrentHosts(configuration)
-            val requestType: Int = getRequestType(outgoing.eventType)
-            val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, outgoing)
-            val jsonRequest: JSONObject? = convertBodyToJson(outgoing.body)
+            val isOnTrackingHost = event.eventType is TrackingHostEvent
+            val requestType: Int = getRequestType(event.eventType)
+            val url: String = buildEventUrl(configuration, deviceUuid, shouldCountOffset, event)
+            val jsonRequest: JSONObject? = convertBodyToJson(event.body)
             val request = MindboxRequest(
                 methodType = requestType,
                 fullUrl = url,
@@ -241,16 +247,17 @@ internal class GatewayManager(
                 jsonRequest = jsonRequest,
                 listener = {
                     MindboxLoggerImpl.d(this, "Event from background successful sent")
-                    refusedByTrackingHost.remove(outgoing.transactionId)
+                    refusedByTrackingHost.remove(event.transactionId)
                     onSuccess.invoke(it.toString())
                 },
                 errorsListener = { volleyError ->
-                    if (outgoing.eventType is TrackingHostEvent) refusedByTrackingHost.add(outgoing.transactionId)
+                    if (isOnTrackingHost) refusedByTrackingHost.add(event.transactionId)
                     handleError(volleyError, onSuccess, onError)
                 },
             ).apply {
                 setShouldCache(false)
-                retryPolicy = DefaultRetryPolicy(TIMEOUT_DELAY, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
+                val timeout = if (isOnTrackingHost) TRACKING_HOST_TIMEOUT_DELAY else TIMEOUT_DELAY
+                retryPolicy = DefaultRetryPolicy(timeout, MAX_RETRIES, DEFAULT_BACKOFF_MULT)
             }
 
             mindboxServiceGenerator.addToRequestQueue(request)

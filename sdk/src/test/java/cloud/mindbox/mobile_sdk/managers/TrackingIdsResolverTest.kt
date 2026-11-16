@@ -43,6 +43,7 @@ class TrackingIdsResolverImplTest {
 
     private var shouldCollect = true
     private var lastSent = ""
+    private var lastSentTypes = ""
     private var operationsDomainFromConfig: String? = null
     private var configuration: Configuration? = storedConfiguration(operationsDomain = null)
 
@@ -52,6 +53,8 @@ class TrackingIdsResolverImplTest {
         every { MindboxPreferences.shouldCollectTrackingIds } answers { shouldCollect }
         every { MindboxPreferences.lastSentTrackingIds } answers { lastSent }
         every { MindboxPreferences.lastSentTrackingIds = any() } answers { lastSent = firstArg() }
+        every { MindboxPreferences.lastSentTrackingIdTypes } answers { lastSentTypes }
+        every { MindboxPreferences.lastSentTrackingIdTypes = any() } answers { lastSentTypes = firstArg() }
         every { MindboxPreferences.operationsDomainFromConfig } answers { operationsDomainFromConfig }
         mockkObject(DbManager)
         every { DbManager.getConfigurations() } answers { configuration }
@@ -81,8 +84,12 @@ class TrackingIdsResolverImplTest {
 
     private fun resolver(vararg results: TrackingIdResult) = resolver(results.map(::handlerReturning))
 
-    private fun resolver(handlers: List<PushServiceHandler>) = TrackingIdsResolverImpl(
+    private fun resolver(
+        handlers: List<PushServiceHandler>,
+        configured: Set<String>? = setOf(GOOGLE, HUAWEI),
+    ) = TrackingIdsResolverImpl(
         pushServiceHandlers = { handlers },
+        configuredTrackingIdTypes = { configured },
         scope = { CoroutineScope(UnconfinedTestDispatcher()) },
         ioDispatcher = UnconfinedTestDispatcher(),
     )
@@ -90,6 +97,7 @@ class TrackingIdsResolverImplTest {
     /** Reads on a real dispatcher so a blocking provider actually blocks. */
     private fun resolverWithHangingProvider(vararg fast: TrackingIdResult) = TrackingIdsResolverImpl(
         pushServiceHandlers = { fast.map(::handlerReturning) + handlerThatHangs() },
+        configuredTrackingIdTypes = { setOf(GOOGLE, HUAWEI) },
         scope = { CoroutineScope(Dispatchers.IO) },
         ioDispatcher = Dispatchers.IO,
         timeoutMillis = 100L,
@@ -180,9 +188,7 @@ class TrackingIdsResolverImplTest {
     }
 
     @Test
-    fun `missing services report an empty set`() = runTest {
-        lastSent = STORED_GOOGLE
-
+    fun `missing services report an empty set when their type was never reported`() = runTest {
         assertEquals(emptyList<TrackingId>(), resolver(TrackingIdResult.Unavailable).resolve(context))
     }
 
@@ -192,10 +198,16 @@ class TrackingIdsResolverImplTest {
     }
 
     @Test
-    fun `no providers at all report an empty set`() = runTest {
-        lastSent = STORED_GOOGLE
-
+    fun `no providers yet report an empty set when nothing was ever reported`() = runTest {
         assertEquals(emptyList<TrackingId>(), resolver().resolve(context))
+    }
+
+    @Test
+    fun `a provider removed from init erases the type it reported`() = runTest {
+        lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
+
+        assertEquals(emptyList<TrackingId>(), resolver(handlers = emptyList(), configured = emptySet()).resolve(context))
     }
 
     @Test
@@ -211,9 +223,10 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `a provider dropped from the integration is simply absent from the set`() = runTest {
         lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
+        val hmsOnly = resolver(handlers = listOf(handlerReturning(success(HUAWEI, HUAWEI_VALUE))), configured = setOf(HUAWEI))
 
-        // Firebase was dropped, the new build passes HMS only: the backend replaces the whole set.
-        assertEquals(listOf(huaweiId), resolver(success(HUAWEI, HUAWEI_VALUE)).resolve(context))
+        assertEquals(listOf(huaweiId), hmsOnly.resolve(context))
     }
 
     @Test
@@ -264,6 +277,47 @@ class TrackingIdsResolverImplTest {
     @Test
     fun `a fresh value next to a failed read is null`() = runTest {
         assertNull(resolver(success(GOOGLE, GOOGLE_VALUE), TrackingIdResult.Failed).resolve(context))
+    }
+
+    @Test
+    fun `services missing for a reported type are null`() = runTest {
+        lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
+
+        assertNull(resolver(TrackingIdResult.Unavailable).resolve(context))
+    }
+
+    @Test
+    fun `providers not initialised yet are null when their type was reported`() = runTest {
+        lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
+
+        assertNull(resolver(handlers = emptyList(), configured = setOf(GOOGLE)).resolve(context))
+    }
+
+    @Test
+    fun `an unknown set of providers is null when a type was reported`() = runTest {
+        lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
+
+        assertNull(resolver(handlers = emptyList(), configured = null).resolve(context))
+    }
+
+    @Test
+    fun `a set stored in clear by an older version protects its types as well`() = runTest {
+        lastSent = LEGACY_STORED_GOOGLE
+
+        assertNull(resolver(handlers = emptyList(), configured = setOf(GOOGLE)).resolve(context))
+    }
+
+    @Test
+    fun `a reported type that answers next to a missing provider is read`() = runTest {
+        lastSent = STORED_GOOGLE
+        lastSentTypes = GOOGLE
+
+        val payload = resolver(success(GOOGLE, GOOGLE_VALUE), TrackingIdResult.Unavailable).resolve(context)
+
+        assertEquals(listOf(googleId), payload)
     }
 
     @Test
@@ -463,6 +517,52 @@ class TrackingIdsResolverImplTest {
         resolver().resetSent()
 
         assertTrue(resolver().hasChanged(listOf(googleId)))
+    }
+
+    @Test
+    fun `a reset forgets the reported types`() {
+        resolver().markSent(listOf(googleId))
+
+        resolver().resetSent()
+
+        assertEquals("", lastSentTypes)
+        assertFalse(resolver().hasChanged(emptyList()))
+    }
+
+    @Test
+    fun `markSent records the types next to the digest`() {
+        resolver().markSent(listOf(googleId, huaweiId))
+
+        assertEquals(setOf(GOOGLE, HUAWEI), lastSentTypes.split(",").toSet())
+    }
+
+    @Test
+    fun `after an invalidation both the same value and an erase are a change`() {
+        resolver().markSent(listOf(googleId))
+
+        resolver().invalidateSent()
+
+        assertTrue(resolver().hasChanged(listOf(googleId)))
+        assertTrue(resolver().hasChanged(emptyList()))
+    }
+
+    @Test
+    fun `an invalidation keeps the reported types`() {
+        resolver().markSent(listOf(googleId))
+
+        resolver().invalidateSent()
+
+        assertEquals(GOOGLE, lastSentTypes)
+    }
+
+    @Test
+    fun `an invalidation of a set stored in clear keeps its types and drops the values`() {
+        lastSent = LEGACY_STORED_GOOGLE
+
+        resolver().invalidateSent()
+
+        assertEquals(GOOGLE, lastSentTypes)
+        assertFalse(lastSent.contains(GOOGLE_VALUE))
     }
 
     // endregion
