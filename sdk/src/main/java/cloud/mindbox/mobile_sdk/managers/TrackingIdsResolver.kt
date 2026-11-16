@@ -25,7 +25,7 @@ private const val READ_TRACKING_IDS_TIMEOUT = 5000L
 private const val INVALIDATED_SENT_MARK = "invalidated"
 private const val SENT_TYPES_SEPARATOR = ","
 private const val SENT_STATE_SEPARATOR = "|"
-private const val LEGACY_SENT_SET_PREFIX = "["
+private const val SET_IN_CLEAR_PREFIX = "["
 
 internal fun trackingIdTypesOf(
     configured: SingleInitDelegate<PushConverter>,
@@ -115,7 +115,7 @@ internal class TrackingIdsResolverImpl(
         val stored = MindboxPreferences.lastSentTrackingIds
         return when {
             stored.isBlank() -> null
-            stored.startsWith(LEGACY_SENT_SET_PREFIX) -> SentState(digest = stored, types = legacySentTypes(stored))
+            stored.startsWith(SET_IN_CLEAR_PREFIX) -> SentState(digest = stored, types = typesOfSetStoredInClear(stored))
             else -> SentState(
                 digest = stored.substringBefore(SENT_STATE_SEPARATOR),
                 types = stored.substringAfter(SENT_STATE_SEPARATOR, missingDelimiterValue = "")
@@ -142,8 +142,8 @@ internal class TrackingIdsResolverImpl(
             .filter { type -> type !in answered && (configured == null || type in configured) }
     }
 
-    private fun legacySentTypes(storedInClear: String): Set<String> =
-        gson.fromJson<List<TrackingId>>(storedInClear).getOrNull()
+    private fun typesOfSetStoredInClear(stored: String): Set<String> =
+        gson.fromJson<List<TrackingId>>(stored).getOrNull()
             ?.mapTo(mutableSetOf()) { it.type }
             .orEmpty()
 

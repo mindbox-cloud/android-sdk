@@ -35,9 +35,9 @@ private const val GOOGLE = "google"
 private const val HUAWEI = "huawei"
 private const val GOOGLE_VALUE = "38400000-8cf0-11bd-b23e-10b96e40000d"
 private const val HUAWEI_VALUE = "1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809"
-private const val LEGACY_STORED_GOOGLE =
+private const val GOOGLE_STORED_IN_CLEAR =
     """[{"type":"google","value":"38400000-8cf0-11bd-b23e-10b96e40000d"}]"""
-private val GOOGLE_DIGEST = LEGACY_STORED_GOOGLE.sha256()
+private val GOOGLE_DIGEST = GOOGLE_STORED_IN_CLEAR.sha256()
 private val STORED_GOOGLE = "$GOOGLE_DIGEST|google"
 private val STORED_EMPTY = "[]".sha256() + "|"
 private const val ANONYMIZER_DOMAIN = "anonymizer.example.com"
@@ -310,7 +310,7 @@ class TrackingIdsResolverImplTest {
 
     @Test
     fun `a set stored in clear by an older version protects its types as well`() = runTest {
-        lastSent = LEGACY_STORED_GOOGLE
+        lastSent = GOOGLE_STORED_IN_CLEAR
 
         assertNull(resolver(handlers = emptyList(), configured = setOf(GOOGLE)).resolve(context))
     }
@@ -527,7 +527,7 @@ class TrackingIdsResolverImplTest {
 
     @Test
     fun `a set stored in clear by an older version counts as a change and is replaced`() {
-        lastSent = LEGACY_STORED_GOOGLE
+        lastSent = GOOGLE_STORED_IN_CLEAR
         val resolver = resolver()
 
         assertTrue(resolver.hasChanged(listOf(googleId)))
@@ -597,7 +597,7 @@ class TrackingIdsResolverImplTest {
 
     @Test
     fun `an invalidation of a set stored in clear keeps its types and drops the values`() {
-        lastSent = LEGACY_STORED_GOOGLE
+        lastSent = GOOGLE_STORED_IN_CLEAR
 
         resolver().invalidateSent()
 
