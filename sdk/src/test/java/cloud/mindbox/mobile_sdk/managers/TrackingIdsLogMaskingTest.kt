@@ -16,6 +16,7 @@ import io.mockk.runs
 import io.mockk.unmockkAll
 import org.json.JSONObject
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -61,6 +62,21 @@ class TrackingIdsLogMaskingTest {
         MindboxServiceGenerator(mockk(relaxed = true)).addToRequestQueue(request)
 
         assertOnlyMaskedValueIsLogged()
+    }
+
+    @Test
+    fun `the request as Volley prints it carries neither the body nor the listeners`() {
+        val body = mockk<JSONObject>()
+        every { body.toString() } returns IDS_BODY
+        val request = MindboxRequest(
+            fullUrl = "https://api-tracking.mindbox.ru/v3/operations/async",
+            configuration = mockk(relaxed = true),
+            jsonRequest = body,
+            listener = {},
+            errorsListener = {},
+        )
+
+        assertEquals("MindboxRequest(methodType=1, fullUrl=https://api-tracking.mindbox.ru/v3/operations/async)", request.toString())
     }
 
     @Test
