@@ -30,6 +30,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.concurrent.thread
 
 private const val GOOGLE = "google"
 private const val HUAWEI = "huawei"
@@ -602,6 +603,25 @@ class TrackingIdsResolverImplTest {
         resolver().invalidateSent()
 
         assertEquals("invalidated|google", lastSent)
+    }
+
+    @Test
+    fun `an invalidation does not overwrite a mark written while it was reading`() {
+        val resolver = resolver()
+        resolver.markSent(listOf(googleId))
+        var concurrentMark: Thread? = null
+        every { MindboxPreferences.lastSentTrackingIds } answers {
+            val read = lastSent
+            if (concurrentMark == null) {
+                concurrentMark = thread { resolver.markSent(listOf(googleId, huaweiId)) }.also { it.join(300) }
+            }
+            read
+        }
+
+        resolver.invalidateSent()
+        concurrentMark!!.join()
+
+        assertTrue(lastSent, lastSent.endsWith("|google,huawei"))
     }
 
     @Test

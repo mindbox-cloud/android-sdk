@@ -26,13 +26,17 @@ private const val INVALIDATED_SENT_MARK = "invalidated"
 private const val SENT_TYPES_SEPARATOR = ","
 private const val SENT_STATE_SEPARATOR = "|"
 private const val SET_IN_CLEAR_PREFIX = "["
+private val sentStateLock = Any()
 
 internal fun trackingIdTypesOf(
     configured: SingleInitDelegate<PushConverter>,
     live: List<PushServiceHandler>,
-): Set<String>? = (configured.value.filterIsInstance<PushServiceHandler>() + live)
-    .takeIf { it.isNotEmpty() || configured.isAssigned }
-    ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
+): Set<String>? {
+    val passed = configured.assigned
+    return (passed.orEmpty().filterIsInstance<PushServiceHandler>() + live)
+        .takeIf { it.isNotEmpty() || passed != null }
+        ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
+}
 
 internal interface TrackingIdsResolver {
 
@@ -97,15 +101,17 @@ internal class TrackingIdsResolverImpl(
     }
 
     override fun markSent(trackingIds: List<TrackingId>): Unit = loggingRunCatching {
-        storeSentState(digest = trackingIds.fingerprint(), types = trackingIds.map { it.type })
+        synchronized(sentStateLock) {
+            storeSentState(digest = trackingIds.fingerprint(), types = trackingIds.map { it.type })
+        }
         mindboxLogI("Sent tracking ids: ${trackingIds.joinToString { it.type }.ifEmpty { "none" }}")
     }
 
-    override fun invalidateSent() {
+    override fun invalidateSent(): Unit = synchronized(sentStateLock) {
         storeSentState(digest = INVALIDATED_SENT_MARK, types = sentState()?.types.orEmpty())
     }
 
-    override fun resetSent() {
+    override fun resetSent(): Unit = synchronized(sentStateLock) {
         MindboxPreferences.lastSentTrackingIds = ""
     }
 
