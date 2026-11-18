@@ -1350,9 +1350,10 @@ public object Mindbox : MindboxLog {
                 )
                 else -> {
                     if (isAppInfoChanged) MindboxEventManager.appInfoUpdate(context, updateData)
+                    val trackingVersion = if (isAppInfoChanged) MindboxPreferences.infoUpdatedVersion else updateData.version
                     MindboxEventManager.appTrackingIdsUpdate(
                         context,
-                        updateData.copy(version = MindboxPreferences.infoUpdatedVersion, trackingIds = changedTrackingIds),
+                        updateData.copy(version = trackingVersion, trackingIds = changedTrackingIds),
                     )
                 }
             }
