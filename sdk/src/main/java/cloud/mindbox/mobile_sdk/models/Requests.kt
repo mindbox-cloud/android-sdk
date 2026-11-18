@@ -39,24 +39,25 @@ internal data class MindboxRequest(
         private const val VALUE_ACCEPT = "application/json"
 
         private const val DEFAULT_RESPONSE_CHARSET = "UTF-8"
+
+        fun buildHeaders(configuration: Configuration): MutableMap<String, String> {
+            val params: MutableMap<String, String> = HashMap()
+
+            LoggingExceptionHandler.runCatching {
+                params[HEADER_CONTENT_TYPE] = VALUE_CONTENT_TYPE
+                params[HEADER_USER_AGENT] = configuration.getUserAgent()
+                params[HEADER_INTEGRATION] = VALUE_INTEGRATION
+                params[HEADER_INTEGRATION_VERSION] = BuildConfig.VERSION_NAME
+                params[HEADER_ACCEPT] = VALUE_ACCEPT
+            }
+
+            return params
+        }
     }
 
     override fun toString(): String = "MindboxRequest(methodType=$methodType, fullUrl=$fullUrl)"
 
-    // building headers
-    override fun getHeaders(): MutableMap<String, String> {
-        val params: MutableMap<String, String> = HashMap()
-
-        LoggingExceptionHandler.runCatching {
-            params[HEADER_CONTENT_TYPE] = VALUE_CONTENT_TYPE
-            params[HEADER_USER_AGENT] = configuration.getUserAgent()
-            params[HEADER_INTEGRATION] = VALUE_INTEGRATION
-            params[HEADER_INTEGRATION_VERSION] = BuildConfig.VERSION_NAME
-            params[HEADER_ACCEPT] = VALUE_ACCEPT
-        }
-
-        return params
-    }
+    override fun getHeaders(): MutableMap<String, String> = buildHeaders(configuration)
 
     // Logging responses
     override fun parseNetworkResponse(response: NetworkResponse?): Response<JSONObject> {
