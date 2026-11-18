@@ -40,6 +40,7 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.util.Collections
@@ -57,6 +58,11 @@ internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingR
 }
 
 internal fun String.encode(): String = URLEncoder.encode(this, "UTF-8")
+
+internal fun String.isHttpsUrl(): Boolean = loggingRunCatching(defaultValue = false) {
+    val uri = URI(this)
+    uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()
+}
 
 internal fun ZonedDateTime.convertToString() = runCatching {
     this.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
