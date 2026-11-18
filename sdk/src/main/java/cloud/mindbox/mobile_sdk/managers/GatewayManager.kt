@@ -52,6 +52,7 @@ internal class GatewayManager(
         private const val OPERATION_MOBILE_SDK_LOGS = "MobileSdk.Logs"
         private const val OPERATION_CHECK_PRODUCT_SEGMENTS = "Tracker.CheckProductSegments"
         private const val OPERATION_CHECK_CUSTOMER_SEGMENTS = "Tracker.CheckCustomerSegments"
+        private const val PUSH_DELIVERED_IS_NOT_SENT_HERE = "Push delivered events are sent by PushDeliveredManager"
     }
 
     private val gson by lazy { Gson() }
@@ -161,6 +162,8 @@ internal class GatewayManager(
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
             }
+
+            is EventType.PushDelivered -> error(PUSH_DELIVERED_IS_NOT_SENT_HERE)
         }
 
         val baseUrl = if (event.eventType is TrackingHostEvent) {
@@ -353,6 +356,8 @@ internal class GatewayManager(
         is EventType.AsyncOperation,
         is EventType.SyncOperation,
         -> Request.Method.POST
+
+        is EventType.PushDelivered -> error(PUSH_DELIVERED_IS_NOT_SENT_HERE)
     }
 
     private fun getTimeOffset(

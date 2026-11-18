@@ -44,4 +44,26 @@ class MindboxRoomConverterTest {
         assertEquals(EventType.AppTrackingIdsUpdated, MindboxRoomConverter.stringToEventType(idsUpdated))
         assertEquals(EventType.AppTrackingKeepalive, MindboxRoomConverter.stringToEventType(keepalive))
     }
+
+    @Test
+    fun pushDelivered_survivesTheRoundTripUnderOrdinal2() {
+        val stored = MindboxRoomConverter.eventTypeToString(EventType.PushDelivered)
+
+        assertEquals("""2;{"operation":"PushDelivered","endpoint":""}""", stored)
+        assertEquals(EventType.PushDelivered, MindboxRoomConverter.stringToEventType(stored))
+    }
+
+    @Test
+    fun stringToEventType_readsPushDeliveredOfOldSdkAsPushDelivered() {
+        val eventType = MindboxRoomConverter.stringToEventType("""2;{"operation":"","endpoint":"/mobile-push/delivered"}""")
+
+        assertEquals(EventType.PushDelivered::class, eventType::class)
+    }
+
+    @Test
+    fun additionalFields_keepTheDeliveredUrlWithItsQueryAndFragment() {
+        val fields = hashMapOf(EventType.PushDelivered.FIELD_URL to "https://mbx.ru/d/k%2F1?sig=a+b&x=\"q\"#frag")
+
+        assertEquals(fields, MindboxRoomConverter.stringToHashMap(MindboxRoomConverter.hashMapToString(fields)))
+    }
 }

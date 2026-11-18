@@ -28,8 +28,6 @@ internal sealed class EventType(
 
         private const val APP_INSTALLED_ORDINAL = 0
         private const val APP_INFO_UPDATED_ORDINAL = 1
-
-        // use it when returning a delivered operation, it is not used now
         private const val PUSH_DELIVERED_ORDINAL = 2
         private const val PUSH_CLICKED_ORDINAL = 3
         private const val TRACK_VISIT_ORDINAL = 4
@@ -47,6 +45,7 @@ internal sealed class EventType(
             APP_KEEP_A_LIVE -> object : TypeToken<AppKeepalive>() {}
             APP_TRACKING_IDS_UPDATED_ORDINAL -> object : TypeToken<AppTrackingIdsUpdated>() {}
             APP_TRACKING_KEEP_A_LIVE_ORDINAL -> object : TypeToken<AppTrackingKeepalive>() {}
+            PUSH_DELIVERED_ORDINAL -> object : TypeToken<PushDelivered>() {}
             PUSH_CLICKED_ORDINAL -> object : TypeToken<PushClicked>() {}
             TRACK_VISIT_ORDINAL -> object : TypeToken<TrackVisit>() {}
             ASYNC_OPERATION_ORDINAL -> object : TypeToken<AsyncOperation>() {}
@@ -76,6 +75,10 @@ internal sealed class EventType(
 
     data object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
 
+    data object PushDelivered : EventType("PushDelivered", "") {
+        const val FIELD_URL = "pushDeliveredUrl"
+    }
+
     data object TrackVisit : EventType("TrackVisit", "/v1.1/customer/mobile-track-visit")
 
     internal class AsyncOperation(operation: String) : EventType(operation, "/v3/operations/async")
@@ -89,6 +92,7 @@ internal sealed class EventType(
         is AppKeepalive -> APP_KEEP_A_LIVE
         is AppTrackingIdsUpdated -> APP_TRACKING_IDS_UPDATED_ORDINAL
         is AppTrackingKeepalive -> APP_TRACKING_KEEP_A_LIVE_ORDINAL
+        is PushDelivered -> PUSH_DELIVERED_ORDINAL
         is PushClicked -> PUSH_CLICKED_ORDINAL
         is TrackVisit -> TRACK_VISIT_ORDINAL
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL
