@@ -120,7 +120,8 @@ class MindboxTest {
     )
 
     @Test
-    fun `updateAppInfo sends changed tracking ids in a tracking event of their own`() = runTest {
+    fun `updateAppInfo sends changed tracking ids in a tracking event of their own under a single version`() = runTest {
+        every { MindboxPreferences.infoUpdatedVersion } returnsMany listOf(1, 2)
         coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
         every { trackingIdsResolver.hasChanged(googleIds) } returns true
 
@@ -129,6 +130,7 @@ class MindboxTest {
         verify(exactly = 1) { MindboxEventManager.appTrackingIdsUpdate(context, updateData(googleIds)) }
         verify(exactly = 0) { MindboxEventManager.appInfoUpdate(any(), any(), any()) }
         verify(exactly = 1) { trackingIdsResolver.markSent(googleIds) }
+        verify(exactly = 1) { MindboxPreferences.infoUpdatedVersion }
     }
 
     @Test
@@ -218,18 +220,6 @@ class MindboxTest {
 
         verify(exactly = 1) { MindboxEventManager.appInfoUpdate(context, match { it.version == 1 }, refreshesKeepalive = true) }
         verify(exactly = 1) { MindboxEventManager.appTrackingIdsUpdate(context, match { it.version == 2 }) }
-    }
-
-    @Test
-    fun `updateAppInfo spends a single version when only the tracking ids changed`() = runTest {
-        every { MindboxPreferences.infoUpdatedVersion } returnsMany listOf(1, 2)
-        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
-        every { trackingIdsResolver.hasChanged(googleIds) } returns true
-
-        Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
-
-        verify(exactly = 1) { MindboxEventManager.appTrackingIdsUpdate(context, match { it.version == 1 }) }
-        verify(exactly = 1) { MindboxPreferences.infoUpdatedVersion }
     }
 
     @Test
