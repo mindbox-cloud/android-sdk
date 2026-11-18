@@ -23,6 +23,8 @@ internal class PushDeliveredRequest(
     companion object {
         const val TIMEOUT_MS = 10_000
         private const val MAX_RETRIES = 0
+        private const val EMPTY_JSON_OBJECT = "{}"
+        private const val BODY_CONTENT_TYPE = "application/json; charset=utf-8"
     }
 
     init {
@@ -31,6 +33,10 @@ internal class PushDeliveredRequest(
     }
 
     override fun getHeaders(): MutableMap<String, String> = MindboxRequest.buildHeaders(configuration)
+
+    override fun getBody(): ByteArray = EMPTY_JSON_OBJECT.toByteArray(Charsets.UTF_8)
+
+    override fun getBodyContentType(): String = BODY_CONTENT_TYPE
 
     @VisibleForTesting(otherwise = VisibleForTesting.PROTECTED)
     public override fun parseNetworkResponse(response: NetworkResponse?): Response<Unit> {

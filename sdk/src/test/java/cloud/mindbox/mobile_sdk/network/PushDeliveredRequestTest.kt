@@ -10,7 +10,6 @@ import io.mockk.unmockkAll
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -66,9 +65,10 @@ class PushDeliveredRequestTest {
     }
 
     @Test
-    fun `confirmation is a POST without a body and with the operations headers`() {
+    fun `confirmation is a POST with an empty JSON object and the operations headers`() {
         assertEquals(Request.Method.POST, request.method)
-        assertNull(request.body)
+        assertEquals("{}", request.body.toString(Charsets.UTF_8))
+        assertEquals(request.headers["Content-Type"], request.bodyContentType)
         assertEquals(MindboxRequest(configuration = configuration).headers, request.headers)
     }
 
