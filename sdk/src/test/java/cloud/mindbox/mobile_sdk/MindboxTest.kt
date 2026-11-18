@@ -221,6 +221,18 @@ class MindboxTest {
     }
 
     @Test
+    fun `updateAppInfo spends a single version when only the tracking ids changed`() = runTest {
+        every { MindboxPreferences.infoUpdatedVersion } returnsMany listOf(1, 2)
+        coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
+        every { trackingIdsResolver.hasChanged(googleIds) } returns true
+
+        Mindbox.updateAppInfo(context, PushToken("FCM", "tokenFCM"))
+
+        verify(exactly = 1) { MindboxEventManager.appTrackingIdsUpdate(context, match { it.version == 1 }) }
+        verify(exactly = 1) { MindboxPreferences.infoUpdatedVersion }
+    }
+
+    @Test
     fun `updateAppInfo sends a token change without the unchanged tracking ids`() = runTest {
         coEvery { firstProvider.registerToken(context, any()) } returns "NEW_TOKEN"
         coEvery { trackingIdsResolver.resolve(any()) } returns googleIds
