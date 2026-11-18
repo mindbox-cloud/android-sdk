@@ -73,9 +73,9 @@ class PushDeliveredRequestTest {
     }
 
     @Test
-    fun `confirmation is not cached and waits 10 seconds without retries`() {
+    fun `confirmation is not cached and waits 5 seconds without retries`() {
         assertFalse(request.shouldCache())
-        assertEquals(10_000, request.timeoutMs)
+        assertEquals(5_000, request.timeoutMs)
         assertThrows(VolleyError::class.java) { request.retryPolicy.retry(VolleyError("timeout")) }
     }
 }

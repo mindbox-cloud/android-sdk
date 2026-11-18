@@ -21,7 +21,7 @@ internal class PushDeliveredRequest(
 ) : Request<Unit>(Method.POST, url, errorListener) {
 
     companion object {
-        const val TIMEOUT_MS = 10_000
+        const val TIMEOUT_MS = 5_000
         private const val MAX_RETRIES = 0
         private const val EMPTY_JSON_OBJECT = "{}"
         private const val BODY_CONTENT_TYPE = "application/json; charset=utf-8"
