@@ -10,6 +10,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.Bundle
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationChannelCompat
@@ -21,9 +23,13 @@ import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.R
 import cloud.mindbox.mobile_sdk.logger.mindboxLogE
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.pushes.handler.MindboxMessageHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.ImageRetryStrategy
+import cloud.mindbox.mobile_sdk.pushes.handler.image.PushImage
+import cloud.mindbox.mobile_sdk.pushes.handler.image.PushImageFileStore
+import cloud.mindbox.mobile_sdk.pushes.handler.image.PushImageLoader
 import cloud.mindbox.mobile_sdk.putMindboxPushButtonExtras
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.*
@@ -142,18 +148,27 @@ internal object PushNotificationManager {
                         log = "Image loading started, imageLoader=$imageLoader",
                     ),
                 )
-                val bitmap = imageLoader.onLoadImage(
-                    context = context,
-                    message = remoteMessage,
-                    state = state,
-                )
+                val pushImage = if (imageLoader is PushImageLoader) {
+                    imageLoader.loadPushImage(
+                        context = context,
+                        message = remoteMessage,
+                        state = state,
+                    )
+                } else {
+                    imageLoader.onLoadImage(
+                        context = context,
+                        message = remoteMessage,
+                        state = state,
+                    )?.let(::PushImage)
+                }
                 this@PushNotificationManager.mindboxLogI(
                     message = buildLogMessage(
                         message = remoteMessage,
-                        log = "Image loading complete, bitmap=${bitmap?.byteCount} bytes",
+                        log = "Image loading complete, bitmap=${pushImage?.bitmap?.byteCount} bytes, " +
+                            "animatedImageUri=${pushImage?.animatedImageUri}",
                     ),
                 )
-                bitmap
+                pushImage
             }
         }
 
@@ -341,7 +356,7 @@ internal object PushNotificationManager {
             pushActions = remoteMessage.pushActions,
             pushLink = remoteMessage.pushLink,
             payload = remoteMessage.payload,
-            image = imagePlaceholder,
+            image = imagePlaceholder?.let(::PushImage),
             channelId = channelId,
             pushSmallIcon = pushSmallIcon,
             activities = activities,
@@ -391,7 +406,7 @@ internal object PushNotificationManager {
             pushActions = remoteMessage.pushActions,
             pushLink = remoteMessage.pushLink,
             payload = remoteMessage.payload,
-            image = imagePlaceholder,
+            image = imagePlaceholder?.let(::PushImage),
             channelId = channelId,
             pushSmallIcon = pushSmallIcon,
             activities = activities,
@@ -411,7 +426,7 @@ internal object PushNotificationManager {
         pushSmallIcon: Int,
         activities: Map<String, Class<out Activity>>?,
         defaultActivity: Class<out Activity>,
-        image: Bitmap?,
+        image: PushImage?,
     ) {
         createNotificationChannel(
             context = context,
@@ -434,6 +449,13 @@ internal object PushNotificationManager {
             activities = activities,
             defaultActivity = defaultActivity,
         )
+        if (image?.animatedImageUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            PushImageFileStore.removeStale(
+                context = context,
+                activeNotifications = notificationManager.activeNotifications.map { it.notification },
+                now = System.currentTimeMillis().toTimestamp(),
+            )
+        }
         notificationManager.notify(notificationId, notification)
     }
 
@@ -446,7 +468,7 @@ internal object PushNotificationManager {
         pushActions: List<PushAction>,
         pushLink: String?,
         payload: String?,
-        image: Bitmap?,
+        image: PushImage?,
         channelId: String,
         @DrawableRes pushSmallIcon: Int,
         activities: Map<String, Class<out Activity>>?,
@@ -594,8 +616,8 @@ internal object PushNotificationManager {
         return activities?.get(key) ?: defaultActivity
     }
 
-    private fun NotificationCompat.Builder.setNotificationStyle(
-        image: Bitmap?,
+    internal fun NotificationCompat.Builder.setNotificationStyle(
+        image: PushImage?,
         title: String,
         text: String?,
         hasButtons: Boolean,
@@ -603,12 +625,18 @@ internal object PushNotificationManager {
     ) = apply {
         LoggingExceptionHandler.runCatching(
             block = {
-                if (image != null) {
-                    val useScale = context.resources.getBoolean(R.bool.mindbox_use_central_inside_notification_scale)
-                    val bigPicture = if (useScale) createCenterInsideBitmap(image, hasButtons, title.length) else image
-                    setImage(image, bigPicture, title, text)
-                } else {
-                    setText(text)
+                val animatedImageUri = image?.animatedImageUri
+                when {
+                    image == null -> setText(text)
+                    animatedImageUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                        val bigPicture = Icon.createWithContentUri(animatedImageUri)
+                        setImage(image.bitmap, NotificationCompat.BigPictureStyle().bigPicture(bigPicture), title, text)
+                    }
+                    else -> {
+                        val useScale = context.resources.getBoolean(R.bool.mindbox_use_central_inside_notification_scale)
+                        val bigPicture = if (useScale) createCenterInsideBitmap(image.bitmap, hasButtons, title.length) else image.bitmap
+                        setImage(image.bitmap, NotificationCompat.BigPictureStyle().bigPicture(bigPicture), title, text)
+                    }
                 }
             },
             defaultValue = { setText(text) }
@@ -617,13 +645,12 @@ internal object PushNotificationManager {
 
     private fun NotificationCompat.Builder.setImage(
         imageBitmap: Bitmap,
-        bigPicture: Bitmap,
+        pictureStyle: NotificationCompat.BigPictureStyle,
         title: String,
         text: String?
     ): NotificationCompat.Builder {
         setLargeIcon(imageBitmap)
-        val style = NotificationCompat.BigPictureStyle()
-            .bigPicture(bigPicture)
+        val style = pictureStyle
             .bigLargeIcon(null as Bitmap?)
             .setBigContentTitle(title)
         text?.let(style::setSummaryText)

@@ -17,6 +17,16 @@
                 android:value="androidx.startup" />
         </provider>
 
+        <provider
+            android:name="cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxPushImageProvider"
+            android:authorities="${applicationId}.mindbox.pushimages"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/mindbox_push_image_paths" />
+        </provider>
+
         <activity
             android:name="cloud.mindbox.mobile_sdk.inapp.presentation.actions.PushActivationActivity"
             android:excludeFromRecents="true"
