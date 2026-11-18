@@ -149,13 +149,13 @@ internal class GatewayManager(
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
-                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
+                    event.dateTimeOffset(shouldCountOffset, System.currentTimeMillis().toTimestamp()).interval.toString()
             }
 
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
-                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
+                    event.dateTimeOffset(shouldCountOffset, System.currentTimeMillis().toTimestamp()).interval.toString()
             }
 
             is EventType.SyncOperation -> {
@@ -358,15 +358,6 @@ internal class GatewayManager(
         -> Request.Method.POST
 
         is EventType.PushDelivered -> error(PUSH_DELIVERED_IS_NOT_SENT_HERE)
-    }
-
-    private fun getTimeOffset(
-        timeMls: Long,
-        shouldCountOffset: Boolean,
-    ): String = if (shouldCountOffset) {
-        (System.currentTimeMillis() - timeMls).coerceAtLeast(0L).toString()
-    } else {
-        "0"
     }
 
     private fun <T : OperationResponseBaseInternal> handleSuccessResponse(

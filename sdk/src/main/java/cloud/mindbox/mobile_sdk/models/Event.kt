@@ -19,6 +19,13 @@ internal data class Event(
     val body: String? = null,
 )
 
+internal fun Event.dateTimeOffset(shouldCountOffset: Boolean, now: Timestamp): Milliseconds =
+    if (shouldCountOffset) {
+        Milliseconds((now.ms - enqueueTimestamp).coerceAtLeast(0L))
+    } else {
+        Milliseconds(0L)
+    }
+
 internal sealed class EventType(
     @SerializedName("operation") val operation: String,
     @SerializedName("endpoint") val endpoint: String,
