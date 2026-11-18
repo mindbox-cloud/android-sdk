@@ -19,6 +19,7 @@ public data class MindboxRemoteMessage(
     @SerializedName("pushLink") val pushLink: String?,
     @SerializedName("imageUrl") val imageUrl: String?,
     @SerializedName("payload") val payload: String?,
+    @SerializedName("deliveredUrl") val deliveredUrl: String? = null,
 ) {
     public companion object {
         public const val DATA_UNIQUE_KEY: String = "uniqueKey"
@@ -28,6 +29,7 @@ public data class MindboxRemoteMessage(
         public const val DATA_BUTTONS: String = "buttons"
         public const val DATA_PUSH_CLICK_URL: String = "clickUrl"
         public const val DATA_PAYLOAD: String = "payload"
+        internal const val DATA_CALLBACKS: String = "callbacks"
     }
 }
 

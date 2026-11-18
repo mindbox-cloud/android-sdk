@@ -323,6 +323,44 @@ class MindboxPushConverterTest {
         assertTrue(result!!.pushActions.size == 1)
     }
 
+    @Test
+    fun `convertToMindboxRemoteMessage takes deliveredUrl from callbacks`() {
+        val data = mapOf(
+            "uniqueKey" to "test-unique-key",
+            "callbacks" to """{"deliveredUrl":"https://mbx.ru/d/key/hash?sig=1"}""",
+        )
+
+        assertEquals("https://mbx.ru/d/key/hash?sig=1", converter.convertToMindboxRemoteMessage(data)?.deliveredUrl)
+        assertEquals("https://mbx.ru/d/key/hash?sig=1", converter.convertToMindboxRemoteMessage(TestRemoteMessage(data))?.deliveredUrl)
+    }
+
+    @Test
+    fun `convertToMindboxRemoteMessage without callbacks has no deliveredUrl`() {
+        val result = converter.convertToMindboxRemoteMessage(mapOf("uniqueKey" to "test-unique-key"))
+
+        assertNotNull(result)
+        assertNull(result?.deliveredUrl)
+    }
+
+    @Test
+    fun `convertToMindboxRemoteMessage keeps the push when callbacks are broken or have no deliveredUrl`() {
+        listOf(
+            "  ",
+            "{}",
+            """{"deliveredUrl":null}""",
+            """{"deliveredUrl":{"url":"https://mbx.ru/d"}}""",
+            """{"otherUrl":"https://mbx.ru/d"}""",
+            """["https://mbx.ru/d"]""",
+            "not json",
+            """{"deliveredUrl":"""",
+        ).forEach { callbacks ->
+            val result = converter.convertToMindboxRemoteMessage(mapOf("uniqueKey" to "test-unique-key", "callbacks" to callbacks))
+
+            assertEquals(callbacks, "test-unique-key", result?.uniqueKey)
+            assertNull(callbacks, result?.deliveredUrl)
+        }
+    }
+
     data class TestRemoteMessage(val data: Map<String, String> = mapOf())
 
     class TestMindboxPushConverter : MindboxPushConverter<TestRemoteMessage>() {

@@ -78,6 +78,7 @@ internal object PushNotificationManager {
         Mindbox.onPushReceived(
             context = context.applicationContext,
             uniqKey = remoteMessage.uniqueKey,
+            deliveredUrl = DeliveredUrl.of(remoteMessage.deliveredUrl),
         )
 
         tryNotifyRemoteMessage(

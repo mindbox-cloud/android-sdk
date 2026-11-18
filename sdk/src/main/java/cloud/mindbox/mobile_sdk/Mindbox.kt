@@ -449,9 +449,17 @@ public object Mindbox : MindboxLog {
      * @param context used to initialize the main tools
      * @param uniqKey - unique identifier of push notification
      */
-    public fun onPushReceived(context: Context, uniqKey: String): Unit = LoggingExceptionHandler.runCatching {
+    public fun onPushReceived(context: Context, uniqKey: String): Unit =
+        onPushReceived(context = context, uniqKey = uniqKey, deliveredUrl = null)
+
+    internal fun onPushReceived(
+        context: Context,
+        uniqKey: String,
+        deliveredUrl: DeliveredUrl?,
+    ): Unit = LoggingExceptionHandler.runCatching {
         initComponents(context)
-        MindboxLoggerImpl.d(this, "onPushReceived. uniqKey: $uniqKey")
+        MindboxLoggerImpl.d(this, "onPushReceived. uniqKey: $uniqKey, hasDeliveredUrl: ${deliveredUrl != null}")
+        deliveredUrl?.let { MindboxEventManager.pushDelivered(context, it) }
 
         if (!MindboxPreferences.isFirstInitialize) {
             mindboxScope.launch {
