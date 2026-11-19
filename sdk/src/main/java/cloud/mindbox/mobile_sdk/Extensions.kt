@@ -25,6 +25,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.IS_OPENED_FROM_PUSH_BUNDLE_KEY
@@ -40,6 +41,7 @@ import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
 import org.threeten.bp.format.DateTimeFormatter
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.util.Collections
@@ -57,6 +59,14 @@ internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingR
 }
 
 internal fun String.encode(): String = URLEncoder.encode(this, "UTF-8")
+
+internal fun String.isHttpsUrl(): Boolean = runCatching {
+    val uri = URI(this)
+    uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()
+}.getOrElse { error ->
+    mindboxLogW("Url is not valid: ${error.message ?: this}")
+    false
+}
 
 internal fun ZonedDateTime.convertToString() = runCatching {
     this.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))

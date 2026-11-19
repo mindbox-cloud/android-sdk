@@ -7,9 +7,10 @@ import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.MindboxError
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
-import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.models.Timestamp
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.mockLogger
 import com.android.volley.NetworkResponse
 import com.android.volley.VolleyError
@@ -36,7 +37,9 @@ import java.util.concurrent.TimeUnit
 class GatewayManagerAsyncSendTest {
 
     private val serviceGenerator: MindboxServiceGenerator = mockk(relaxed = true)
-    private val gatewayManager = GatewayManager(serviceGenerator)
+    private val now = Timestamp(1_800_000_000_000L)
+    private val timeProvider: TimeProvider = mockk { every { currentTimestamp() } returns now }
+    private val gatewayManager = GatewayManager(serviceGenerator, timeProvider = { timeProvider })
     private var lastRequest: MindboxRequest? = null
 
     private val configuration = Configuration(
@@ -135,7 +138,7 @@ class GatewayManagerAsyncSendTest {
 
     @Test
     fun `event created before the clock was moved back is sent with zero time offset`() {
-        val createdBeforeClockMovedBack = System.currentTimeMillis().toTimestamp() + 3_600_000L
+        val createdBeforeClockMovedBack = now + 3_600_000L
 
         sendAsync(Event(eventType = EventType.AsyncOperation("Test.Operation"), enqueueTimestamp = createdBeforeClockMovedBack.ms)) {}
 
@@ -144,11 +147,11 @@ class GatewayManagerAsyncSendTest {
 
     @Test
     fun `event created five minutes ago is sent with its age as time offset`() {
-        val createdFiveMinutesAgo = System.currentTimeMillis().toTimestamp() + -300_000L
+        val createdFiveMinutesAgo = now + -300_000L
 
         sendAsync(Event(eventType = EventType.AsyncOperation("Test.Operation"), enqueueTimestamp = createdFiveMinutesAgo.ms)) {}
 
-        assertTrue(lastRequest!!.timeOffsetQuery().toLong() in 300_000L..360_000L)
+        assertEquals("300000", lastRequest!!.timeOffsetQuery())
     }
 
     @Test

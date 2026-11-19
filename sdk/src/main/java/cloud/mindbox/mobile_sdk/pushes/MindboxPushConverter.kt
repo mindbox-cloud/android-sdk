@@ -1,6 +1,8 @@
 package cloud.mindbox.mobile_sdk.pushes
 
+import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -70,6 +72,12 @@ public abstract class MindboxPushConverter<in RemoteMessage> {
             pushLink = data[MindboxRemoteMessage.DATA_PUSH_CLICK_URL],
             imageUrl = data[MindboxRemoteMessage.DATA_IMAGE_URL],
             payload = data[MindboxRemoteMessage.DATA_PAYLOAD],
+            deliveredUrl = data[MindboxRemoteMessage.DATA_CALLBACKS]?.toDeliveredUrl(),
         )
     }
+
+    private fun String.toDeliveredUrl(): String? = gson.fromJson<PushCallbacks>(this)
+        .onFailure { this@MindboxPushConverter.mindboxLogW("Push callbacks can't be parsed: $this", it) }
+        .getOrNull()
+        ?.deliveredUrl
 }

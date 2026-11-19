@@ -23,6 +23,7 @@ import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
@@ -51,7 +52,7 @@ class GatewayManagerTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         mockMindboxServiceGenerator = mockk(relaxed = true)
-        gatewayManager = GatewayManager(mockMindboxServiceGenerator) { trackingIdsResolver }
+        gatewayManager = GatewayManager(mockMindboxServiceGenerator, { SystemTimeProvider() }) { trackingIdsResolver }
         mockConfiguration = Configuration(
             configurationId = 1L,
             previousInstallationId = "prev-install-id",

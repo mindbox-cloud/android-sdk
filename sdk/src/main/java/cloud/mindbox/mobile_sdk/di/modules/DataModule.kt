@@ -360,6 +360,9 @@ internal fun DataModule(
     override val deliveryPauseManager: DeliveryPauseManager by lazy {
         DeliveryPauseManager(monotonicNow = timeProvider::monotonicMillis)
     }
+    override val pushDeliveredManager: PushDeliveredManager by lazy {
+        PushDeliveredManager(mindboxServiceGenerator, timeProvider)
+    }
 
     override val gson: Gson by lazy {
         GsonBuilder()

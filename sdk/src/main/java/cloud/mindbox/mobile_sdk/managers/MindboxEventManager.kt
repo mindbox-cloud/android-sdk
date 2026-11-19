@@ -10,10 +10,12 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.*
 import cloud.mindbox.mobile_sdk.models.operation.OperationResponseBaseInternal
+import cloud.mindbox.mobile_sdk.pushes.DeliveredUrl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -111,6 +113,36 @@ internal object MindboxEventManager {
             context,
             Event(eventType = EventType.PushClicked, body = gson.toJson(clickData)),
         )
+    }
+
+    fun pushDelivered(
+        context: Context,
+        deliveredUrl: DeliveredUrl,
+    ): Unit = loggingRunCatching {
+        val event = Event(
+            eventType = EventType.PushDelivered,
+            additionalFields = hashMapOf(EventType.PushDelivered.FIELD_URL to deliveredUrl.value),
+        )
+        Mindbox.mindboxScope.launch(Dispatchers.IO) {
+            InitializeLock.await(InitializeLock.State.MIGRATION)
+            DbManager.addEventToQueue(context, event)
+            loggingRunCatching {
+                val configuration = DbManager.getConfigurations()
+                if (configuration == null) {
+                    this@MindboxEventManager.mindboxLogW(
+                        "Event ${event.eventType.operation} will be sent later, because configuration was not initialized"
+                    )
+                } else {
+                    WorkerDelegate().sendEventOrPostpone(
+                        context = context,
+                        configuration = configuration,
+                        deviceUuid = MindboxPreferences.deviceUuid,
+                        event = event,
+                        parent = this@MindboxEventManager,
+                    )
+                }
+            }
+        }
     }
 
     fun appStarted(

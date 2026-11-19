@@ -20,6 +20,7 @@ import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.network.WebViewContentRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
@@ -38,6 +39,7 @@ import kotlin.coroutines.suspendCoroutine
 
 internal class GatewayManager(
     private val mindboxServiceGenerator: MindboxServiceGenerator,
+    private val timeProvider: () -> TimeProvider = { MindboxDI.appModule.timeProvider },
     private val trackingIdsResolver: () -> TrackingIdsResolver = { MindboxDI.appModule.trackingIdsResolver },
 ) {
 
@@ -52,6 +54,7 @@ internal class GatewayManager(
         private const val OPERATION_MOBILE_SDK_LOGS = "MobileSdk.Logs"
         private const val OPERATION_CHECK_PRODUCT_SEGMENTS = "Tracker.CheckProductSegments"
         private const val OPERATION_CHECK_CUSTOMER_SEGMENTS = "Tracker.CheckCustomerSegments"
+        private const val PUSH_DELIVERED_IS_NOT_SENT_HERE = "Push delivered events are sent by PushDeliveredManager"
     }
 
     private val gson by lazy { Gson() }
@@ -148,19 +151,21 @@ internal class GatewayManager(
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
-                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
+                    event.dateTimeOffset(shouldCountOffset, timeProvider().currentTimestamp()).interval.toString()
             }
 
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
-                    getTimeOffset(event.enqueueTimestamp, shouldCountOffset)
+                    event.dateTimeOffset(shouldCountOffset, timeProvider().currentTimestamp()).interval.toString()
             }
 
             is EventType.SyncOperation -> {
                 urlQueries[UrlQuery.ENDPOINT_ID.value] = configuration.endpointId
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
             }
+
+            is EventType.PushDelivered -> error(PUSH_DELIVERED_IS_NOT_SENT_HERE)
         }
 
         val baseUrl = if (event.eventType is TrackingHostEvent) {
@@ -353,15 +358,8 @@ internal class GatewayManager(
         is EventType.AsyncOperation,
         is EventType.SyncOperation,
         -> Request.Method.POST
-    }
 
-    private fun getTimeOffset(
-        timeMls: Long,
-        shouldCountOffset: Boolean,
-    ): String = if (shouldCountOffset) {
-        (System.currentTimeMillis() - timeMls).coerceAtLeast(0L).toString()
-    } else {
-        "0"
+        is EventType.PushDelivered -> error(PUSH_DELIVERED_IS_NOT_SENT_HERE)
     }
 
     private fun <T : OperationResponseBaseInternal> handleSuccessResponse(

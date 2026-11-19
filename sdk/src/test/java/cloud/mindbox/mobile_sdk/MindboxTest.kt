@@ -1,5 +1,6 @@
 package cloud.mindbox.mobile_sdk
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
@@ -17,12 +18,15 @@ import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.UpdateData
+import cloud.mindbox.mobile_sdk.pushes.DeliveredUrl
+import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.utils.mockLogger
 import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import io.mockk.*
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +35,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.text.SimpleDateFormat
@@ -507,6 +512,68 @@ class MindboxTest {
 
         assertEquals(1736502000L, timestamp)
     }
+
+    @Test
+    fun `handled push with a delivered url queues its delivery confirmation`() = runTest {
+        stubPushReceipt()
+
+        assertTrue(handlePush(deliveredUrl = "https://mbx.ru/d/key/hash?sig=1"))
+
+        verify(exactly = 1) {
+            MindboxEventManager.pushDelivered(any(), checkNotNull(DeliveredUrl.of("https://mbx.ru/d/key/hash?sig=1")))
+        }
+    }
+
+    @Test
+    fun `handled push without an https delivered url queues no confirmation`() = runTest {
+        stubPushReceipt()
+
+        assertTrue(handlePush(deliveredUrl = null))
+        assertTrue(handlePush(deliveredUrl = "http://mbx.ru/d/key/hash"))
+
+        verify(exactly = 0) { MindboxEventManager.pushDelivered(any(), any()) }
+    }
+
+    @Test
+    fun `public onPushReceived queues no delivery confirmation`() {
+        stubPushReceipt()
+
+        Mindbox.onPushReceived(context, "push-key")
+
+        verify(exactly = 1) { Mindbox.initComponents(context) }
+        verify(exactly = 0) { MindboxEventManager.pushDelivered(any(), any()) }
+    }
+
+    private fun stubPushReceipt() {
+        mockLogger()
+        mockkObject(Mindbox)
+        every { Mindbox.initComponents(any()) } just runs
+        every { MindboxPreferences.isFirstInitialize } returns true
+        every { MindboxEventManager.pushDelivered(any(), any()) } just runs
+        coEvery {
+            PushNotificationManager.tryNotifyRemoteMessage(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } just runs
+    }
+
+    private suspend fun handlePush(deliveredUrl: String?): Boolean = PushNotificationManager.handleRemoteMessage(
+        context = context,
+        remoteMessage = MindboxRemoteMessage(
+            uniqueKey = "push-key",
+            title = "Title",
+            description = "Description",
+            pushActions = emptyList(),
+            pushLink = null,
+            imageUrl = null,
+            payload = null,
+            deliveredUrl = deliveredUrl,
+        ),
+        channelId = "channel",
+        channelName = "Channel",
+        pushSmallIcon = 0,
+        channelDescription = null,
+        activities = null,
+        defaultActivity = Activity::class.java,
+    )
 
     @Test
     fun `a soft re-init that abandons the awaited config download requests the config once`() {
