@@ -1,5 +1,10 @@
 package cloud.mindbox.mobile_sdk.pushes
 
+import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.utils.mockLogger
+import io.mockk.unmockkObject
+import io.mockk.verify
+import java.net.URISyntaxException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -29,6 +34,19 @@ class DeliveredUrlTest {
             "https://mbx.ru/d with spaces",
         ).forEach { raw ->
             assertNull(raw, DeliveredUrl.of(raw))
+        }
+    }
+
+    @Test
+    fun `unparsable url is reported as a warning, not an error`() {
+        mockLogger()
+        try {
+            assertNull(DeliveredUrl.of("https://mbx.ru/d with spaces"))
+
+            verify(exactly = 1) { MindboxLoggerImpl.w(any(), match { "https://mbx.ru/d with spaces" in it }) }
+            verify(exactly = 0) { MindboxLoggerImpl.e(any(), any(), ofType<URISyntaxException>()) }
+        } finally {
+            unmockkObject(MindboxLoggerImpl)
         }
     }
 

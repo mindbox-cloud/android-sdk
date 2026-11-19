@@ -59,9 +59,12 @@ internal fun LinkedHashMap<String, String>.toUrlQueryString(): String = loggingR
 
 internal fun String.encode(): String = URLEncoder.encode(this, "UTF-8")
 
-internal fun String.isHttpsUrl(): Boolean = loggingRunCatching(defaultValue = false) {
+internal fun String.isHttpsUrl(): Boolean = runCatching {
     val uri = URI(this)
     uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()
+}.getOrElse { error ->
+    MindboxLoggerImpl.w("Mindbox", "Url is not valid: ${error.message ?: this}")
+    false
 }
 
 internal fun ZonedDateTime.convertToString() = runCatching {
