@@ -458,7 +458,7 @@ public object Mindbox : MindboxLog {
         deliveredUrl: DeliveredUrl?,
     ): Unit = LoggingExceptionHandler.runCatching {
         initComponents(context)
-        MindboxLoggerImpl.d(this, "onPushReceived. uniqKey: $uniqKey, hasDeliveredUrl: ${deliveredUrl != null}")
+        mindboxLogD("onPushReceived. uniqKey: $uniqKey, hasDeliveredUrl: ${deliveredUrl != null}")
         deliveredUrl?.let { MindboxEventManager.pushDelivered(context, it) }
 
         if (!MindboxPreferences.isFirstInitialize) {

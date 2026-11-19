@@ -7,6 +7,7 @@ import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
+import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.mockLogger
 import com.android.volley.Request
 import io.mockk.every
@@ -22,7 +23,7 @@ import org.junit.Test
 class GatewayManagerPushDeliveredTest {
 
     private val serviceGenerator: MindboxServiceGenerator = mockk(relaxed = true)
-    private val gatewayManager = GatewayManager(serviceGenerator)
+    private val gatewayManager = GatewayManager(serviceGenerator, timeProvider = { SystemTimeProvider() })
 
     private val configuration = Configuration(
         configurationId = 1L,

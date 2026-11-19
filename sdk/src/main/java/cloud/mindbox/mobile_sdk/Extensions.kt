@@ -25,6 +25,7 @@ import cloud.mindbox.mobile_sdk.inapp.domain.models.InApp
 import cloud.mindbox.mobile_sdk.inapp.domain.models.InAppType
 import cloud.mindbox.mobile_sdk.inapp.domain.models.Layer
 import cloud.mindbox.mobile_sdk.logger.MindboxLoggerImpl
+import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_BUTTON_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.EXTRA_UNIQ_PUSH_KEY
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager.IS_OPENED_FROM_PUSH_BUNDLE_KEY
@@ -63,7 +64,7 @@ internal fun String.isHttpsUrl(): Boolean = runCatching {
     val uri = URI(this)
     uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()
 }.getOrElse { error ->
-    MindboxLoggerImpl.w("Mindbox", "Url is not valid: ${error.message ?: this}")
+    mindboxLogW("Url is not valid: ${error.message ?: this}")
     false
 }
 

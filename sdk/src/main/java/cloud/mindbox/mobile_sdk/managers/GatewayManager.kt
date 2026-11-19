@@ -20,6 +20,7 @@ import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.network.WebViewContentRequest
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.toUrlQueryString
+import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
@@ -38,6 +39,7 @@ import kotlin.coroutines.suspendCoroutine
 
 internal class GatewayManager(
     private val mindboxServiceGenerator: MindboxServiceGenerator,
+    private val timeProvider: () -> TimeProvider = { MindboxDI.appModule.timeProvider },
     private val trackingIdsResolver: () -> TrackingIdsResolver = { MindboxDI.appModule.trackingIdsResolver },
 ) {
 
@@ -149,13 +151,13 @@ internal class GatewayManager(
                 urlQueries[UrlQuery.OPERATION.value] = event.eventType.operation
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
-                    event.dateTimeOffset(shouldCountOffset, System.currentTimeMillis().toTimestamp()).interval.toString()
+                    event.dateTimeOffset(shouldCountOffset, timeProvider().currentTimestamp()).interval.toString()
             }
 
             is EventType.TrackVisit -> {
                 urlQueries[UrlQuery.TRANSACTION_ID.value] = event.transactionId
                 urlQueries[UrlQuery.DATE_TIME_OFFSET.value] =
-                    event.dateTimeOffset(shouldCountOffset, System.currentTimeMillis().toTimestamp()).interval.toString()
+                    event.dateTimeOffset(shouldCountOffset, timeProvider().currentTimestamp()).interval.toString()
             }
 
             is EventType.SyncOperation -> {
