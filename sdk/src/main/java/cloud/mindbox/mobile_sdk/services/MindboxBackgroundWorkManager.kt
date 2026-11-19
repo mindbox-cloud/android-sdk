@@ -3,6 +3,7 @@ package cloud.mindbox.mobile_sdk.services
 import android.app.Activity
 import android.content.Context
 import androidx.work.*
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.handler.MessageHandlingState
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
@@ -11,7 +12,8 @@ import java.util.concurrent.TimeUnit
 
 internal object BackgroundWorkManager {
 
-    private const val INITIAL_DELAY = 120L
+    private val WORKER_DELAY = Milliseconds(120_000L)
+    private val WORKER_BACKOFF = Milliseconds(180_000L)
 
     private val NOTIFICATION_WORKER_TAG =
         "MindboxNotificationWorkManager-${MindboxPreferences.hostAppName}"
@@ -19,9 +21,18 @@ internal object BackgroundWorkManager {
     private val WORKER_TAG =
         "MindboxBackgroundWorkManager-${MindboxPreferences.hostAppName}"
 
-    fun startOneTimeService(context: Context) = LoggingExceptionHandler.runCatching {
+    fun startOneTimeService(context: Context) = enqueueOneTimeService(context, ExistingWorkPolicy.KEEP)
+
+    fun startNextOneTimeService(context: Context) =
+        enqueueOneTimeService(context, ExistingWorkPolicy.APPEND_OR_REPLACE)
+
+    private fun enqueueOneTimeService(
+        context: Context,
+        existingWorkPolicy: ExistingWorkPolicy,
+    ) = LoggingExceptionHandler.runCatching {
         val request = OneTimeWorkRequestBuilder<MindboxOneTimeEventWorker>()
-            .setInitialDelay(INITIAL_DELAY, TimeUnit.SECONDS)
+            .setInitialDelay(WORKER_DELAY.interval, TimeUnit.MILLISECONDS)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WORKER_BACKOFF.interval, TimeUnit.MILLISECONDS)
             .addTag(WORKER_TAG)
             .setConstraints(
                 Constraints.Builder()
@@ -32,7 +43,7 @@ internal object BackgroundWorkManager {
 
         WorkManager
             .getInstance(context)
-            .beginUniqueWork(WORKER_TAG, ExistingWorkPolicy.KEEP, request)
+            .beginUniqueWork(WORKER_TAG, existingWorkPolicy, request)
             .enqueue()
     }
 
