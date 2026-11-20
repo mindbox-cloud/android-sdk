@@ -6,7 +6,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <uses-sdk tools:overrideLibrary="io.mockk, io.mockk.proxy.android" />
     <application>
         <provider
             android:name="androidx.startup.InitializationProvider"

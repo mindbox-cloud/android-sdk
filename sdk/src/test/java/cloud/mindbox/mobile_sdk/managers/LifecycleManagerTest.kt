@@ -540,6 +540,66 @@ internal class LifecycleManagerTest {
         assertEquals(2, trackVisitEvents.size)
     }
 
+    @Test
+    fun `reinit after cold start by push sends DIRECT instead of repeating PUSH`() {
+        val manager = createManager(isAppInBackground = true)
+        val pushIntent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+        manager.onActivityStarted(buildActivityA(pushIntent))
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+        assertEquals(listOf(PUSH to null), trackVisitEvents)
+        trackVisitEvents.clear()
+
+        manager.scheduleReinitTrackVisit()
+        listenTrackVisit(manager)
+        manager.scheduleReinitTrackVisit()
+        listenTrackVisit(manager)
+
+        assertEquals(listOf(DIRECT to null, DIRECT to null), trackVisitEvents)
+    }
+
+    @Test
+    fun `reinit after cold start by link sends DIRECT without the url`() {
+        val url = "https://example.com/promo"
+        val manager = createManager(isAppInBackground = true)
+        manager.onActivityStarted(buildActivityA(Intent(Intent.ACTION_VIEW, Uri.parse(url))))
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+        assertEquals(listOf(LINK to url), trackVisitEvents)
+        trackVisitEvents.clear()
+
+        manager.scheduleReinitTrackVisit()
+        listenTrackVisit(manager)
+
+        assertEquals(listOf(DIRECT to null), trackVisitEvents)
+    }
+
+    @Test
+    fun `intent source taken by reinit visit is not repeated by the foreground visit`() {
+        val manager = createManager(isAppInBackground = true)
+        val pushIntent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+        manager.onActivityStarted(buildActivityA(pushIntent))
+
+        manager.scheduleReinitTrackVisit()
+        listenTrackVisit(manager)
+        manager.onStateChanged(mockOwner(), Lifecycle.Event.ON_START)
+
+        assertEquals(listOf(PUSH to null, DIRECT to null), trackVisitEvents)
+    }
+
+    @Test
+    fun `foreground visit is DIRECT after push visit when process start precedes activity start`() {
+        val owner = mockOwner()
+        val manager = createManager(isAppInBackground = true)
+        val pushIntent = Intent().apply { putExtra(IS_OPENED_FROM_PUSH_BUNDLE_KEY, true) }
+        manager.onActivityStarted(buildActivityA(pushIntent))
+        manager.onStateChanged(owner, Lifecycle.Event.ON_START)
+        trackVisitEvents.clear()
+
+        manager.onStateChanged(owner, Lifecycle.Event.ON_STOP)
+        manager.onStateChanged(owner, Lifecycle.Event.ON_START)
+
+        assertEquals(listOf(DIRECT to null), trackVisitEvents)
+    }
+
     // endregion
 
     // region — onNewIntent

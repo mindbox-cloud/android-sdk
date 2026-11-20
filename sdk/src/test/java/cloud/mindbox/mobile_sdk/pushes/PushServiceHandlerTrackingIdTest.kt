@@ -76,17 +76,17 @@ class PushServiceHandlerTrackingIdTest {
     }
 
     @Test
-    fun `an unavailable provider is not an opt-out`() {
+    fun `missing services count as no identifier`() {
         val handler = TestPushServiceHandler(isServiceAvailable = false) { GOOGLE_VALUE to false }
 
         assertEquals(TrackingIdResult.Unavailable, handler.tryGetTrackingId(context))
     }
 
     @Test
-    fun `a throwing provider never yields a random uuid`() {
+    fun `a throwing provider is a failed read, not an opt-out and not a random uuid`() {
         val handler = TestPushServiceHandler { error("Google Play services are updating") }
 
-        assertEquals(TrackingIdResult.Unavailable, handler.tryGetTrackingId(context))
+        assertEquals(TrackingIdResult.Failed, handler.tryGetTrackingId(context))
     }
 
     @Test

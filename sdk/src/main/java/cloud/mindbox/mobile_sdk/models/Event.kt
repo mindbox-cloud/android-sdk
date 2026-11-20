@@ -37,12 +37,16 @@ internal sealed class EventType(
         private const val SYNC_OPERATION_ORDINAL = 6
         private const val APP_INSTALLED_WITHOUT_CUSTOMER = 7
         private const val APP_KEEP_A_LIVE = 8
+        private const val APP_TRACKING_IDS_UPDATED_ORDINAL = 9
+        private const val APP_TRACKING_KEEP_A_LIVE_ORDINAL = 10
 
         fun typeToken(ordinal: Int) = when (ordinal) {
             APP_INSTALLED_ORDINAL -> object : TypeToken<AppInstalled>() {}
             APP_INSTALLED_WITHOUT_CUSTOMER -> object : TypeToken<AppInstalledWithoutCustomer>() {}
             APP_INFO_UPDATED_ORDINAL -> object : TypeToken<AppInfoUpdated>() {}
             APP_KEEP_A_LIVE -> object : TypeToken<AppKeepalive>() {}
+            APP_TRACKING_IDS_UPDATED_ORDINAL -> object : TypeToken<AppTrackingIdsUpdated>() {}
+            APP_TRACKING_KEEP_A_LIVE_ORDINAL -> object : TypeToken<AppTrackingKeepalive>() {}
             PUSH_CLICKED_ORDINAL -> object : TypeToken<PushClicked>() {}
             TRACK_VISIT_ORDINAL -> object : TypeToken<TrackVisit>() {}
             ASYNC_OPERATION_ORDINAL -> object : TypeToken<AsyncOperation>() {}
@@ -60,6 +64,16 @@ internal sealed class EventType(
 
     data object AppKeepalive : EventType("MobilePush.ApplicationKeepalive", "/v3/operations/async")
 
+    data object AppTrackingIdsUpdated :
+        EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async"), TrackingHostEvent {
+        override val mainHostCounterpart: EventType get() = AppInfoUpdated
+    }
+
+    data object AppTrackingKeepalive :
+        EventType("MobilePush.ApplicationKeepalive", "/v3/operations/async"), TrackingHostEvent {
+        override val mainHostCounterpart: EventType get() = AppKeepalive
+    }
+
     data object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
 
     data object TrackVisit : EventType("TrackVisit", "/v1.1/customer/mobile-track-visit")
@@ -73,6 +87,8 @@ internal sealed class EventType(
         is AppInstalledWithoutCustomer -> APP_INSTALLED_WITHOUT_CUSTOMER
         is AppInfoUpdated -> APP_INFO_UPDATED_ORDINAL
         is AppKeepalive -> APP_KEEP_A_LIVE
+        is AppTrackingIdsUpdated -> APP_TRACKING_IDS_UPDATED_ORDINAL
+        is AppTrackingKeepalive -> APP_TRACKING_KEEP_A_LIVE_ORDINAL
         is PushClicked -> PUSH_CLICKED_ORDINAL
         is TrackVisit -> TRACK_VISIT_ORDINAL
         is AsyncOperation -> ASYNC_OPERATION_ORDINAL
@@ -90,4 +106,8 @@ internal sealed class InAppEventType(val name: String) {
             const val EVENT_NAME = "embeddedPlaceRequested"
         }
     }
+}
+
+internal sealed interface TrackingHostEvent {
+    val mainHostCounterpart: EventType
 }

@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,6 +28,35 @@ class SingleInitDelegateTest {
         testedValue = listOf("third", "fourth")
 
         assertEquals(listOf("first", "second"), testedValue)
+    }
+
+    @Test
+    fun assigned_isNull_beforeAnyAssignment() {
+        val delegate = SingleInitDelegate<String>()
+
+        assertNull(delegate.assigned)
+    }
+
+    @Test
+    fun assigned_isEmptyList_afterEmptyListAssigned() {
+        val delegate = SingleInitDelegate<String>()
+        var testedValue: List<String> by delegate
+        testedValue = emptyList()
+
+        assertEquals(emptyList<String>(), delegate.assigned)
+        assertTrue(testedValue.isEmpty())
+    }
+
+    @Test
+    fun assigned_mirrorsTheFirstNonEmptyList() {
+        val delegate = SingleInitDelegate<String>()
+        var testedValue: List<String> by delegate
+        testedValue = emptyList()
+        testedValue = listOf("first")
+        testedValue = listOf("second")
+
+        assertEquals(listOf("first"), delegate.assigned)
+        assertEquals(listOf("first"), testedValue)
     }
 
     @Test
