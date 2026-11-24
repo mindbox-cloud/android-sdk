@@ -1,76 +1,101 @@
 package cloud.mindbox.mobile_sdk.managers
 
-import cloud.mindbox.mobile_sdk.pushes.PushConverter
+import android.content.Context
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
+import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
-import cloud.mindbox.mobile_sdk.utils.SingleInitDelegate
+import cloud.mindbox.mobile_sdk.pushes.PushServiceRegistry
+import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
+import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class TrackingIdTypesOfTest {
 
-    private fun handler(trackingIdType: String?): PushServiceHandler =
-        mockk<PushServiceHandler>().also { every { it.trackingIdType } returns trackingIdType }
-
-    private val firebase = handler("google")
-    private val huawei = handler("huawei")
-    private val ruStore = handler(null)
-
-    private fun passed(vararg lists: List<PushConverter>): SingleInitDelegate<PushConverter> =
-        SingleInitDelegate<PushConverter>().also { delegate ->
-            var converters: List<PushConverter> by delegate
-            lists.forEach { converters = it }
+    private fun handler(tag: String, trackingIdType: String?, isAvailable: Boolean = true): PushServiceHandler =
+        mockk {
+            every { notificationProvider } returns tag
+            every { this@mockk.trackingIdType } returns trackingIdType
+            every { isServiceAvailable(any()) } returns isAvailable
+            coEvery { initService(any()) } just runs
         }
+
+    private fun service(handler: PushServiceHandler): MindboxPushService = object : MindboxPushService {
+        override val tag: String = handler.notificationProvider
+
+        override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler) = handler
+    }
+
+    private val firebase = handler("FCM", "google")
+    private val huawei = handler("HCM", "huawei")
+    private val ruStore = handler("RuStore", null)
+
+    private val registry = PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
+
+    private fun registryTypes(): Set<String>? = trackingIdTypesOf(registry.handlers, registry.isSettled)
 
     @Test
     fun `nothing passed to init yet leaves the configuration unknown`() {
-        assertNull(trackingIdTypesOf(configured = passed(), live = emptyList()))
+        assertNull(registryTypes())
     }
 
     @Test
     fun `an empty list passed to init configures no tracking id types`() {
-        assertEquals(emptySet<String>(), trackingIdTypesOf(configured = passed(emptyList()), live = emptyList()))
+        registry.registerExplicit(emptyList())
+
+        assertEquals(emptySet<String>(), registryTypes())
     }
 
     @Test
     fun `an empty list passed after the push services keeps their types`() {
-        val types = trackingIdTypesOf(configured = passed(listOf(firebase), emptyList()), live = emptyList())
+        registry.registerExplicit(listOf(service(firebase)))
+        registry.registerExplicit(emptyList())
 
-        assertEquals(setOf("google"), types)
+        assertEquals(setOf("google"), registryTypes())
+    }
+
+    @Test
+    fun `push services that are not settled yet leave the configuration unknown`() {
+        assertNull(trackingIdTypesOf(listOf(firebase, huawei), isSettled = false))
     }
 
     @Test
     fun `every passed push service with a tracking id is configured`() {
-        val types = trackingIdTypesOf(configured = passed(listOf(firebase, huawei, ruStore)), live = emptyList())
+        val types = trackingIdTypesOf(listOf(firebase, huawei, ruStore), isSettled = true)
 
         assertEquals(setOf("google", "huawei"), types)
     }
 
     @Test
     fun `a RuStore-only integration configures no tracking id types`() {
-        val types = trackingIdTypesOf(configured = passed(listOf(ruStore)), live = listOf(ruStore))
+        val types = trackingIdTypesOf(listOf(ruStore), isSettled = true)
 
         assertEquals(emptySet<String>(), types)
     }
 
     @Test
-    fun `a service filtered out as unavailable at startup stays configured`() {
-        val types = trackingIdTypesOf(configured = passed(listOf(firebase)), live = emptyList())
+    fun `a service filtered out as unavailable at startup stays configured`() = runTest {
+        val unavailableFirebase = handler("FCM", "google", isAvailable = false)
+        registry.registerExplicit(listOf(service(unavailableFirebase)))
+        registry.initialize(mockk<Context>())
 
-        assertEquals(setOf("google"), types)
+        assertEquals(setOf("google"), registryTypes())
     }
 
     @Test
-    fun `a live handler counts even if it came from another init call`() {
-        val types = trackingIdTypesOf(configured = passed(listOf(firebase)), live = listOf(firebase, huawei))
+    fun `a service counts even if it came from another init call`() {
+        registry.registerExplicit(listOf(service(firebase)))
+        registry.registerExplicit(listOf(service(firebase), service(huawei)))
 
-        assertEquals(setOf("google", "huawei"), types)
-    }
-
-    @Test
-    fun `live handlers alone make the configuration known`() {
-        assertEquals(setOf("huawei"), trackingIdTypesOf(configured = passed(), live = listOf(huawei)))
+        assertEquals(setOf("google", "huawei"), registryTypes())
     }
 }

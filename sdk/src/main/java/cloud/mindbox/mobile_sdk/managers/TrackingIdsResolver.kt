@@ -7,12 +7,10 @@ import cloud.mindbox.mobile_sdk.fromJson
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.logger.mindboxLogW
 import cloud.mindbox.mobile_sdk.models.TrackingId
-import cloud.mindbox.mobile_sdk.pushes.PushConverter
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.TrackingIdResult
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.sha256
-import cloud.mindbox.mobile_sdk.utils.SingleInitDelegate
 import cloud.mindbox.mobile_sdk.utils.awaitAllWithTimeout
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
@@ -29,14 +27,11 @@ private const val SET_IN_CLEAR_PREFIX = "["
 private val sentStateLock = Any()
 
 internal fun trackingIdTypesOf(
-    configured: SingleInitDelegate<PushConverter>,
-    live: List<PushServiceHandler>,
-): Set<String>? {
-    val passed = configured.assigned
-    return (passed.orEmpty().filterIsInstance<PushServiceHandler>() + live)
-        .takeIf { it.isNotEmpty() || passed != null }
-        ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
-}
+    configured: List<PushServiceHandler>,
+    isSettled: Boolean,
+): Set<String>? = configured
+    .takeIf { isSettled }
+    ?.mapNotNullTo(mutableSetOf()) { it.trackingIdType }
 
 internal interface TrackingIdsResolver {
 
