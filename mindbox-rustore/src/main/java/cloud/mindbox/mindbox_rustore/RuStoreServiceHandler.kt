@@ -18,7 +18,7 @@ import kotlin.coroutines.resumeWithException
 internal class RuStoreServiceHandler(
     private val logger: MindboxLogger,
     private val exceptionHandler: ExceptionHandler,
-    private val projectId: String,
+    private val projectId: () -> String,
 ) : PushServiceHandler() {
 
     companion object {
@@ -33,7 +33,7 @@ internal class RuStoreServiceHandler(
             logger.d(this, "RuStoreServiceHandler initService")
             RuStorePushClient.init(
                 application = context.applicationContext as Application,
-                projectId = projectId.takeIf { it.isNotBlank() }
+                projectId = projectId().takeIf { it.isNotBlank() }
                     ?: runCatching {
                         context.packageManager
                             .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
