@@ -1,6 +1,5 @@
 package cloud.mindbox.mobile_sdk.pushes
 
-import android.content.Context
 import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import io.mockk.coEvery
@@ -16,6 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 
 class PushServiceRegistryTest {
 
-    private val context = mockk<Context>()
+    private val context = contextWithMetaData()
     private val registry = PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
 
     private val firebase = FakePushService("FCM")
@@ -37,6 +37,7 @@ class PushServiceRegistryTest {
 
         val handler: PushServiceHandler = mockk {
             every { notificationProvider } returns tag
+            every { trackingIdType } returns "$tag-id"
             every { isServiceAvailable(any()) } answers { isAvailable }
             coEvery { initService(any()) } just runs
         }
@@ -54,7 +55,26 @@ class PushServiceRegistryTest {
     @Test
     fun `nothing is in use before any registration`() {
         assertEquals(emptyList<String>(), registry.tags)
-        assertFalse(registry.isRegistered("FCM"))
+        assertFalse(registry.isRegistered(context, "FCM"))
+    }
+
+    @Test
+    fun `tracking id types are unknown until the push services are known`() {
+        assertNull(registry.trackingIdTypes)
+    }
+
+    @Test
+    fun `tracking id types come from the listed services`() {
+        registry.registerExplicit(listOf(firebase, huawei))
+
+        assertEquals(setOf("FCM-id", "HCM-id"), registry.trackingIdTypes)
+    }
+
+    @Test
+    fun `an empty list leaves the tracking id types unknown`() {
+        registry.registerExplicit(emptyList())
+
+        assertNull(registry.trackingIdTypes)
     }
 
     @Test
@@ -70,7 +90,7 @@ class PushServiceRegistryTest {
         registry.registerExplicit(listOf(huawei, firebase))
 
         assertEquals(listOf("FCM", "HCM"), registry.tags)
-        assertTrue(registry.isRegistered("HCM"))
+        assertTrue(registry.isRegistered(context, "HCM"))
     }
 
     @Test
@@ -82,11 +102,11 @@ class PushServiceRegistryTest {
     }
 
     @Test
-    fun `empty list means no push services`() {
+    fun `an empty list is the same as no list`() {
         registry.registerExplicit(emptyList())
 
         assertEquals(emptyList<String>(), registry.tags)
-        assertTrue(registry.isSettled)
+        assertFalse(registry.isSettled)
     }
 
     @Test
@@ -110,7 +130,7 @@ class PushServiceRegistryTest {
     fun `a service is registered as soon as the call returns, before it is initialized`() {
         registry.registerExplicit(listOf(firebase))
 
-        assertTrue(registry.isRegistered("FCM"))
+        assertTrue(registry.isRegistered(context, "FCM"))
         assertEquals(emptyList<String>(), registry.initializedTags)
     }
 
@@ -124,6 +144,16 @@ class PushServiceRegistryTest {
         assertEquals(listOf("RuStore", "FCM"), registry.initializedTags)
         assertEquals(listOf("RuStore", "HCM", "FCM"), registry.tags)
         coVerify(exactly = 0) { huawei.handler.initService(any()) }
+    }
+
+    @Test
+    fun `the first init asks to refresh the app info even when no service is available`() = runTest {
+        firebase.isAvailable = false
+        registry.registerExplicit(listOf(firebase))
+
+        assertTrue(registry.initialize(context))
+        assertFalse(registry.initialize(context))
+        assertEquals(emptyList<String>(), registry.initializedTags)
     }
 
     @Test

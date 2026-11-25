@@ -5,6 +5,7 @@ import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.PushServiceRegistry
+import cloud.mindbox.mobile_sdk.pushes.contextWithMetaData
 import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import io.mockk.coEvery
 import io.mockk.every
@@ -39,6 +40,8 @@ class TrackingIdTypesOfTest {
     private val huawei = handler("HCM", "huawei")
     private val ruStore = handler("RuStore", null)
 
+    private val huaweiMetaData = "cloud.mindbox.push.provider.huawei" to HuaweiTrackingService::class.java.name
+
     private val registry = PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
 
     private fun registryTypes(): Set<String>? = trackingIdTypesOf(registry.handlers, registry.isSettled)
@@ -49,10 +52,14 @@ class TrackingIdTypesOfTest {
     }
 
     @Test
-    fun `an empty list passed to init configures no tracking id types`() {
+    fun `an empty list leaves the configuration unknown until init reads the manifest`() = runTest {
         registry.registerExplicit(emptyList())
 
-        assertEquals(emptySet<String>(), registryTypes())
+        assertNull(registryTypes())
+
+        registry.initialize(contextWithMetaData(huaweiMetaData))
+
+        assertEquals(setOf("huawei"), registryTypes())
     }
 
     @Test
@@ -98,4 +105,44 @@ class TrackingIdTypesOfTest {
 
         assertEquals(setOf("google", "huawei"), registryTypes())
     }
+
+    @Test
+    fun `services found in the manifest stay unknown until init is called`() {
+        registry.resolveHandlers(contextWithMetaData(huaweiMetaData))
+
+        assertNull(registryTypes())
+    }
+
+    @Test
+    fun `services found in the manifest are configured once init is called`() = runTest {
+        registry.initialize(contextWithMetaData(huaweiMetaData))
+
+        assertEquals(setOf("huawei"), registryTypes())
+    }
+
+    @Test
+    fun `a manifest without provider modules leaves the configuration unknown until init is called`() {
+        registry.resolveHandlers(contextWithMetaData())
+
+        assertNull(registryTypes())
+    }
+
+    @Test
+    fun `init without a list in an app without provider modules configures no tracking id types`() = runTest {
+        registry.initialize(contextWithMetaData())
+
+        assertEquals(emptySet<String>(), registryTypes())
+    }
+}
+
+internal object HuaweiTrackingService : MindboxPushService {
+    override val tag: String = "HCM"
+
+    override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler): PushServiceHandler =
+        mockk {
+            every { notificationProvider } returns "HCM"
+            every { trackingIdType } returns "huawei"
+            every { isServiceAvailable(any()) } returns true
+            coEvery { initService(any()) } just runs
+        }
 }
