@@ -578,13 +578,59 @@ class TrackingIdsResolverImplTest {
     }
 
     @Test
-    fun `after an invalidation both the same value and an erase are a change`() {
+    fun `after an invalidation a new process sees both the same value and an erase as a change`() {
         resolver().markSent(listOf(googleId))
 
         resolver().invalidateSent()
 
         assertTrue(resolver().hasChanged(listOf(googleId)))
         assertTrue(resolver().hasChanged(emptyList()))
+    }
+
+    @Test
+    fun `an invalidated set is not a change again until the process restarts`() {
+        val resolver = resolver()
+        resolver.markSent(listOf(googleId))
+
+        resolver.invalidateSent()
+
+        assertFalse(resolver.hasChanged(listOf(googleId)))
+        assertTrue(resolver.hasChanged(listOf(googleId, huaweiId)))
+        assertTrue(resolver.hasChanged(emptyList()))
+    }
+
+    @Test
+    fun `an invalidated set is a change again once another set was sent after it`() {
+        val resolver = resolver()
+        resolver.markSent(listOf(googleId))
+        resolver.invalidateSent()
+
+        resolver.markSent(emptyList())
+
+        assertTrue(resolver.hasChanged(listOf(googleId)))
+    }
+
+    @Test
+    fun `a second invalidation still remembers the invalidated set`() {
+        val resolver = resolver()
+        resolver.markSent(listOf(googleId))
+
+        resolver.invalidateSent()
+        resolver.invalidateSent()
+
+        assertFalse(resolver.hasChanged(listOf(googleId)))
+    }
+
+    @Test
+    fun `a repeated initialization forgets the set invalidated before it`() {
+        val resolver = resolver()
+        resolver.markSent(listOf(googleId))
+        resolver.invalidateSent()
+
+        resolver.resetSent()
+        resolver.invalidateSent()
+
+        assertTrue(resolver.hasChanged(listOf(googleId)))
     }
 
     @Test

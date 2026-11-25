@@ -180,7 +180,7 @@ internal class GatewayManager(
         when {
             resolveTrackingHost(configuration) == null ->
                 this@GatewayManager.mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
-            transactionId in refusedByTrackingHost ->
+            trackingEvent.isRetriedOnMainHost && transactionId in refusedByTrackingHost ->
                 this@GatewayManager.mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
             else -> return this
         }
@@ -192,6 +192,15 @@ internal class GatewayManager(
         eventType = trackingEvent.mainHostCounterpart,
         body = body?.withoutTrackingIds(),
     )
+
+    private fun Event.resultOfTrackingHostRefusal(trackingEvent: TrackingHostEvent): AsyncEventSendResult {
+        if (trackingEvent.isRetriedOnMainHost) return AsyncEventSendResult.RETRY_LATER
+        return loggingRunCatching(defaultValue = AsyncEventSendResult.RETRY_LATER) {
+            trackingIdsResolver().invalidateSent()
+            this@GatewayManager.mindboxLogW("Event #$uid did not reach the tracking host and is dropped, the tracking ids are sent again after the next launch")
+            AsyncEventSendResult.DISCARDED
+        }
+    }
 
     fun sendAsyncEvent(
         configuration: Configuration,
@@ -205,7 +214,7 @@ internal class GatewayManager(
             onResult(AsyncEventSendResult.RETRY_LATER)
             return
         }
-        val isOnTrackingHost = outgoing.eventType is TrackingHostEvent
+        val trackingEvent = outgoing.eventType as? TrackingHostEvent
         val report: (AsyncEventSendResult) -> Unit = { result ->
             if (result.isRemovedFromQueue) refusedByTrackingHost.remove(event.transactionId)
             onResult(result)
@@ -218,10 +227,10 @@ internal class GatewayManager(
             onSuccess = { report(AsyncEventSendResult.DELIVERED) },
             onFailure = { report(AsyncEventSendResult.RETRY_LATER) },
             onVolleyError = { volleyError ->
-                if (isOnTrackingHost) {
-                    report(AsyncEventSendResult.RETRY_LATER)
-                } else {
+                if (trackingEvent == null) {
                     handleAsyncError(volleyError, report)
+                } else {
+                    report(outgoing.resultOfTrackingHostRefusal(trackingEvent))
                 }
             },
         )
