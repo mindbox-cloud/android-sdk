@@ -61,6 +61,9 @@ internal class TrackingIdsResolverImpl(
 
     private val gson = Gson()
 
+    @Volatile
+    private var refusedDigest: String? = null
+
     override suspend fun resolve(context: Context): List<TrackingId>? {
         if (!MindboxPreferences.shouldCollectTrackingIds) return emptyList()
         anonymizerDomain()?.let { domain ->
@@ -97,21 +100,26 @@ internal class TrackingIdsResolverImpl(
 
     override fun hasChanged(trackingIds: List<TrackingId>): Boolean {
         val sent = sentState() ?: return trackingIds.isNotEmpty()
-        return trackingIds.fingerprint() != sent.digest
+        val digest = trackingIds.fingerprint()
+        return digest != sent.digest && digest != refusedDigest
     }
 
     override fun markSent(trackingIds: List<TrackingId>): Unit = loggingRunCatching {
         synchronized(sentStateLock) {
             storeSentState(digest = trackingIds.fingerprint(), types = trackingIds.map { it.type })
+            refusedDigest = null
         }
         mindboxLogI("Tracking ids queued for sending: ${trackingIds.joinToString { it.type }.ifEmpty { "none, the set is erased" }}")
     }
 
     override fun invalidateSent(): Unit = synchronized(sentStateLock) {
-        storeSentState(digest = INVALIDATED_SENT_MARK, types = sentState()?.types.orEmpty())
+        val sent = sentState()
+        sent?.digest?.takeIf { it != INVALIDATED_SENT_MARK }?.let { refusedDigest = it }
+        storeSentState(digest = INVALIDATED_SENT_MARK, types = sent?.types.orEmpty())
     }
 
     override fun resetSent(): Unit = synchronized(sentStateLock) {
+        refusedDigest = null
         MindboxPreferences.lastSentTrackingIds = ""
     }
 

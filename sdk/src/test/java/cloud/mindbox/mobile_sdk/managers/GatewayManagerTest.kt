@@ -146,16 +146,51 @@ class GatewayManagerTest {
     }
 
     @Test
-    fun `after a failure on the tracking host the retry goes to the main host without ids`() {
+    fun `a tracking ids event refused by the tracking host is dropped and its sent mark invalidated`() {
+        val isSent = LinkedBlockingQueue<Boolean>()
         val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
-        val first = sentRequest(mockConfiguration, event)!!
+        val first = sentRequest(mockConfiguration, event, isSent::add)!!
         assertTrue(first.fullUrl, first.fullUrl.startsWith("https://api-tracking.mindbox.ru/"))
 
         first.errorsListener!!.onErrorResponse(VolleyError())
+
+        assertEquals(true, isSent.poll(5, TimeUnit.SECONDS))
+        verify(exactly = 1) { trackingIdsResolver.invalidateSent() }
+    }
+
+    @Test
+    fun `a tracking ids event refused by the tracking host never goes to the main host`() {
+        val isSent = LinkedBlockingQueue<Boolean>()
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+        sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(VolleyError())
+        assertEquals(true, isSent.poll(5, TimeUnit.SECONDS))
+
+        val again = sentRequest(mockConfiguration, event)!!
+
+        assertTrue(again.fullUrl, again.fullUrl.startsWith("https://api-tracking.mindbox.ru/"))
+    }
+
+    @Test
+    fun `a refused tracking ids event whose sent mark could not be invalidated stays queued for the tracking host`() {
+        every { trackingIdsResolver.invalidateSent() } throws IllegalStateException("preferences are unavailable")
+        val isSent = LinkedBlockingQueue<Boolean>()
+        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+
+        sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(VolleyError())
+
+        assertEquals(false, isSent.poll(5, TimeUnit.SECONDS))
+        val retry = sentRequest(mockConfiguration, event)!!
+        assertTrue(retry.fullUrl, retry.fullUrl.startsWith("https://api-tracking.mindbox.ru/"))
+    }
+
+    @Test
+    fun `after a failure on the tracking host the keepalive retry goes to the main host with the same transaction`() {
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
+
+        sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
         val retry = sentRequest(mockConfiguration, event)!!
 
         assertTrue(retry.fullUrl, retry.fullUrl.startsWith("https://api.mindbox.ru/v3/operations/async?"))
-        assertTrue(retry.fullUrl.contains("operation=MobilePush.ApplicationInfoUpdated"))
         assertTrue(retry.fullUrl.contains("transactionId=${event.transactionId}"))
         verify(exactly = 1) { trackingIdsResolver.invalidateSent() }
     }
@@ -172,8 +207,8 @@ class GatewayManagerTest {
     }
 
     @Test
-    fun `the tracking ids stay marked as sent until the retry actually drops them`() {
-        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+    fun `the tracking ids stay marked as sent until the keepalive retry actually drops them`() {
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
 
         sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
 
@@ -266,7 +301,7 @@ class GatewayManagerTest {
     @Test
     fun `a tracking event dropped by the main host retry is no longer remembered as refused`() {
         val isSent = LinkedBlockingQueue<Boolean>()
-        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
         sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
         sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(validationError(400))
         assertEquals(true, isSent.poll(5, TimeUnit.SECONDS))
@@ -281,9 +316,20 @@ class GatewayManagerTest {
     )
 
     @Test
-    fun `a 4xx answer of the tracking host keeps the event queued for the main host retry`() {
+    fun `a 4xx answer of the tracking host drops the tracking ids event`() {
         val isSent = LinkedBlockingQueue<Boolean>()
         val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+
+        sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(validationError(400))
+
+        assertEquals(true, isSent.poll(5, TimeUnit.SECONDS))
+        verify(exactly = 1) { trackingIdsResolver.invalidateSent() }
+    }
+
+    @Test
+    fun `a 4xx answer of the tracking host keeps the keepalive queued for the main host retry`() {
+        val isSent = LinkedBlockingQueue<Boolean>()
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
 
         sentRequest(mockConfiguration, event, isSent::add)!!.errorsListener!!.onErrorResponse(validationError(400))
 
@@ -338,8 +384,8 @@ class GatewayManagerTest {
     }
 
     @Test
-    fun `a tracking event whose main host retry failed keeps going to the main host`() {
-        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+    fun `a tracking keepalive whose main host retry failed keeps going to the main host`() {
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
         sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
         sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
 
@@ -350,7 +396,7 @@ class GatewayManagerTest {
 
     @Test
     fun `a tracking event delivered by the main host retry is no longer remembered as refused`() {
-        val event = Event(eventType = EventType.AppTrackingIdsUpdated, body = idsBody)
+        val event = Event(eventType = EventType.AppTrackingKeepalive, body = idsBody)
         sentRequest(mockConfiguration, event)!!.errorsListener!!.onErrorResponse(VolleyError())
         sentRequest(mockConfiguration, event)!!.listener!!.onResponse(mockk<JSONObject>(relaxed = true))
 

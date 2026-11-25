@@ -67,11 +67,13 @@ internal sealed class EventType(
     data object AppTrackingIdsUpdated :
         EventType("MobilePush.ApplicationInfoUpdated", "/v3/operations/async"), TrackingHostEvent {
         override val mainHostCounterpart: EventType get() = AppInfoUpdated
+        override val isRetriedOnMainHost: Boolean get() = false
     }
 
     data object AppTrackingKeepalive :
         EventType("MobilePush.ApplicationKeepalive", "/v3/operations/async"), TrackingHostEvent {
         override val mainHostCounterpart: EventType get() = AppKeepalive
+        override val isRetriedOnMainHost: Boolean get() = true
     }
 
     data object PushClicked : EventType("MobilePush.TrackClick", "/v3/operations/async")
@@ -110,4 +112,5 @@ internal sealed class InAppEventType(val name: String) {
 
 internal sealed interface TrackingHostEvent {
     val mainHostCounterpart: EventType
+    val isRetriedOnMainHost: Boolean
 }

@@ -177,7 +177,7 @@ internal class GatewayManager(
         when {
             resolveTrackingHost(configuration) == null ->
                 this@GatewayManager.mindboxLogW("No tracking host for event #$uid, sending it to the main host without ids")
-            transactionId in refusedByTrackingHost ->
+            trackingEvent.isRetriedOnMainHost && transactionId in refusedByTrackingHost ->
                 this@GatewayManager.mindboxLogW("Event #$uid did not reach the tracking host, retrying on the main host without ids")
             else -> return this
         }
@@ -189,6 +189,16 @@ internal class GatewayManager(
         eventType = trackingEvent.mainHostCounterpart,
         body = body?.withoutTrackingIds(),
     )
+
+    private fun Event.isDoneAfter(error: MindboxError): Boolean {
+        val trackingEvent = eventType as? TrackingHostEvent ?: return isAsyncSent(error.statusCode)
+        if (trackingEvent.isRetriedOnMainHost || transactionId !in refusedByTrackingHost) return false
+        return loggingRunCatching(defaultValue = false) {
+            trackingIdsResolver().invalidateSent()
+            this@GatewayManager.mindboxLogW("Event #$uid did not reach the tracking host and is dropped, the tracking ids are sent again after the next launch")
+            true
+        }
+    }
 
     fun sendAsyncEvent(
         configuration: Configuration,
@@ -202,7 +212,6 @@ internal class GatewayManager(
             isSentListener.invoke(false)
             return
         }
-        val isOnTrackingHost = outgoing.eventType is TrackingHostEvent
         val report: (Boolean) -> Unit = { isSent ->
             if (isSent) refusedByTrackingHost.remove(event.transactionId)
             isSentListener.invoke(isSent)
@@ -213,7 +222,7 @@ internal class GatewayManager(
             event = outgoing,
             shouldCountOffset = shouldCountOffset,
             onSuccess = { report(true) },
-            onError = { error -> report(!isOnTrackingHost && isAsyncSent(error.statusCode)) },
+            onError = { error -> report(outgoing.isDoneAfter(error)) },
         )
     }
 

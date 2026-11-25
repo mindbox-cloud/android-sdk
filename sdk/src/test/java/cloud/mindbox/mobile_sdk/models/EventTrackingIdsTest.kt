@@ -32,6 +32,12 @@ class EventTrackingIdsTest {
     }
 
     @Test
+    fun `only the tracking keepalive is retried on the main host`() {
+        assertTrue(EventType.AppTrackingKeepalive.isRetriedOnMainHost)
+        assertFalse(EventType.AppTrackingIdsUpdated.isRetriedOnMainHost)
+    }
+
+    @Test
     fun `withoutTrackingIds removes only the ids field`() {
         assertEquals("""{"instanceId":"i","version":3,"tokens":[]}""", idsBody.withoutTrackingIds())
     }
