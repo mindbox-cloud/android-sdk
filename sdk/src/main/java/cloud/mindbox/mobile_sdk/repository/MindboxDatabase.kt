@@ -10,12 +10,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import cloud.mindbox.mobile_sdk.converters.MindboxRoomConverter
 import cloud.mindbox.mobile_sdk.data.ConfigurationsDao
 import cloud.mindbox.mobile_sdk.data.EventsDao
+import cloud.mindbox.mobile_sdk.data.PushDeliveriesDao
 import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.managers.DbManager.CONFIGURATION_TABLE_NAME
+import cloud.mindbox.mobile_sdk.managers.DbManager.PUSH_DELIVERIES_TABLE_NAME
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
+import cloud.mindbox.mobile_sdk.models.PushDelivery
 
-@Database(entities = [Configuration::class, Event::class], exportSchema = false, version = 4)
+@Database(entities = [Configuration::class, Event::class, PushDelivery::class], exportSchema = false, version = 5)
 @TypeConverters(MindboxRoomConverter::class)
 internal abstract class MindboxDatabase : RoomDatabase() {
 
@@ -53,6 +56,25 @@ internal abstract class MindboxDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                mindboxLogI("DB migration 4->5 started")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `$PUSH_DELIVERIES_TABLE_NAME` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`url` TEXT NOT NULL, " +
+                        "`receivedAt` INTEGER NOT NULL, " +
+                        "`attempts` INTEGER NOT NULL, " +
+                        "`throttles` INTEGER NOT NULL, " +
+                        "`isHighPriority` INTEGER NOT NULL, " +
+                        "`provider` TEXT, " +
+                        "`nextAttemptAt` INTEGER)"
+                )
+                mindboxLogI("DB migration 4->5 finished")
+            }
+        }
+
         internal var isTestMode = false
 
         internal fun getInstance(context: Context) = if (!isTestMode) {
@@ -64,7 +86,8 @@ internal abstract class MindboxDatabase : RoomDatabase() {
                 ).addMigrations(
                     MIGRATION_1_2,
                     MIGRATION_2_3,
-                    MIGRATION_3_4
+                    MIGRATION_3_4,
+                    MIGRATION_4_5,
                 )
                 .build()
         } else {
@@ -78,4 +101,6 @@ internal abstract class MindboxDatabase : RoomDatabase() {
     abstract fun configurationDao(): ConfigurationsDao
 
     abstract fun eventsDao(): EventsDao
+
+    abstract fun pushDeliveriesDao(): PushDeliveriesDao
 }
