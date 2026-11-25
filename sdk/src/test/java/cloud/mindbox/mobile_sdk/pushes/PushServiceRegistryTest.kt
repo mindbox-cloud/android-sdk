@@ -216,6 +216,37 @@ class PushServiceRegistryTest {
     }
 
     @Test
+    fun `a provider that delivered a token is started alone without init`() = runTest {
+        registry.registerExplicit(listOf(firebase, huawei))
+
+        assertTrue(registry.initializeProvider(context, "FCM"))
+
+        assertEquals(listOf("FCM"), registry.initializedTags)
+        coVerify(exactly = 0) { huawei.handler.initService(any()) }
+    }
+
+    @Test
+    fun `a provider left out of the list is not started by its token`() = runTest {
+        registry.registerExplicit(listOf(huawei))
+
+        assertFalse(registry.initializeProvider(context, "FCM"))
+
+        assertEquals(emptyList<String>(), registry.initializedTags)
+        coVerify(exactly = 0) { firebase.handler.initService(any()) }
+    }
+
+    @Test
+    fun `a provider started by its token is not started again by init`() = runTest {
+        registry.registerExplicit(listOf(firebase, huawei))
+        registry.initializeProvider(context, "FCM")
+
+        registry.initialize(context)
+
+        assertEquals(listOf("FCM", "HCM"), registry.initializedTags)
+        coVerify(exactly = 1) { firebase.handler.initService(any()) }
+    }
+
+    @Test
     fun `an initialized service is not initialized again`() = runTest {
         registry.registerExplicit(listOf(firebase))
         registry.initialize(context)

@@ -112,6 +112,11 @@ internal class PushServiceRegistry(
     internal suspend fun initializePending(context: Context): Boolean =
         isInitializationRequested && initializeAvailable(context, isRecheckingUnavailable = false)
 
+    internal suspend fun initializeProvider(context: Context, tag: String): Boolean = initMutex.withLock {
+        discover(context)
+        start(context, active.orEmpty().filter { it.service.tag == tag && !it.isInitialized })
+    }
+
     internal fun markAvailable(tag: String): Unit = synchronized(lock) {
         active.orEmpty().firstOrNull { it.service.tag == tag }?.isAvailable = true
     }
@@ -160,7 +165,11 @@ internal class PushServiceRegistry(
         val available = services
             .filterNot { it.isInitialized }
             .filter { it.checkAvailability(context) }
-        if (available.isEmpty()) return@withLock false
+        start(context, available)
+    }
+
+    private suspend fun start(context: Context, available: List<Entry>): Boolean {
+        if (available.isEmpty()) return false
 
         mindboxLogI("Initializing push services: ${available.joinToString { it.service.tag }}")
         Stopwatch.start(Stopwatch.INIT_PUSH_SERVICES)
@@ -175,7 +184,7 @@ internal class PushServiceRegistry(
             available.forEach { it.isInitialized = true }
         }
         mindboxLogI("Push services initialized in " + Stopwatch.stop(Stopwatch.INIT_PUSH_SERVICES))
-        true
+        return true
     }
 
     private fun Entry.checkAvailability(context: Context): Boolean {

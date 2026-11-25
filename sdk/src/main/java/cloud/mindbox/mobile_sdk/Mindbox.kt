@@ -416,9 +416,14 @@ public object Mindbox : MindboxLog {
                 mindboxLogW("Unknown token provider ${pushService.tag}. Skipping token update.")
                 return@loggingRunCatching
             }
+            if (!pushServiceRegistry.isSettled && pushService.tag !in MindboxPreferences.pushTokens) {
+                mindboxLogI("Push services are not known yet. ${pushService.tag} token is fetched on the next init")
+                return@loggingRunCatching
+            }
             pushServiceRegistry.markAvailable(pushService.tag)
 
             mindboxScope.launch {
+                pushServiceRegistry.initializeProvider(context, pushService.tag)
                 updateAppInfo(context, PushToken(pushService.tag, token))
             }
         }

@@ -387,6 +387,52 @@ class MindboxTest {
         }
     }
 
+    private fun registryWithoutInit(vararg handlers: PushServiceHandler): PushServiceRegistry {
+        clearMocks(firstProvider, secondProvider, thirdProvider, answers = false)
+        mockkObject(Mindbox)
+        every { Mindbox.initComponents(any()) } just runs
+        every { MindboxPreferences.isFirstInitialize } returns false
+        return PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
+            .apply { registerExplicit(handlers.map(::pushService)) }
+    }
+
+    @Test
+    fun `updatePushToken without init starts only its provider and sends the token the provider returns`() {
+        coEvery { firstProvider.registerToken(context, any()) } returns "FETCHED_TOKEN"
+        Mindbox.pushServiceRegistry = registryWithoutInit(firstProvider, secondProvider, thirdProvider)
+
+        Mindbox.updatePushToken(context, "CALLBACK_TOKEN", pushService(firstProvider))
+
+        coVerify(exactly = 1) { firstProvider.initService(any()) }
+        coVerify(exactly = 0) { secondProvider.initService(any()) }
+        coVerify(exactly = 0) { thirdProvider.initService(any()) }
+        verify(exactly = 1) {
+            MindboxEventManager.appInfoUpdate(
+                context,
+                UpdateData(
+                    isNotificationsEnabled = true,
+                    instanceId = "instanceId",
+                    version = 1,
+                    tokens = listOf(
+                        TokenData(token = "FETCHED_TOKEN", notificationProvider = "FCM"),
+                        TokenData(token = "tokenHMS", notificationProvider = "HMS"),
+                        TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
+                    ),
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `updatePushToken without init ignores a provider left out of the list`() {
+        Mindbox.pushServiceRegistry = registryWithoutInit(secondProvider, thirdProvider)
+
+        Mindbox.updatePushToken(context, "CALLBACK_TOKEN", pushService(firstProvider))
+
+        coVerify(exactly = 0) { firstProvider.initService(any()) }
+        verify(exactly = 0) { MindboxEventManager.appInfoUpdate(any(), any()) }
+    }
+
     @Test
     fun `updateAppInfo not call appInfoUpdate when null token provided`() = runTest {
         coEvery { thirdProvider.registerToken(any(), any()) } returns null
