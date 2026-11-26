@@ -86,12 +86,12 @@ class MindboxDatabaseMigrationTest {
 
         val id = onWorkerThread { db ->
             db.pushDeliveriesDao().insert(
-                PushDelivery(url = "https://mbx.ru/d/key?sig=1", receivedAt = 1_000L, isHighPriority = true, provider = "FCM")
+                PushDelivery(url = "https://mbx.ru/d/key?sig=1", receivedAt = 1_000L, provider = "FCM")
             )
         }
 
         assertEquals(
-            PushDelivery(id = id, url = "https://mbx.ru/d/key?sig=1", receivedAt = 1_000L, isHighPriority = true, provider = "FCM"),
+            PushDelivery(id = id, url = "https://mbx.ru/d/key?sig=1", receivedAt = 1_000L, provider = "FCM"),
             onWorkerThread { db -> db.pushDeliveriesDao().get(id) },
         )
     }

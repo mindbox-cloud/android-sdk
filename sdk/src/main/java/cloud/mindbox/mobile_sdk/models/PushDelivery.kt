@@ -10,7 +10,6 @@ internal data class PushDelivery(
     val url: String,
     val receivedAt: Long,
     val attempts: Int = 0,
-    val isHighPriority: Boolean = false,
     val provider: String? = null,
     val isInQueue: Boolean = false,
 ) {

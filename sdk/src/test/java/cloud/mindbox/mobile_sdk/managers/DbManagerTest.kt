@@ -79,7 +79,7 @@ class DbManagerTest {
         val previous = field.get(DbManager)
         field.set(DbManager, database)
         try {
-            val id = checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/d", receivedAt = 5L, isHighPriority = true, provider = "FCM")))
+            val id = checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/d", receivedAt = 5L, provider = "FCM")))
             val other = checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/2", receivedAt = 6L)))
 
             val updated = PushDelivery(
@@ -87,7 +87,6 @@ class DbManagerTest {
                 url = "https://mbx.ru/d",
                 receivedAt = 5L,
                 attempts = 2,
-                isHighPriority = true,
                 provider = "FCM",
                 isInQueue = true,
             )

@@ -66,7 +66,6 @@ internal abstract class MindboxDatabase : RoomDatabase() {
                         "`url` TEXT NOT NULL, " +
                         "`receivedAt` INTEGER NOT NULL, " +
                         "`attempts` INTEGER NOT NULL, " +
-                        "`isHighPriority` INTEGER NOT NULL, " +
                         "`provider` TEXT, " +
                         "`isInQueue` INTEGER NOT NULL)"
                 )
