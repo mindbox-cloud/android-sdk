@@ -50,6 +50,8 @@ android {
         buildConfigField "String", "MINDBOX_DOMAIN", "\"${exampleProperties.getProperty('mindbox.domain', '')}\""
         buildConfigField "String", "MINDBOX_ENDPOINT_ID", "\"${exampleProperties.getProperty('mindbox.endpointId', '')}\""
         buildConfigField "String", "MINDBOX_RUSTORE_PROJECT_ID", "\"${exampleProperties.getProperty('mindbox.ruStoreProjectId', '')}\""
+        buildConfigField "String", "CLIENT_GATE_CLICK_URL", "\"${exampleProperties.getProperty('clientGate.clickUrl', '')}\""
+        buildConfigField "String", "CLIENT_GATE_TOKEN", "\"${exampleProperties.getProperty('clientGate.token', '')}\""
         manifestPlaceholders = [ruStoreProjectId: exampleProperties.getProperty('mindbox.ruStoreProjectId', '')]
     }
 

@@ -73,4 +73,5 @@
     <string name="toast_sync_operation_sent">Sync operation was sent</string>
     <string name="toast_notification_center_opened">Notification center opened</string>
     <string name="toast_notification_click">Click on notification with unique key %1$s, title = %2$s and description = %3$s</string>
+    <string name="toast_client_gate_unauthorized">Client gate answered 401: clientGate.token has expired, the push click was not counted</string>
 </resources>

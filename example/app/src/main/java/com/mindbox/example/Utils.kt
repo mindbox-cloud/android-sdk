@@ -28,12 +28,11 @@ class Utils {
 }
 
 // Add push notification click event and return push data
-// https://developers.mindbox.ru/docs/android-sdk-methods#onpushclicked
 // https://developers.mindbox.ru/docs/android-sdk-methods#geturlfrompushintent
 // https://developers.mindbox.ru/docs/android-sdk-methods#getpayloadfrompushintent
 fun processMindboxIntent(intent: Intent?, context: Context): Pair<String?, String?>? {
     intent?.let {
-        Mindbox.onPushClicked(context, it)
+        ClientGateClickSender.sendClick(context, it)
         return Mindbox.getUrlFromPushIntent(intent) to Mindbox.getPayloadFromPushIntent(intent)
     }
     return null
