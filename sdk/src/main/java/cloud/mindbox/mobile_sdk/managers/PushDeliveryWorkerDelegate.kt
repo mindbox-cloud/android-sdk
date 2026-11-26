@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import android.os.Build
-import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
@@ -16,7 +15,9 @@ import cloud.mindbox.mobile_sdk.models.PushDeliverySchedule
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.services.PushDeliveryWorkManager
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class PushDeliveryWorkerDelegate {
@@ -53,10 +54,10 @@ internal class PushDeliveryWorkerDelegate {
         }
     }
 
-    suspend fun sendQueue(context: Context, throttles: Int): ListenableWorker.Result {
+    suspend fun sendQueue(context: Context, throttles: Int, failures: Int) {
         val configuration = prepare(context) ?: run {
             mindboxLogW("Push deliveries will be sent later, because configuration was not initialized")
-            return ListenableWorker.Result.success()
+            return
         }
         val results = DbManager.getQueuedPushDeliveries()
             .take(MAX_PER_RUN)
@@ -64,16 +65,9 @@ internal class PushDeliveryWorkerDelegate {
                 sendQueued(configuration, delivery).takeIf { it != AsyncEventSendResult.THROTTLED }
                     ?: return pauseQueue(context, throttles + 1)
             }
-        return when {
-            results.any { !it.isRemovedFromQueue } -> {
-                mindboxLogI("[GD] push deliveries decision: not all were accepted, the queue retries with the backoff")
-                ListenableWorker.Result.retry()
-            }
-            DbManager.getQueuedPushDeliveries().isNotEmpty() -> {
-                PushDeliveryWorkManager.enqueueNextQueue(context)
-                ListenableWorker.Result.success()
-            }
-            else -> ListenableWorker.Result.success()
+        when {
+            results.any { !it.isRemovedFromQueue } -> retryQueue(context, throttles, failures + 1)
+            DbManager.getQueuedPushDeliveries().isNotEmpty() -> enqueueNextQueue(context, Milliseconds(0L), throttles = 0, failures = 0)
         }
     }
 
@@ -106,7 +100,7 @@ internal class PushDeliveryWorkerDelegate {
             return
         }
         if (last.result == AsyncEventSendResult.THROTTLED) {
-            val pause = pauseManager.nextPause(throttles = 1)
+            val pause = pauseManager.nextThrottlePause(throttles = 1)
             mindboxLogI("[GD] push delivery #$id decision: handed to the queue after HTTP 429, the queue pauses for ${pause.interval} ms")
             PushDeliveryWorkManager.enqueueQueue(context, pause, throttles = 1)
         } else {
@@ -115,11 +109,26 @@ internal class PushDeliveryWorkerDelegate {
         }
     }
 
-    private fun pauseQueue(context: Context, throttles: Int): ListenableWorker.Result {
-        val pause = pauseManager.nextPause(throttles)
+    private suspend fun pauseQueue(context: Context, throttles: Int) {
+        val pause = pauseManager.nextThrottlePause(throttles)
         mindboxLogI("[GD] push deliveries decision: HTTP 429, the queue pauses for ${pause.interval} ms")
-        PushDeliveryWorkManager.enqueueNextQueue(context, pause, throttles)
-        return ListenableWorker.Result.success()
+        enqueueNextQueue(context, pause, throttles, failures = 0)
+    }
+
+    private suspend fun retryQueue(context: Context, throttles: Int, failures: Int) {
+        val pause = pauseManager.nextRetryPause(failures)
+        mindboxLogI("[GD] push deliveries decision: not all were accepted, the queue retries in ${pause.interval} ms")
+        enqueueNextQueue(context, pause, throttles, failures)
+    }
+
+    private suspend fun enqueueNextQueue(
+        context: Context,
+        delay: Milliseconds,
+        throttles: Int,
+        failures: Int,
+    ) {
+        currentCoroutineContext().ensureActive()
+        PushDeliveryWorkManager.enqueueNextQueue(context, delay, throttles, failures)
     }
 
     private suspend fun sendAttempts(configuration: Configuration, delivery: PushDelivery): Attempt? {

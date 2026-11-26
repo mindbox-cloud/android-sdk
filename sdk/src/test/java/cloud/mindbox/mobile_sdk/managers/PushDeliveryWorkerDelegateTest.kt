@@ -2,7 +2,6 @@ package cloud.mindbox.mobile_sdk.managers
 
 import android.content.Context
 import android.os.Build
-import androidx.work.ListenableWorker
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
@@ -23,6 +22,8 @@ import io.mockk.mockkObject
 import io.mockk.runs
 import io.mockk.unmockkAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -68,7 +69,7 @@ class PushDeliveryWorkerDelegateTest {
     private val attemptOffsets = mutableListOf<Long>()
     private val sentDeliveries = mutableListOf<PushDelivery>()
     private val queueRuns = mutableListOf<Pair<Long, Int>>()
-    private val nextQueueRuns = mutableListOf<Pair<Long, Int>>()
+    private val nextQueueRuns = mutableListOf<Triple<Long, Int, Int>>()
     private var elapsedAtStart = 0L
     private var attemptDuration = 0L
     private var isStorageBroken = false
@@ -128,8 +129,8 @@ class PushDeliveryWorkerDelegateTest {
         every { MindboxPreferences.hostAppName } returns "test-app"
         mockkObject(PushDeliveryWorkManager)
         every { PushDeliveryWorkManager.enqueueQueue(any(), any(), any()) } answers { queueRuns += secondArg<Long>() to thirdArg<Int>() }
-        every { PushDeliveryWorkManager.enqueueNextQueue(any(), any(), any()) } answers {
-            nextQueueRuns += secondArg<Long>() to thirdArg<Int>()
+        every { PushDeliveryWorkManager.enqueueNextQueue(any(), any(), any(), any()) } answers {
+            nextQueueRuns += Triple(secondArg<Long>(), thirdArg<Int>(), arg<Int>(3))
         }
         coEvery { pushDeliveredManager.send(any(), any()) } coAnswers {
             attemptOffsets.add(elapsed)
@@ -175,10 +176,8 @@ class PushDeliveryWorkerDelegateTest {
         PushDeliveryWorkerDelegate().send(context, ID)
     }
 
-    private fun runQueue(throttles: Int = 0): ListenableWorker.Result {
-        var result: ListenableWorker.Result? = null
-        newScope().runTest { result = PushDeliveryWorkerDelegate().sendQueue(context, throttles) }
-        return checkNotNull(result)
+    private fun runQueue(throttles: Int = 0, failures: Int = 0) = newScope().runTest {
+        PushDeliveryWorkerDelegate().sendQueue(context, throttles, failures)
     }
 
     @Test
@@ -613,40 +612,74 @@ class PushDeliveryWorkerDelegateTest {
         row(id = 3L)
         answers(AsyncEventSendResult.DELIVERED, AsyncEventSendResult.DISCARDED)
 
-        val result = runQueue()
+        runQueue()
 
         assertEquals(listOf(1L, 2L), sentDeliveries.map { it.id })
         assertEquals(listOf(3L), rows.keys.toList())
-        assertEquals(ListenableWorker.Result.success(), result)
         assertTrue(nextQueueRuns.isEmpty())
     }
 
     @Test
-    fun `queue keeps a row that got no answer, still sends the rest and retries with the backoff`() {
+    fun `queue keeps a row that got no answer, still sends the rest and runs again after the first retry pause`() {
         row(id = 1L, isInQueue = true)
         row(id = 2L, isInQueue = true)
         answers(AsyncEventSendResult.RETRY_LATER, AsyncEventSendResult.DELIVERED)
 
-        val result = runQueue()
+        runQueue()
 
         assertEquals(listOf(1L, 2L), sentDeliveries.map { it.id })
         assertEquals(listOf(1L), rows.keys.toList())
-        assertEquals(ListenableWorker.Result.retry(), result)
-        assertTrue(nextQueueRuns.isEmpty())
+        assertEquals(listOf(Triple(7_500L, 0, 1)), nextQueueRuns)
     }
 
     @Test
-    fun `first 429 stops the run and the next run waits the first 429 pause`() {
+    fun `failed run doubles the retry pause and keeps the 429 count`() {
+        row(isInQueue = true)
+        failures(1)
+
+        runQueue(throttles = 2, failures = 2)
+
+        assertEquals(listOf(Triple(30_000L, 2, 3)), nextQueueRuns)
+    }
+
+    @Test
+    fun `first 429 stops the run, the next run waits the first 429 pause and the retry pauses start over`() {
         row(id = 1L, isInQueue = true)
         row(id = 2L, isInQueue = true)
         answers(AsyncEventSendResult.THROTTLED)
 
-        val result = runQueue()
+        runQueue(failures = 3)
 
         assertEquals(listOf(1L), sentDeliveries.map { it.id })
         assertEquals(listOf(1L, 2L), rows.keys.toList())
-        assertEquals(ListenableWorker.Result.success(), result)
-        assertEquals(listOf(150_000L to 1), nextQueueRuns)
+        assertEquals(listOf(Triple(150_000L, 1, 0)), nextQueueRuns)
+    }
+
+    @Test
+    fun `failed row followed by 429 in one run waits the 429 pause and starts the retry pauses over`() {
+        row(id = 1L, isInQueue = true)
+        row(id = 2L, isInQueue = true)
+        answers(AsyncEventSendResult.RETRY_LATER, AsyncEventSendResult.THROTTLED)
+
+        runQueue(throttles = 1, failures = 2)
+
+        assertEquals(listOf(Triple(300_000L, 2, 0)), nextQueueRuns)
+    }
+
+    @Test
+    fun `queue run stopped after its last request schedules no next run`() = newScope().runTest {
+        row(isInQueue = true)
+        coEvery { pushDeliveredManager.send(any(), any()) } coAnswers {
+            currentCoroutineContext().cancel()
+            AsyncEventSendResult.RETRY_LATER
+        }
+
+        val job = launch { PushDeliveryWorkerDelegate().sendQueue(context, throttles = 0, failures = 0) }
+        runCurrent()
+
+        assertTrue(job.isCancelled)
+        assertTrue(rows.getValue(ID).isInQueue)
+        assertTrue(nextQueueRuns.isEmpty())
     }
 
     @Test
@@ -656,33 +689,31 @@ class PushDeliveryWorkerDelegateTest {
 
         runQueue(throttles = 2)
 
-        assertEquals(listOf(600_000L to 3), nextQueueRuns)
+        assertEquals(listOf(Triple(600_000L, 3, 0)), nextQueueRuns)
     }
 
     @Test
-    fun `queue sends no more than 20 rows in one run and starts the next run at once`() {
+    fun `queue sends no more than 20 rows in one run and starts the next run at once with the counts reset`() {
         (1L..25L).forEach { row(id = it, isInQueue = true) }
         answers(*Array(25) { AsyncEventSendResult.DELIVERED })
 
-        val result = runQueue()
+        runQueue(throttles = 2, failures = 2)
 
         assertEquals((1L..20L).toList(), sentDeliveries.map { it.id })
         assertEquals((21L..25L).toList(), rows.keys.toList())
-        assertEquals(ListenableWorker.Result.success(), result)
-        assertEquals(listOf(0L to 0), nextQueueRuns)
+        assertEquals(listOf(Triple(0L, 0, 0)), nextQueueRuns)
     }
 
     @Test
-    fun `queue with failures sends no more than 20 rows and leaves the rest to the retry`() {
+    fun `queue with failures sends no more than 20 rows and leaves the rest to the next run`() {
         (1L..25L).forEach { row(id = it, isInQueue = true) }
         failures(25)
 
-        val result = runQueue()
+        runQueue()
 
         assertEquals((1L..20L).toList(), sentDeliveries.map { it.id })
         assertEquals((1L..25L).toList(), rows.keys.toList())
-        assertEquals(ListenableWorker.Result.retry(), result)
-        assertTrue(nextQueueRuns.isEmpty())
+        assertEquals(listOf(Triple(7_500L, 0, 1)), nextQueueRuns)
     }
 
     @Test
@@ -694,31 +725,30 @@ class PushDeliveryWorkerDelegateTest {
             AsyncEventSendResult.DELIVERED
         }
 
-        val result = runQueue()
+        runQueue()
 
         assertEquals(listOf(1L), sentDeliveries.map { it.id })
-        assertEquals(ListenableWorker.Result.success(), result)
-        assertEquals(listOf(0L to 0), nextQueueRuns)
+        assertEquals(listOf(Triple(0L, 0, 0)), nextQueueRuns)
     }
 
     @Test
     fun `queue drops a row older than half a year without a request`() {
         row(isInQueue = true, receivedAfter = -HALF_YEAR)
 
-        val result = runQueue()
+        runQueue()
 
         coVerify(exactly = 0) { pushDeliveredManager.send(any(), any()) }
         assertTrue(rows.isEmpty())
-        assertEquals(ListenableWorker.Result.success(), result)
     }
 
     @Test
-    fun `queue that cannot delete an answered row retries with the backoff`() {
+    fun `queue that cannot delete an answered row runs again after the first retry pause`() {
         row(isInQueue = true)
         answers(AsyncEventSendResult.DELIVERED)
         isStorageBroken = true
 
-        assertEquals(ListenableWorker.Result.retry(), runQueue())
+        runQueue()
+        assertEquals(listOf(Triple(7_500L, 0, 1)), nextQueueRuns)
     }
 
     @Test
@@ -726,10 +756,9 @@ class PushDeliveryWorkerDelegateTest {
         row(isInQueue = true)
         configuration = null
 
-        val result = runQueue()
+        runQueue()
 
         coVerify(exactly = 0) { pushDeliveredManager.send(any(), any()) }
-        assertEquals(ListenableWorker.Result.success(), result)
         assertTrue(nextQueueRuns.isEmpty())
     }
 
@@ -737,10 +766,9 @@ class PushDeliveryWorkerDelegateTest {
     fun `queue with nothing handed to it ends without a next run`() {
         row()
 
-        val result = runQueue()
+        runQueue()
 
         coVerify(exactly = 0) { pushDeliveredManager.send(any(), any()) }
-        assertEquals(ListenableWorker.Result.success(), result)
         assertTrue(nextQueueRuns.isEmpty())
     }
 }

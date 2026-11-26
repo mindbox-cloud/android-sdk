@@ -36,7 +36,7 @@ class MindboxPushDeliveryWorkerTest {
         mockLogger()
         mockkConstructor(PushDeliveryWorkerDelegate::class)
         coEvery { anyConstructed<PushDeliveryWorkerDelegate>().send(any(), any()) } just runs
-        coEvery { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(any(), any()) } returns ListenableWorker.Result.success()
+        coEvery { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(any(), any(), any()) } just runs
     }
 
     @After
@@ -55,24 +55,22 @@ class MindboxPushDeliveryWorkerTest {
 
         assertEquals(ListenableWorker.Result.success(), result)
         coVerify(exactly = 1) { anyConstructed<PushDeliveryWorkerDelegate>().send(context, 7L) }
-        coVerify(exactly = 0) { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(any(), any()) }
+        coVerify(exactly = 0) { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(any(), any(), any()) }
     }
 
     @Test
-    fun `worker without a row id sends the queue with the 429 count from its input and returns its result`() = runTest {
-        coEvery { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(any(), any()) } returns ListenableWorker.Result.retry()
+    fun `worker without a row id sends the queue with the 429 and failure counts from its input`() = runTest {
+        val result = worker(MindboxPushDeliveryWorker.queueInputData(throttles = 2, failures = 3)).doWork()
 
-        val result = worker(MindboxPushDeliveryWorker.queueInputData(2)).doWork()
-
-        assertEquals(ListenableWorker.Result.retry(), result)
-        coVerify(exactly = 1) { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(context, 2) }
+        assertEquals(ListenableWorker.Result.success(), result)
+        coVerify(exactly = 1) { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(context, 2, 3) }
         coVerify(exactly = 0) { anyConstructed<PushDeliveryWorkerDelegate>().send(any(), any()) }
     }
 
     @Test
     fun `unexpected error fails the work instead of crashing the process`() = runTest {
         coEvery { anyConstructed<PushDeliveryWorkerDelegate>().send(any(), any()) } throws IllegalStateException("db is closed")
-        coEvery { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(any(), any()) } throws IllegalStateException("db is closed")
+        coEvery { anyConstructed<PushDeliveryWorkerDelegate>().sendQueue(any(), any(), any()) } throws IllegalStateException("db is closed")
 
         assertEquals(ListenableWorker.Result.failure(), worker(MindboxPushDeliveryWorker.inputData(7L)).doWork())
         assertEquals(ListenableWorker.Result.failure(), worker(Data.EMPTY).doWork())

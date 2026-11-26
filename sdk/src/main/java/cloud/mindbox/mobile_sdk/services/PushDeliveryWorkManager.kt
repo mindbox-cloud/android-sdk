@@ -38,10 +38,14 @@ internal object PushDeliveryWorkManager {
     }
 
     fun enqueueQueue(context: Context, delay: Milliseconds = Milliseconds(0L), throttles: Int = 0) =
-        enqueueQueue(context, delay, throttles, ExistingWorkPolicy.KEEP)
+        enqueueQueue(context, delay, throttles, failures = 0, ExistingWorkPolicy.KEEP)
 
-    fun enqueueNextQueue(context: Context, delay: Milliseconds = Milliseconds(0L), throttles: Int = 0) =
-        enqueueQueue(context, delay, throttles, ExistingWorkPolicy.APPEND_OR_REPLACE)
+    fun enqueueNextQueue(
+        context: Context,
+        delay: Milliseconds,
+        throttles: Int,
+        failures: Int,
+    ) = enqueueQueue(context, delay, throttles, failures, ExistingWorkPolicy.APPEND_OR_REPLACE)
 
     fun enqueueAll(context: Context): Unit = loggingRunCatching {
         DbManager.getPushDeliveryIdsOutOfQueue().forEach { deliveryId -> enqueue(context, deliveryId) }
@@ -56,9 +60,10 @@ internal object PushDeliveryWorkManager {
         context: Context,
         delay: Milliseconds,
         throttles: Int,
+        failures: Int,
         existingWorkPolicy: ExistingWorkPolicy,
     ): Unit = loggingRunCatching {
-        val request = requestBuilder(MindboxPushDeliveryWorker.queueInputData(throttles))
+        val request = requestBuilder(MindboxPushDeliveryWorker.queueInputData(throttles, failures))
             .setInitialDelay(delay.interval, TimeUnit.MILLISECONDS)
             .build()
         WorkManager

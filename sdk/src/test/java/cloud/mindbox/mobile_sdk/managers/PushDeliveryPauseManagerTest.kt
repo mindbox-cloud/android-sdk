@@ -32,19 +32,28 @@ class PushDeliveryPauseManagerTest {
 
     @Test
     fun `first pause after 429 is a random 150 to 250 seconds`() {
-        assertSpread(150_000L..250_000L, samples { manager.nextPause(throttles = 1) })
+        assertSpread(150_000L..250_000L, samples { manager.nextThrottlePause(throttles = 1) })
     }
 
     @Test
     fun `pause after repeated 429 doubles up to one hour with 25 percent spread`() {
-        assertSpread(300_000L..500_000L, samples { manager.nextPause(throttles = 2) })
-        assertSpread(600_000L..1_000_000L, samples { manager.nextPause(throttles = 3) })
-        assertSpread(2_700_000L..4_500_000L, samples { manager.nextPause(throttles = 9) })
-        assertSpread(2_700_000L..4_500_000L, samples { manager.nextPause(throttles = Int.MAX_VALUE) })
+        assertSpread(300_000L..500_000L, samples { manager.nextThrottlePause(throttles = 2) })
+        assertSpread(600_000L..1_000_000L, samples { manager.nextThrottlePause(throttles = 3) })
+        assertSpread(2_700_000L..4_500_000L, samples { manager.nextThrottlePause(throttles = 9) })
+        assertSpread(2_700_000L..4_500_000L, samples { manager.nextThrottlePause(throttles = Int.MAX_VALUE) })
+    }
+
+    @Test
+    fun `retry pause after failed runs doubles from 10 seconds up to one hour with 25 percent spread`() {
+        assertSpread(7_500L..12_500L, samples { manager.nextRetryPause(failures = 1) })
+        assertSpread(15_000L..25_000L, samples { manager.nextRetryPause(failures = 2) })
+        assertSpread(30_000L..50_000L, samples { manager.nextRetryPause(failures = 3) })
+        assertSpread(2_700_000L..4_500_000L, samples { manager.nextRetryPause(failures = 20) })
+        assertSpread(2_700_000L..4_500_000L, samples { manager.nextRetryPause(failures = Int.MAX_VALUE) })
     }
 
     @Test
     fun `pause without a 429 count is the first one`() {
-        assertEquals(150_000L, lowestJitter.nextPause(throttles = 0).interval)
+        assertEquals(150_000L, lowestJitter.nextThrottlePause(throttles = 0).interval)
     }
 }

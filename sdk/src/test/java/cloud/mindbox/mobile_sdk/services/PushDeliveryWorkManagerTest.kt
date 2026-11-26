@@ -116,13 +116,13 @@ class PushDeliveryWorkManagerTest {
     }
 
     @Test
-    fun `queue is one regular task without a row id that waits its delay, carries the 429 count and backs off from 10 seconds`() {
-        PushDeliveryWorkManager.enqueueNextQueue(context, Milliseconds(150_000L), throttles = 1)
+    fun `queue is one regular task without a row id that waits its delay, carries the 429 and failure counts and backs off from 10 seconds`() {
+        PushDeliveryWorkManager.enqueueNextQueue(context, Milliseconds(150_000L), throttles = 1, failures = 2)
 
         val workSpec = requests.single().workSpec
         assertFalse(workSpec.expedited)
         assertEquals(150_000L, workSpec.initialDelay)
-        assertEquals(MindboxPushDeliveryWorker.queueInputData(1), workSpec.input)
+        assertEquals(MindboxPushDeliveryWorker.queueInputData(throttles = 1, failures = 2), workSpec.input)
         assertEquals(NetworkType.CONNECTED, workSpec.constraints.requiredNetworkType)
         assertEquals(BackoffPolicy.EXPONENTIAL, workSpec.backoffPolicy)
         assertEquals(10_000L, workSpec.backoffDelayDuration)
@@ -132,16 +132,16 @@ class PushDeliveryWorkManagerTest {
     @Test
     fun `row handed to the queue keeps the queue task and the queue appends its next run under the same name`() {
         PushDeliveryWorkManager.enqueueQueue(context, Milliseconds(150_000L), throttles = 1)
-        PushDeliveryWorkManager.enqueueNextQueue(context)
+        PushDeliveryWorkManager.enqueueNextQueue(context, Milliseconds(0L), throttles = 0, failures = 0)
         PushDeliveryWorkManager.enqueue(context, 7L)
 
         assertEquals(listOf(ExistingWorkPolicy.KEEP, ExistingWorkPolicy.APPEND_OR_REPLACE), policies.take(2))
         assertEquals(names[0], names[1])
         assertTrue(names[0] != names[2])
         assertEquals(150_000L, requests[0].workSpec.initialDelay)
-        assertEquals(MindboxPushDeliveryWorker.queueInputData(1), requests[0].workSpec.input)
+        assertEquals(MindboxPushDeliveryWorker.queueInputData(throttles = 1, failures = 0), requests[0].workSpec.input)
         assertEquals(0L, requests[1].workSpec.initialDelay)
-        assertEquals(MindboxPushDeliveryWorker.queueInputData(0), requests[1].workSpec.input)
+        assertEquals(MindboxPushDeliveryWorker.queueInputData(throttles = 0, failures = 0), requests[1].workSpec.input)
     }
 
     @Test
@@ -156,7 +156,7 @@ class PushDeliveryWorkManagerTest {
         assertEquals(names[0], names[1])
         assertEquals(requests[0].workSpec.input, requests[1].workSpec.input)
         assertTrue(requests[1].workSpec.expedited)
-        assertEquals(MindboxPushDeliveryWorker.queueInputData(0), requests[2].workSpec.input)
+        assertEquals(MindboxPushDeliveryWorker.queueInputData(throttles = 0, failures = 0), requests[2].workSpec.input)
         assertEquals(0L, requests[2].workSpec.initialDelay)
         assertEquals(List(3) { ExistingWorkPolicy.KEEP }, policies)
     }

@@ -10,18 +10,21 @@ internal class PushDeliveryPauseManager(
     private companion object {
         const val MAX_PAUSE_DOUBLINGS = 10
         const val JITTER = 0.25
-        val FIRST_PAUSE_MIN = Milliseconds(150_000L)
-        val FIRST_PAUSE_MAX = Milliseconds(250_000L)
-        val PAUSE = Milliseconds(200_000L)
+        val FIRST_THROTTLE_PAUSE_MIN = Milliseconds(150_000L)
+        val FIRST_THROTTLE_PAUSE_MAX = Milliseconds(250_000L)
+        val THROTTLE_PAUSE = Milliseconds(200_000L)
+        val RETRY_PAUSE = Milliseconds(10_000L)
         val MAX_PAUSE = Milliseconds(3_600_000L)
     }
 
-    fun nextPause(throttles: Int): Milliseconds =
+    fun nextThrottlePause(throttles: Int): Milliseconds =
         if (throttles <= 1) {
-            Milliseconds(random.nextLong(FIRST_PAUSE_MIN.interval, FIRST_PAUSE_MAX.interval + 1))
+            Milliseconds(random.nextLong(FIRST_THROTTLE_PAUSE_MIN.interval, FIRST_THROTTLE_PAUSE_MAX.interval + 1))
         } else {
-            jittered(doubled(PAUSE, doublings = throttles - 1))
+            jittered(doubled(THROTTLE_PAUSE, doublings = throttles - 1))
         }
+
+    fun nextRetryPause(failures: Int): Milliseconds = jittered(doubled(RETRY_PAUSE, doublings = failures - 1))
 
     private fun doubled(pause: Milliseconds, doublings: Int): Milliseconds {
         val shift = doublings.coerceIn(0, MAX_PAUSE_DOUBLINGS)
