@@ -2,26 +2,38 @@ package cloud.mindbox.mobile_sdk.managers
 
 import cloud.mindbox.mobile_sdk.models.AsyncEventSendResult
 import cloud.mindbox.mobile_sdk.models.Configuration
-import cloud.mindbox.mobile_sdk.models.Event
-import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PushDelivery
 import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.network.MindboxServiceGenerator
 import cloud.mindbox.mobile_sdk.network.PushDeliveredRequest
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
 import cloud.mindbox.mobile_sdk.utils.mockLogger
 import com.android.volley.NetworkResponse
+import com.android.volley.NoConnectionError
 import com.android.volley.Request
+import com.android.volley.TimeoutError
 import com.android.volley.VolleyError
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import io.mockk.verify
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.net.ConnectException
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class PushDeliveredManagerTest {
 
     private val now = 1_000_000_000L
@@ -64,102 +76,151 @@ class PushDeliveredManagerTest {
         unmockkAll()
     }
 
-    private fun delivered(url: String?, enqueueTimestamp: Long = now) = Event(
-        eventType = EventType.PushDelivered,
-        enqueueTimestamp = enqueueTimestamp,
-        additionalFields = url?.let { hashMapOf(EventType.PushDelivered.FIELD_URL to it) },
-    )
+    private fun delivery(url: String = "https://mbx.ru/d", receivedAt: Long = now) =
+        PushDelivery(id = 7L, url = url, receivedAt = receivedAt)
 
-    private fun send(event: Event, shouldCountOffset: Boolean = false): List<AsyncEventSendResult> {
-        val results = mutableListOf<AsyncEventSendResult>()
-        manager.send(
-            configuration = configuration,
-            event = event,
-            shouldCountOffset = shouldCountOffset,
-            onResult = { results.add(it) },
-        )
-        return results
+    private fun TestScope.send(delivery: PushDelivery = delivery()): Deferred<AsyncEventSendResult> {
+        val result = async { manager.send(configuration, delivery) }
+        runCurrent()
+        return result
     }
 
     private fun volleyError(code: Int, body: String = "") =
         VolleyError(NetworkResponse(code, body.toByteArray(), false, 0L, emptyList()))
 
     @Test
-    fun `confirmation is a POST to the url from the push with only dateTimeOffset added`() {
-        send(delivered("https://mbx.ru/d/key/hash?sig=1"))
+    fun `confirmation is a POST to the url from the push with only dateTimeOffset added`() = runTest {
+        val result = send(delivery("https://mbx.ru/d/key/hash?sig=1"))
 
         val request = checkNotNull(lastRequest)
         assertEquals(Request.Method.POST, request.method)
         assertEquals("https://mbx.ru/d/key/hash?sig=1&dateTimeOffset=0", request.url)
+        result.cancel()
     }
 
     @Test
-    fun `retry counts dateTimeOffset from the moment the push was received`() {
-        send(delivered("https://mbx.ru/d", enqueueTimestamp = now - 300_000L), shouldCountOffset = true)
+    fun `every attempt counts dateTimeOffset from the moment the push was received`() = runTest {
+        val first = send(delivery(receivedAt = now - 60L))
+        assertEquals("https://mbx.ru/d?dateTimeOffset=60", checkNotNull(lastRequest).url)
+        first.cancel()
 
+        val later = send(delivery(receivedAt = now - 300_000L))
         assertEquals("https://mbx.ru/d?dateTimeOffset=300000", checkNotNull(lastRequest).url)
+        later.cancel()
     }
 
     @Test
-    fun `receipt time ahead of the clock gives a zero offset`() {
-        send(delivered("https://mbx.ru/d", enqueueTimestamp = now + 5_000L), shouldCountOffset = true)
+    fun `receipt time ahead of the clock gives a zero offset`() = runTest {
+        val result = send(delivery(receivedAt = now + 5_000L))
 
         assertEquals("https://mbx.ru/d?dateTimeOffset=0", checkNotNull(lastRequest).url)
+        result.cancel()
     }
 
     @Test
-    fun `confirmation without a url is dropped without a request`() {
-        assertEquals(listOf(AsyncEventSendResult.DISCARDED), send(delivered(null)))
+    fun `stored url that is not https is dropped without a request`() = runTest {
+        listOf("ftp://mbx.ru/d", "http://mbx.ru/d", "").forEach { url ->
+            assertEquals(url, AsyncEventSendResult.DISCARDED, send(delivery(url)).await())
+        }
         verify(exactly = 0) { serviceGenerator.addToRequestQueue(any<PushDeliveredRequest>()) }
     }
 
     @Test
-    fun `stored url that is not http or https is dropped without a request`() {
-        assertEquals(listOf(AsyncEventSendResult.DISCARDED), send(delivered("ftp://mbx.ru/d")))
-        verify(exactly = 0) { serviceGenerator.addToRequestQueue(any<PushDeliveredRequest>()) }
-    }
-
-    @Test
-    fun `answers follow the asynchronous operations rules`() {
-        val cases = listOf(
+    fun `5xx keeps the confirmation and 429 marks it throttled`() = runTest {
+        listOf(
             500 to AsyncEventSendResult.RETRY_LATER,
             503 to AsyncEventSendResult.RETRY_LATER,
             429 to AsyncEventSendResult.THROTTLED,
-        )
-        cases.forEach { (code, expected) ->
-            val results = send(delivered("https://mbx.ru/d"))
+        ).forEach { (code, expected) ->
+            val result = send()
             checkNotNull(lastRequest).deliverError(volleyError(code))
-            assertEquals("HTTP $code", listOf(expected), results)
+            assertEquals("HTTP $code", expected, result.await())
         }
     }
 
     @Test
-    fun `4xx closes the confirmation whatever the body`() {
+    fun `3xx and 4xx close the confirmation whatever the body`() = runTest {
         listOf(
+            302 to "",
             400 to "",
             403 to "<html>Forbidden</html>",
             404 to "{}",
             410 to """{"status":"Success"}""",
         ).forEach { (code, body) ->
-            val results = send(delivered("https://mbx.ru/d"))
+            val result = send()
             checkNotNull(lastRequest).deliverError(volleyError(code, body))
-            assertEquals("HTTP $code with body <$body>", listOf(AsyncEventSendResult.DISCARDED), results)
+            assertEquals("HTTP $code with body <$body>", AsyncEventSendResult.DISCARDED, result.await())
         }
     }
 
     @Test
-    fun `2xx answer delivers the confirmation`() {
-        val results = send(delivered("https://mbx.ru/d"))
+    fun `2xx answer delivers the confirmation`() = runTest {
+        val result = send()
         checkNotNull(lastRequest).deliverResponse(Unit)
 
-        assertEquals(listOf(AsyncEventSendResult.DELIVERED), results)
+        assertEquals(AsyncEventSendResult.DELIVERED, result.await())
     }
 
     @Test
-    fun `no answer keeps the confirmation`() {
-        val results = send(delivered("https://mbx.ru/d"))
-        checkNotNull(lastRequest).deliverError(VolleyError("timeout"))
+    fun `socket timeout keeps the confirmation`() = runTest {
+        val result = send()
+        checkNotNull(lastRequest).deliverError(TimeoutError())
 
-        assertEquals(listOf(AsyncEventSendResult.RETRY_LATER), results)
+        assertEquals(AsyncEventSendResult.RETRY_LATER, result.await())
+    }
+
+    @Test
+    fun `refused connection keeps the confirmation`() = runTest {
+        val result = send()
+        checkNotNull(lastRequest).deliverError(NoConnectionError(ConnectException("refused")))
+
+        assertEquals(AsyncEventSendResult.RETRY_LATER, result.await())
+    }
+
+    @Test
+    fun `attempt without an answer ends after 2500 ms and cancels its request`() = runTest {
+        val result = send()
+        val request = checkNotNull(lastRequest)
+
+        advanceTimeBy(2_499L)
+        runCurrent()
+        assertFalse(result.isCompleted)
+        assertFalse(request.isCanceled)
+
+        advanceTimeBy(1L)
+        runCurrent()
+        assertEquals(AsyncEventSendResult.RETRY_LATER, result.await())
+        assertTrue(request.isCanceled)
+    }
+
+    @Test
+    fun `request waits on the socket no longer than the attempt lasts`() = runTest {
+        send()
+
+        assertEquals(2_500, checkNotNull(lastRequest).timeoutMs)
+    }
+
+    @Test
+    fun `answer after the deadline does not change the result`() = runTest {
+        val result = send()
+        val request = checkNotNull(lastRequest)
+        advanceTimeBy(2_500L)
+        runCurrent()
+
+        request.deliverResponse(Unit)
+
+        assertEquals(AsyncEventSendResult.RETRY_LATER, result.await())
+    }
+
+    @Test
+    fun `cancelled attempt cancels its request`() = runTest {
+        val result = send()
+        val request = checkNotNull(lastRequest)
+
+        result.cancel()
+        runCurrent()
+
+        assertTrue(request.isCanceled)
+        assertTrue(result.isCancelled)
     }
 }

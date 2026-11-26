@@ -1,6 +1,7 @@
 package cloud.mindbox.mobile_sdk.network
 
 import cloud.mindbox.mobile_sdk.models.Configuration
+import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.MindboxRequest
 import cloud.mindbox.mobile_sdk.utils.mockLogger
 import com.android.volley.NetworkResponse
@@ -34,6 +35,7 @@ class PushDeliveredRequestTest {
     private val request = PushDeliveredRequest(
         url = "https://mbx.ru/d/key/hash?sig=secret&dateTimeOffset=0",
         configuration = configuration,
+        timeout = Milliseconds(2_500L),
         onDelivered = { deliveredCount++ },
         errorListener = {},
     )
@@ -73,9 +75,14 @@ class PushDeliveredRequestTest {
     }
 
     @Test
-    fun `confirmation is not cached and waits 5 seconds without retries`() {
+    fun `confirmation is not cached and waits the given time without retries`() {
         assertFalse(request.shouldCache())
-        assertEquals(5_000, request.timeoutMs)
+        assertEquals(2_500, request.timeoutMs)
         assertThrows(VolleyError::class.java) { request.retryPolicy.retry(VolleyError("timeout")) }
+    }
+
+    @Test
+    fun `confirmation goes ahead of the operations waiting in the request queue`() {
+        assertEquals(Request.Priority.IMMEDIATE, request.priority)
     }
 }

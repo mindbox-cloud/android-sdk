@@ -5,6 +5,7 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import cloud.mindbox.mobile_sdk.services.MindboxOneTimeEventWorker
+import cloud.mindbox.mobile_sdk.services.MindboxPushDeliveryWorker
 
 internal object MindboxWorkerFactory : WorkerFactory() {
 
@@ -12,7 +13,9 @@ internal object MindboxWorkerFactory : WorkerFactory() {
         appContext: Context,
         workerClassName: String,
         workerParameters: WorkerParameters,
-    ): ListenableWorker? = workerClassName
-        .takeIf { it == MindboxOneTimeEventWorker::class.java.name }
-        ?.let { MindboxOneTimeEventWorker(appContext, workerParameters) }
+    ): ListenableWorker? = when (workerClassName) {
+        MindboxOneTimeEventWorker::class.java.name -> MindboxOneTimeEventWorker(appContext, workerParameters)
+        MindboxPushDeliveryWorker::class.java.name -> MindboxPushDeliveryWorker(appContext, workerParameters)
+        else -> null
+    }
 }

@@ -14,6 +14,7 @@ import cloud.mindbox.mobile_sdk.managers.TrackingIdsResolver
 import cloud.mindbox.mobile_sdk.models.AsyncEventSendResult
 import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.TrackingId
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
@@ -26,6 +27,7 @@ import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
 import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.services.PushDeliveryWorkManager
 import cloud.mindbox.mobile_sdk.utils.mockLogger
 import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import io.mockk.*
@@ -43,6 +45,10 @@ import java.util.Locale
 import java.util.UUID
 
 class MindboxTest {
+
+    private companion object {
+        const val RECEIVED_AT = 1_795_000_000_000L
+    }
 
     private val context = mockk<Context> {
         every { applicationContext } returns mockk<Application>(relaxed = true)
@@ -520,7 +526,23 @@ class MindboxTest {
         assertTrue(handlePush(deliveredUrl = "https://mbx.ru/d/key/hash?sig=1"))
 
         verify(exactly = 1) {
-            MindboxEventManager.pushDelivered(any(), checkNotNull(DeliveredUrl.of("https://mbx.ru/d/key/hash?sig=1")))
+            MindboxEventManager.pushDelivered(
+                context = any(),
+                deliveredUrl = checkNotNull(DeliveredUrl.of("https://mbx.ru/d/key/hash?sig=1")),
+                provider = null,
+                receivedAt = Timestamp(RECEIVED_AT),
+            )
+        }
+    }
+
+    @Test
+    fun `handled push queues its confirmation with its provider`() = runTest {
+        stubPushReceipt()
+
+        assertTrue(handlePush(deliveredUrl = "https://mbx.ru/d", provider = "HCM"))
+
+        verify(exactly = 1) {
+            MindboxEventManager.pushDelivered(any(), any(), provider = "HCM", receivedAt = Timestamp(RECEIVED_AT))
         }
     }
 
@@ -531,7 +553,7 @@ class MindboxTest {
         assertTrue(handlePush(deliveredUrl = null))
         assertTrue(handlePush(deliveredUrl = "http://mbx.ru/d/key/hash"))
 
-        verify(exactly = 0) { MindboxEventManager.pushDelivered(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.pushDelivered(any(), any(), any(), any()) }
     }
 
     @Test
@@ -541,7 +563,7 @@ class MindboxTest {
         Mindbox.onPushReceived(context, "push-key")
 
         verify(exactly = 1) { Mindbox.initComponents(context) }
-        verify(exactly = 0) { MindboxEventManager.pushDelivered(any(), any()) }
+        verify(exactly = 0) { MindboxEventManager.pushDelivered(any(), any(), any(), any()) }
     }
 
     private fun stubPushReceipt() {
@@ -549,13 +571,18 @@ class MindboxTest {
         mockkObject(Mindbox)
         every { Mindbox.initComponents(any()) } just runs
         every { MindboxPreferences.isFirstInitialize } returns true
-        every { MindboxEventManager.pushDelivered(any(), any()) } just runs
+        every { MindboxEventManager.pushDelivered(any(), any(), any(), any()) } just runs
+        val appModule = MindboxDI.appModule
+        every { appModule.timeProvider } returns mockk { every { currentTimestamp() } returns Timestamp(RECEIVED_AT) }
         coEvery {
             PushNotificationManager.tryNotifyRemoteMessage(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } just runs
     }
 
-    private suspend fun handlePush(deliveredUrl: String?): Boolean = PushNotificationManager.handleRemoteMessage(
+    private suspend fun handlePush(
+        deliveredUrl: String?,
+        provider: String? = null,
+    ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
         remoteMessage = MindboxRemoteMessage(
             uniqueKey = "push-key",
@@ -567,6 +594,7 @@ class MindboxTest {
             payload = null,
             deliveredUrl = deliveredUrl,
         ),
+        provider = provider,
         channelId = "channel",
         channelName = "Channel",
         pushSmallIcon = 0,
@@ -605,11 +633,13 @@ class MindboxTest {
         every { appModule.mobileConfigRepositoryIfCreated } returns repository
         every { appModule.inAppMessageManager } returns inAppManager
         every { MindboxPreferences.resetAppInfoUpdated() } just runs
-        mockkObject(DbManager, BackgroundWorkManager)
+        mockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
         val originalScope = Mindbox.mindboxScope
         try {
             every { DbManager.removeAllEventsFromQueue() } just runs
-            every { BackgroundWorkManager.cancelAllWork(any()) } returns mockk()
+            every { BackgroundWorkManager.cancelAllWork(any()) } just runs
+            every { DbManager.removeAllPushDeliveries() } just runs
+            every { PushDeliveryWorkManager.cancelAllWork(any()) } just runs
             setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
 
             Mindbox.softReinitialization(context)
@@ -621,7 +651,7 @@ class MindboxTest {
             }
         } finally {
             setMindboxScope(originalScope)
-            unmockkObject(DbManager, BackgroundWorkManager)
+            unmockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
         }
     }
 
@@ -632,11 +662,13 @@ class MindboxTest {
         val appModule = MindboxDI.appModule
         every { appModule.deliveryPauseManager } returns deliveryPauseManager
         every { MindboxPreferences.resetAppInfoUpdated() } just runs
-        mockkObject(DbManager, BackgroundWorkManager)
+        mockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
         val originalScope = Mindbox.mindboxScope
         try {
             every { DbManager.removeAllEventsFromQueue() } just runs
-            every { BackgroundWorkManager.cancelAllWork(any()) } returns mockk()
+            every { BackgroundWorkManager.cancelAllWork(any()) } just runs
+            every { DbManager.removeAllPushDeliveries() } just runs
+            every { PushDeliveryWorkManager.cancelAllWork(any()) } just runs
             setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
 
             Mindbox.softReinitialization(context)
@@ -644,7 +676,29 @@ class MindboxTest {
             assertNull(deliveryPauseManager.remainingPause(EventType.TrackVisit))
         } finally {
             setMindboxScope(originalScope)
-            unmockkObject(DbManager, BackgroundWorkManager)
+            unmockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
+        }
+    }
+
+    @Test
+    fun `a soft re-init clears push delivery confirmations and cancels their tasks`() {
+        every { MindboxPreferences.resetAppInfoUpdated() } just runs
+        mockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
+        val originalScope = Mindbox.mindboxScope
+        try {
+            every { DbManager.removeAllEventsFromQueue() } just runs
+            every { BackgroundWorkManager.cancelAllWork(any()) } just runs
+            every { DbManager.removeAllPushDeliveries() } just runs
+            every { PushDeliveryWorkManager.cancelAllWork(any()) } just runs
+            setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
+
+            Mindbox.softReinitialization(context)
+
+            verify(exactly = 1) { DbManager.removeAllPushDeliveries() }
+            verify(exactly = 1) { PushDeliveryWorkManager.cancelAllWork(context) }
+        } finally {
+            setMindboxScope(originalScope)
+            unmockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
         }
     }
 }
