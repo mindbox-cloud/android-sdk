@@ -121,17 +121,15 @@ class MindboxDatabaseMigrationTest {
         createVersion4Database()
         val first = onWorkerThread { db -> db.pushDeliveriesDao().insert(PushDelivery(url = "https://mbx.ru/1", receivedAt = 1L)) }
         val second = onWorkerThread { db -> db.pushDeliveriesDao().insert(PushDelivery(url = "https://mbx.ru/2", receivedAt = 2L)) }
+        val updated = PushDelivery(id = first, url = "https://mbx.ru/1", receivedAt = 1L, attempts = 4, isInQueue = true)
 
-        assertEquals(1, onWorkerThread { db -> db.pushDeliveriesDao().update(id = first, attempts = 4, throttles = 2, nextAttemptAt = 900L) })
-        assertEquals(
-            PushDelivery(id = first, url = "https://mbx.ru/1", receivedAt = 1L, attempts = 4, throttles = 2, nextAttemptAt = 900L),
-            onWorkerThread { db -> db.pushDeliveriesDao().get(first) },
-        )
+        assertEquals(1, onWorkerThread { db -> db.pushDeliveriesDao().update(updated) })
+        assertEquals(updated, onWorkerThread { db -> db.pushDeliveriesDao().get(first) })
         assertEquals(PushDelivery(id = second, url = "https://mbx.ru/2", receivedAt = 2L), onWorkerThread { db -> db.pushDeliveriesDao().get(second) })
 
         onWorkerThread { db -> db.pushDeliveriesDao().delete(first) }
         assertNull(onWorkerThread { db -> db.pushDeliveriesDao().get(first) })
-        assertEquals(0, onWorkerThread { db -> db.pushDeliveriesDao().update(id = first, attempts = 5, throttles = 0, nextAttemptAt = null) })
+        assertEquals(0, onWorkerThread { db -> db.pushDeliveriesDao().update(updated.copy(attempts = 5)) })
         assertEquals(listOf(second), onWorkerThread { db -> db.pushDeliveryIds() })
 
         onWorkerThread { db -> db.pushDeliveriesDao().deleteAll() }
@@ -139,23 +137,18 @@ class MindboxDatabaseMigrationTest {
     }
 
     @Test
-    fun `queue reads only rows that were handed to it and whose time has come, earliest first at equal counters`() {
+    fun `queue reads only rows that were handed to it, oldest first`() {
         createVersion4Database()
         val dao = onWorkerThread { db -> db.pushDeliveriesDao() }
         val ownedByItsTask = onWorkerThread { dao.insert(PushDelivery(url = "https://mbx.ru/1", receivedAt = 1L)) }
-        val late = onWorkerThread { dao.insert(PushDelivery(url = "https://mbx.ru/2", receivedAt = 2L, nextAttemptAt = 500L)) }
-        val early = onWorkerThread { dao.insert(PushDelivery(url = "https://mbx.ru/3", receivedAt = 3L, nextAttemptAt = 300L)) }
-        val future = onWorkerThread { dao.insert(PushDelivery(url = "https://mbx.ru/4", receivedAt = 4L, nextAttemptAt = 900L)) }
+        val older = onWorkerThread { dao.insert(PushDelivery(url = "https://mbx.ru/2", receivedAt = 2L, isInQueue = true)) }
+        val newer = onWorkerThread { dao.insert(PushDelivery(url = "https://mbx.ru/3", receivedAt = 3L, isInQueue = true)) }
 
-        assertEquals(listOf(early, late), onWorkerThread { dao.getDue(now = 500L, latest = 900L, limit = 10) }.map { it.id })
-        assertEquals(listOf(early), onWorkerThread { dao.getDue(now = 500L, latest = 900L, limit = 1) }.map { it.id })
-        assertTrue(onWorkerThread { dao.getDue(now = 299L, latest = 900L, limit = 10) }.isEmpty())
-        assertEquals(listOf(future), onWorkerThread { dao.getDue(now = 299L, latest = 899L, limit = 10) }.map { it.id })
-        assertEquals(300L, onWorkerThread { dao.getEarliestAttemptTime() })
+        assertEquals(listOf(older, newer), onWorkerThread { dao.getQueued() }.map { it.id })
         assertEquals(listOf(ownedByItsTask), onWorkerThread { dao.getIdsOutOfQueue() })
 
-        onWorkerThread { listOf(late, early, future).forEach(dao::delete) }
-        assertNull(onWorkerThread { dao.getEarliestAttemptTime() })
+        onWorkerThread { listOf(older, newer).forEach(dao::delete) }
+        assertTrue(onWorkerThread { dao.getQueued() }.isEmpty())
         assertEquals(listOf(ownedByItsTask), onWorkerThread { db -> db.pushDeliveryIds() })
     }
 }

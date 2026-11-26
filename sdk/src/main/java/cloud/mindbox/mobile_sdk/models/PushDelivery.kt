@@ -10,14 +10,10 @@ internal data class PushDelivery(
     val url: String,
     val receivedAt: Long,
     val attempts: Int = 0,
-    val throttles: Int = 0,
     val isHighPriority: Boolean = false,
     val provider: String? = null,
-    val nextAttemptAt: Long? = null,
+    val isInQueue: Boolean = false,
 ) {
-    val isInQueue: Boolean
-        get() = nextAttemptAt != null
-
     fun isTooOld(now: Timestamp): Boolean = elapsedAt(now).interval >= LIFETIME.interval
 
     fun elapsedAt(now: Timestamp): Milliseconds = Milliseconds((now.ms - receivedAt).coerceAtLeast(0L))

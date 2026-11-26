@@ -8,7 +8,6 @@ import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.PushDelivery
-import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.models.withMaskedTrackingIds
 import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
@@ -157,47 +156,12 @@ internal object DbManager {
         mindboxDb.pushDeliveriesDao().getIdsOutOfQueue()
     }
 
-    fun getDuePushDeliveries(
-        now: Timestamp,
-        longestPause: Milliseconds,
-        limit: Int,
-    ): List<PushDelivery> = loggingRunCatching(defaultValue = emptyList()) {
-        mindboxDb.pushDeliveriesDao()
-            .getDue(now = now.ms, latest = (now + longestPause.interval).ms, limit = limit)
-    }
-
-    fun getEarliestPushDeliveryAttemptTime(): Timestamp? = loggingRunCatching(defaultValue = null) {
-        mindboxDb.pushDeliveriesDao().getEarliestAttemptTime()?.toTimestamp()
+    fun getQueuedPushDeliveries(): List<PushDelivery> = loggingRunCatching(defaultValue = emptyList()) {
+        mindboxDb.pushDeliveriesDao().getQueued()
     }
 
     fun updatePushDelivery(delivery: PushDelivery): Int? = loggingRunCatching(defaultValue = null) {
-        mindboxDb.pushDeliveriesDao().update(
-            id = delivery.id,
-            attempts = delivery.attempts,
-            throttles = delivery.throttles,
-            nextAttemptAt = delivery.nextAttemptAt,
-        )
-    }
-
-    fun postponePushDeliveries(
-        minAttempts: Int,
-        attempts: Int,
-        throttles: Int,
-        until: Timestamp,
-        now: Timestamp,
-        longestPause: Milliseconds,
-        ownPauseAttempts: Int,
-        ownPauseReceivedAfter: Timestamp,
-    ): Int? = loggingRunCatching(defaultValue = null) {
-        mindboxDb.pushDeliveriesDao().postpone(
-            minAttempts = minAttempts,
-            attempts = attempts,
-            throttles = throttles,
-            until = until.ms,
-            latest = (now + longestPause.interval).ms,
-            ownPauseAttempts = ownPauseAttempts,
-            ownPauseReceivedAfter = ownPauseReceivedAfter.ms,
-        )
+        mindboxDb.pushDeliveriesDao().update(delivery)
     }
 
     fun removePushDelivery(id: Long): Boolean = loggingRunCatching(defaultValue = false) {
