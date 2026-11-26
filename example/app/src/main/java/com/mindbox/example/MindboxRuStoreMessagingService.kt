@@ -25,19 +25,6 @@ class MindboxRuStoreMessagingService : RuStoreMessagingService() {
         // Default Active. It will open if a link that is not in the list is received
         val defaultActivity = MainActivity::class.java
 
-        // Method for rendering mobile push from Mindbox
-        // Override resource mindbox_default_notification_color to change color pushSmallIcon
-        val messageWasHandled = Mindbox.handleRemoteMessage(
-            context = applicationContext,
-            message = message,
-            activities = activities,
-            channelId = channelId,
-            channelName = channelName,
-            pushSmallIcon = pushSmallIcon,
-            defaultActivity = defaultActivity,
-            channelDescription = channelDescription
-        )
-
         // Method for checking if push is from Mindbox
         val isMindboxPush = MindboxRuStore.isMindboxPush(remoteMessage = message)
 
@@ -48,6 +35,17 @@ class MindboxRuStoreMessagingService : RuStoreMessagingService() {
         mindboxMessage?.let {
             NotificationStorage.addNotification(it)
         }
+
+        val messageWasHandled = mindboxMessage != null && showPushNotification(
+            context = applicationContext,
+            message = mindboxMessage,
+            channelId = channelId,
+            channelName = channelName,
+            channelDescription = channelDescription,
+            pushSmallIcon = pushSmallIcon,
+            activities = activities,
+            defaultActivity = defaultActivity,
+        )
         if (!messageWasHandled) {
             // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.
             Log.d(Utils.TAG, "This push not from Mindbox")
