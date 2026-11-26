@@ -137,6 +137,7 @@ internal interface DataModule : MindboxModule {
     val inappSettingsManager: InappSettingsManager
     val featureToggleManager: FeatureToggleManager
     val trackingIdsResolver: TrackingIdsResolver
+    val deviceUuidResolver: DeviceUuidResolver
     val maxInappsPerSessionLimitChecker: Checker
     val maxInappsPerDayLimitChecker: Checker
     val minIntervalBetweenShowsLimitChecker: Checker

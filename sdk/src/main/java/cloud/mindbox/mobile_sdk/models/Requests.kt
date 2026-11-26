@@ -41,6 +41,8 @@ internal data class MindboxRequest(
         private const val DEFAULT_RESPONSE_CHARSET = "UTF-8"
     }
 
+    override fun toString(): String = "MindboxRequest(methodType=$methodType, fullUrl=$fullUrl)"
+
     // building headers
     override fun getHeaders(): MutableMap<String, String> {
         val params: MutableMap<String, String> = HashMap()

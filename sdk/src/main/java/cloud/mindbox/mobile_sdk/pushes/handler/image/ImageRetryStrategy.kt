@@ -2,8 +2,6 @@ package cloud.mindbox.mobile_sdk.pushes.handler.image
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Build
-import androidx.annotation.RequiresApi
 
 /**
  * Solution for failed image downloading
@@ -40,7 +38,6 @@ public sealed class ImageRetryStrategy {
 
     /**
      * Continue the process without the desired image and then try downloading it again
-     * This only works correctly on SDK >= 23
      *
      * @param delay Delay before retry in milliseconds
      * @param defaultImage An optional image to replace the desired one if the download fails
@@ -48,7 +45,6 @@ public sealed class ImageRetryStrategy {
      * @see BitmapFactory.decodeResource
      * @see androidx.core.graphics.drawable.toBitmap
      */
-    @RequiresApi(Build.VERSION_CODES.M)
     public data class ApplyDefaultAndRetry(
         val delay: Long = 0L,
         val defaultImage: Bitmap? = null,

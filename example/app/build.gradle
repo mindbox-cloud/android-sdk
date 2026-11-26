@@ -38,7 +38,7 @@ android {
 
     defaultConfig {
         applicationId "com.mindbox.example"
-        minSdk 21
+        minSdk 23
         targetSdk 36
         versionCode EXAMPLE_VERSION_CODE.toInteger()
         // versionName is taken from SDK_VERSION_NAME in the android-sdk repo root
@@ -133,7 +133,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
 
     // Mindbox
-    implementation 'cloud.mindbox:mobile-sdk:2.16.0'
+    implementation 'cloud.mindbox:mobile-sdk:2.17.0'
     implementation 'cloud.mindbox:mindbox-firebase'
     implementation 'cloud.mindbox:mindbox-huawei'
     implementation 'cloud.mindbox:mindbox-rustore'

@@ -33,4 +33,15 @@ class MindboxRoomConverterTest {
 
         assertEquals(EventType.AppInstalled, eventType)
     }
+
+    @Test
+    fun trackingEventTypes_surviveTheRoundTrip() {
+        val idsUpdated = MindboxRoomConverter.eventTypeToString(EventType.AppTrackingIdsUpdated)
+        val keepalive = MindboxRoomConverter.eventTypeToString(EventType.AppTrackingKeepalive)
+
+        assertEquals("""9;{"operation":"MobilePush.ApplicationInfoUpdated","endpoint":"/v3/operations/async"}""", idsUpdated)
+        assertEquals("""10;{"operation":"MobilePush.ApplicationKeepalive","endpoint":"/v3/operations/async"}""", keepalive)
+        assertEquals(EventType.AppTrackingIdsUpdated, MindboxRoomConverter.stringToEventType(idsUpdated))
+        assertEquals(EventType.AppTrackingKeepalive, MindboxRoomConverter.stringToEventType(keepalive))
+    }
 }

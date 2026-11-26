@@ -3,10 +3,10 @@ package cloud.mindbox.mobile_sdk.models.operation.response
 import cloud.mindbox.mobile_sdk.inapp.data.dto.PayloadDto
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.FeatureTogglesDtoBlankDeserializer
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.InAppIsPriorityDeserializer
-import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.NullSafeJsonObjectDeserializer
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.models.TimeSpan
 import cloud.mindbox.mobile_sdk.models.TreeTargetingDto
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import cloud.mindbox.mobile_sdk.inapp.data.dto.deserializers.SlidingExpirationDtoBlankDeserializer
@@ -256,7 +256,7 @@ internal data class InAppConfigResponseBlank(
         @JsonAdapter(InAppDelayTimeDeserializer::class)
         val delayTime: String?,
         @SerializedName("frequency")
-        val frequency: JsonObject?,
+        val frequency: JsonElement?,
         @SerializedName("sdkVersion")
         val sdkVersion: SdkVersion?,
         @SerializedName("targeting")
@@ -268,7 +268,6 @@ internal data class InAppConfigResponseBlank(
         @JsonAdapter(InAppTagsDeserializer::class)
         val tags: Map<String, String>?,
         @SerializedName("displayConditions")
-        @JsonAdapter(NullSafeJsonObjectDeserializer::class)
-        val displayConditions: JsonObject? = null,
+        val displayConditions: JsonElement? = null,
     )
 }

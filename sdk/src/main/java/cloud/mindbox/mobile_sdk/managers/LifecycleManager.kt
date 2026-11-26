@@ -22,6 +22,7 @@ import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import java.util.Collections
 import java.util.Timer
 import java.util.WeakHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.timer
 
 internal class LifecycleManager internal constructor(
@@ -137,7 +138,7 @@ internal class LifecycleManager internal constructor(
         return host in resumedActivities || startedActivities.any { started -> started !== host }
     }
 
-    private var intentChanged = true
+    private val intentChanged = AtomicBoolean(true)
     private var keepaliveTimer: Timer? = null
     private val intentHashes = mutableListOf<Int>()
     private var skipNextTrackVisit = false
@@ -174,16 +175,17 @@ internal class LifecycleManager internal constructor(
 
         val sameActivity = currentActivityName == activity.javaClass.name
         val intent = activity.intent
-        intentChanged = if (currentIntent != intent) {
+        val isNewIntent = if (currentIntent != intent) {
             updateActivityState(activity)
             intent?.hashCode()?.let(::isNewHash) ?: true
         } else {
             false
         }
+        intentChanged.set(isNewIntent)
 
-        if (isAppInBackground || !intentChanged) {
+        if (isAppInBackground || !isNewIntent) {
             isAppInBackground = false
-            if (foregroundedWithoutIntent && intentChanged) {
+            if (foregroundedWithoutIntent && isNewIntent) {
                 foregroundedWithoutIntent = false
                 sendTrackVisit(intent)
             }
@@ -260,8 +262,9 @@ internal class LifecycleManager internal constructor(
         val isFromPush = intent.extras?.getBoolean(IS_OPENED_FROM_PUSH_BUNDLE_KEY) == true
         if (!hasDeepLink && !isFromPush) return
 
-        intentChanged = isNewHash(intent.hashCode())
-        if (!intentChanged) {
+        val isNewIntent = isNewHash(intent.hashCode())
+        intentChanged.set(isNewIntent)
+        if (!isNewIntent) {
             mindboxLogI("onNewIntent. Intent already processed — skipping duplicate track visit.")
             return
         }
@@ -309,7 +312,7 @@ internal class LifecycleManager internal constructor(
         intent: Intent?,
         sameActivity: Boolean = true,
     ): Unit = loggingRunCatching {
-        val source = if (intentChanged) intentSource(intent) else DIRECT
+        val source = takeIntentSource(intent)
         if (!sameActivity && source == DIRECT) return@loggingRunCatching
 
         val cb = callbacks
@@ -351,13 +354,16 @@ internal class LifecycleManager internal constructor(
             requestUrl = capturedRequestUrl
         } else {
             val intent = currentIntent ?: return@loggingRunCatching
-            source = if (intentChanged) intentSource(intent) else DIRECT
+            source = takeIntentSource(intent)
             requestUrl = if (source == LINK) intent.data?.toString() else null
         }
         cb.onTrackVisitReady(source, requestUrl)
         startKeepaliveTimer()
         mindboxLogI("Track visit dispatched from pending state: source=$source url=$requestUrl")
     }
+
+    private fun takeIntentSource(intent: Intent?): String =
+        if (intentChanged.getAndSet(false)) intentSource(intent) else DIRECT
 
     private fun intentSource(intent: Intent?): String = when {
         intent?.scheme == "http" || intent?.scheme == "https" -> LINK

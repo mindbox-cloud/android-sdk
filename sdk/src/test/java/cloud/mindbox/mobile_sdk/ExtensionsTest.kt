@@ -408,4 +408,17 @@ internal class ExtensionsTest {
         val result = map.toUrlQueryString()
         assertEquals("?russian=%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82&chinese=%E4%BD%A0%E5%A5%BD&emoji=%F0%9F%9A%80", result)
     }
+
+    @Test
+    fun `sha256 is the lower-case hex digest of the utf-8 bytes`() {
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "abc".sha256())
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "".sha256())
+    }
+
+    @Test
+    fun `maskAfter keeps the prefix and the separators`() {
+        assertEquals("38400000-****-****-****-************", "38400000-8cf0-11bd-b23e-10b96e40000d".maskAfter(8))
+        assertEquals("abc", "abc".maskAfter(8))
+        assertEquals("", "".maskAfter(8))
+    }
 }

@@ -40,17 +40,28 @@ project(':mindbox-common') {
 }
 
 apply plugin: 'org.jetbrains.kotlinx.kover'
+apply plugin: 'org.jetbrains.dokka'
 
-dependencies {
-    kover(project(':sdk'))
-    kover(project(':mindbox-firebase'))
-    kover(project(':mindbox-huawei'))
-    kover(project(':mindbox-rustore'))
-    kover(project(':mindbox-firebase-starter'))
-    kover(project(':mindbox-huawei-starter'))
-    kover(project(':mindbox-rustore-starter'))
-    kover(project(':mindbox-sdk-starter-core'))
-    kover(project(':mindbox-embedded-compose'))
+def publishedAndroidModules = [
+    ':sdk',
+    ':mindbox-firebase',
+    ':mindbox-huawei',
+    ':mindbox-rustore',
+    ':mindbox-firebase-starter',
+    ':mindbox-huawei-starter',
+    ':mindbox-rustore-starter',
+    ':mindbox-sdk-starter-core',
+    ':mindbox-embedded-compose',
+]
+
+publishedAndroidModules.each { path ->
+    project(path) {
+        apply plugin: 'org.jetbrains.dokka'
+    }
+    dependencies {
+        kover(project(path))
+        dokka(project(path))
+    }
 }
 
 kover {
@@ -59,6 +70,6 @@ kover {
     }
 }
 
-tasks.register('clean', Delete) {
-    delete rootProject.getLayout().getBuildDirectory()
+dokka {
+    moduleName.set('Mindbox Android SDK')
 }
