@@ -5,7 +5,6 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
-import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.inapp.presentation.callbacks.EmptyInAppCallback
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.retryOrDefaultStrategy
@@ -28,12 +27,10 @@ class Utils {
 }
 
 // Add push notification click event and return push data
-// https://developers.mindbox.ru/docs/android-sdk-methods#geturlfrompushintent
-// https://developers.mindbox.ru/docs/android-sdk-methods#getpayloadfrompushintent
 fun processMindboxIntent(intent: Intent?, context: Context): Pair<String?, String?>? {
     intent?.let {
         ClientGateClickSender.sendClick(context, it)
-        return Mindbox.getUrlFromPushIntent(intent) to Mindbox.getPayloadFromPushIntent(intent)
+        return it.getStringExtra(EXTRA_PUSH_URL) to it.getStringExtra(EXTRA_PUSH_PAYLOAD)
     }
     return null
 }

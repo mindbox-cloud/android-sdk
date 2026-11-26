@@ -65,7 +65,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
         }
     }
 
-    private fun onNotificationClick(item: cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage) {
+    private fun onNotificationClick(item: ClientPush) {
         /*Assuming payload of push notification has this structure:
              {
                 "pushName":"<Push name>",
@@ -82,7 +82,7 @@ class NotificationHistoryActivity : AppCompatActivity() {
         )
         Toast.makeText(
             applicationContext,
-            getString(R.string.toast_notification_click, item.uniqueKey, item.title, item.description),
+            getString(R.string.toast_notification_click, item.messageId, item.title, item.text),
             Toast.LENGTH_LONG
         ).show()
     }

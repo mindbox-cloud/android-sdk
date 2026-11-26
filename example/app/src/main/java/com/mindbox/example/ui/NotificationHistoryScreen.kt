@@ -37,17 +37,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import coil.compose.AsyncImage
+import com.mindbox.example.ClientPush
 import com.mindbox.example.R
 import com.mindbox.example.ui.theme.SetStatusBarAppearance
 
 @Composable
 fun NotificationHistoryScreen(
-    notifications: List<MindboxRemoteMessage>,
+    notifications: List<ClientPush>,
     darkTheme: Boolean,
     onBack: () -> Unit,
-    onItemClick: (MindboxRemoteMessage) -> Unit,
+    onItemClick: (ClientPush) -> Unit,
 ) {
     SetStatusBarAppearance(darkIcons = !darkTheme)
 
@@ -99,7 +99,7 @@ fun NotificationHistoryScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                items(notifications, key = { it.uniqueKey }) { item ->
+                items(notifications, key = { it.messageId }) { item ->
                     NotificationCard(item = item, onClick = { onItemClick(item) })
                 }
             }
@@ -108,7 +108,7 @@ fun NotificationHistoryScreen(
 }
 
 @Composable
-private fun NotificationCard(item: MindboxRemoteMessage, onClick: () -> Unit) {
+private fun NotificationCard(item: ClientPush, onClick: () -> Unit) {
     val source = rememberPressSource()
     Column(
         Modifier
@@ -120,7 +120,7 @@ private fun NotificationCard(item: MindboxRemoteMessage, onClick: () -> Unit) {
     ) {
         Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 12.dp)) {
             Text(
-                text = item.uniqueKey,
+                text = item.messageId,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -138,7 +138,7 @@ private fun NotificationCard(item: MindboxRemoteMessage, onClick: () -> Unit) {
                     modifier = Modifier.padding(top = 9.dp),
                 )
             }
-            item.description.takeIf { it.isNotEmpty() }?.let {
+            item.text.takeIf { it.isNotEmpty() }?.let {
                 Text(
                     it,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -161,7 +161,7 @@ private fun NotificationCard(item: MindboxRemoteMessage, onClick: () -> Unit) {
             )
         }
 
-        item.pushLink?.takeIf { it.isNotEmpty() }?.let { link ->
+        item.clickUrl?.takeIf { it.isNotEmpty() }?.let { link ->
             Row(
                 Modifier.padding(start = 18.dp, end = 18.dp, top = 13.dp, bottom = 15.dp),
                 verticalAlignment = Alignment.CenterVertically,

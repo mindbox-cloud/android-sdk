@@ -41,21 +41,18 @@ class MindboxHuaweiMessagingService : HmsMessageService() {
         // On some devices, onMessageReceived may be executed on the main thread
         // We recommend handling push messages asynchronously
         coroutineScope.launch {
-            // Method for checking if push is from Mindbox
-            val isMindboxPush = MindboxHuawei.isMindboxPush(remoteMessage = message)
-
-            // Method for getting info from Mindbox push
-            val mindboxMessage =
-                MindboxHuawei.convertToMindboxRemoteMessage(remoteMessage = message)
-            Log.d(Utils.TAG, mindboxMessage.toString())
-            // If you want to save the notification you can call your save function from here.
-            mindboxMessage?.let {
-                NotificationStorage.addNotification(it)
+            val push = parseClientPush(message.dataOfMap)
+            if (push == null) {
+                Log.d(Utils.TAG, "Push without messageId is not from the client gate, ignored")
+                return@launch
             }
+            Log.d(Utils.TAG, push.toString())
+            // If you want to save the notification you can call your save function from here.
+            NotificationStorage.addNotification(push)
 
-            val messageWasHandled = mindboxMessage != null && showPushNotification(
+            showPushNotification(
                 context = applicationContext,
-                message = mindboxMessage,
+                push = push,
                 channelId = channelId,
                 channelName = channelName,
                 channelDescription = channelDescription,
@@ -63,10 +60,6 @@ class MindboxHuaweiMessagingService : HmsMessageService() {
                 activities = activities,
                 defaultActivity = defaultActivity,
             )
-            if (!messageWasHandled) {
-                // If the push notification was not from Mindbox or it contains incorrect data, you can write a fallback to process it.
-                Log.d(Utils.TAG, "This push not from Mindbox")
-            }
         }
     }
 
