@@ -26,7 +26,7 @@ internal class MindboxServiceGenerator(private val requestQueue: RequestQueue) {
     private suspend fun bindRequestQueueWithMindboxScope() =
         suspendCancellableCoroutine<Unit> { continuation ->
             continuation.invokeOnCancellation {
-                requestQueue.cancelAll { request -> request !is WebViewContentRequest }
+                requestQueue.cancelAll { request -> request !is WebViewContentRequest && request !is PushDeliveredRequest }
             }
         }
 

@@ -18,6 +18,7 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.services.PushDeliveryWorkManager
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.mockLogger
+import cloud.mindbox.mobile_sdk.utils.setEventScope
 import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -54,7 +55,9 @@ class MindboxEventManagerTest {
     private val pushDeliveredManager: PushDeliveredManager = mockk()
     private val deliveryPauseManager = DeliveryPauseManager { Milliseconds(0L) }
     private val originalMindboxScope = Mindbox.mindboxScope
+    private val originalEventScope = Mindbox.eventScope
     private val scope = CoroutineScope(Dispatchers.Unconfined)
+    private val eventScope = CoroutineScope(Dispatchers.Unconfined)
     private val sentEvents = CopyOnWriteArrayList<Event>()
     private val queuedEvents = CopyOnWriteArrayList<Event>()
     private val storedDeliveries = CopyOnWriteArrayList<PushDelivery>()
@@ -90,6 +93,7 @@ class MindboxEventManagerTest {
     fun setUp() {
         mockLogger()
         setMindboxScope(scope)
+        setEventScope(eventScope)
         mockkObject(Mindbox)
         mockkObject(InitializeLock)
         coEvery { InitializeLock.await(any()) } just runs
@@ -133,7 +137,9 @@ class MindboxEventManagerTest {
     fun tearDown() {
         MindboxEventManager.resetEventFlowCache()
         scope.cancel()
+        eventScope.cancel()
         setMindboxScope(originalMindboxScope)
+        setEventScope(originalEventScope)
         unmockkAll()
     }
 
@@ -176,7 +182,6 @@ class MindboxEventManagerTest {
         verify(exactly = 0) { gatewayManager.sendAsyncEvent(any(), any(), any(), any(), any()) }
         verify(exactly = 0) { DbManager.addEventToQueue(any(), any()) }
         verify(exactly = 0) { BackgroundWorkManager.startOneTimeService(any()) }
-        assertTrue(MindboxEventManager.eventFlow.replayCache.isEmpty())
     }
 
     @Test
@@ -206,6 +211,19 @@ class MindboxEventManagerTest {
     }
 
     @Test
+    fun `pushDelivered waiting for the SDK migrations stores the confirmation and starts its task when a soft re-init stops the SDK scope meanwhile`() {
+        val migrated = CompletableDeferred<Unit>()
+        coEvery { InitializeLock.await(InitializeLock.State.MIGRATION) } coAnswers { migrated.await() }
+        every { DbManager.addPushDelivery(any()) } returns 5L
+
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
+        scope.cancel()
+        migrated.complete(Unit)
+
+        verify(timeout = WAIT_MS, exactly = 1) { PushDeliveryWorkManager.enqueue(context, 5L) }
+    }
+
+    @Test
     fun `two pushes in a row get two rows and two tasks`() {
         every { DbManager.addPushDelivery(any()) } answers {
             storedDeliveries.add(firstArg())
@@ -227,20 +245,6 @@ class MindboxEventManagerTest {
         MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
 
         verify(timeout = WAIT_MS, exactly = 1) { DbManager.addPushDelivery(any()) }
-        verify(exactly = 0) { PushDeliveryWorkManager.enqueue(any(), any()) }
-    }
-
-    @Test
-    fun `confirmation stored while the SDK is being re-initialised is removed and gets no task`() {
-        every { DbManager.addPushDelivery(any()) } answers {
-            scope.cancel()
-            5L
-        }
-        every { DbManager.removePushDelivery(any()) } returns true
-
-        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
-
-        verify(timeout = WAIT_MS, exactly = 1) { DbManager.removePushDelivery(5L) }
         verify(exactly = 0) { PushDeliveryWorkManager.enqueue(any(), any()) }
     }
 

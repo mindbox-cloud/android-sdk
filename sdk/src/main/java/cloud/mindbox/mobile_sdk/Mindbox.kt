@@ -1423,8 +1423,6 @@ public object Mindbox : MindboxLog {
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()
         BackgroundWorkManager.cancelAllWork(context)
-        DbManager.removeAllPushDeliveries()
-        PushDeliveryWorkManager.cancelAllWork(context)
         MindboxDI.appModule.deliveryPauseManager.reset()
         MindboxPreferences.resetAppInfoUpdated()
         mindboxScope = createMindboxScope()

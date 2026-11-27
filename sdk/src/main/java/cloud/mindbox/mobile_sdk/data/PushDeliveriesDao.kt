@@ -27,7 +27,4 @@ internal interface PushDeliveriesDao {
 
     @Query("DELETE FROM $PUSH_DELIVERIES_TABLE_NAME WHERE id = :id")
     fun delete(id: Long)
-
-    @Query("DELETE FROM $PUSH_DELIVERIES_TABLE_NAME")
-    fun deleteAll()
 }

@@ -91,9 +91,6 @@ class DbManagerTest {
         assertNull(DbManager.getPushDelivery(id))
         assertEquals(0, DbManager.updatePushDelivery(updated.copy(attempts = 3)))
         assertTrue(DbManager.getQueuedPushDeliveries().isEmpty())
-
-        DbManager.removeAllPushDeliveries()
-        assertTrue(database.pushDeliveryIds().isEmpty())
     }
 
     @Test

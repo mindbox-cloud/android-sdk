@@ -15,6 +15,7 @@ import cloud.mindbox.mobile_sdk.inapp.presentation.view.DataCollector
 import cloud.mindbox.mobile_sdk.inapp.presentation.view.InAppInsets
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.utils.TimeProvider
+import cloud.mindbox.mobile_sdk.utils.setEventScope
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -258,12 +259,6 @@ internal class MindboxSetupLifecycleManagerTest {
             isolated.cancel()
             setEventScope(original)
         }
-    }
-
-    private fun setEventScope(scope: CoroutineScope) {
-        Mindbox::class.java.getDeclaredField("eventScope")
-            .apply { isAccessible = true }
-            .set(Mindbox, scope)
     }
 
     private fun pagePayload(sessionStorageManager: SessionStorageManager): JsonObject {

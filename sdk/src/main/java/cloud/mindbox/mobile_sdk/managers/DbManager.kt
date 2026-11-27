@@ -169,10 +169,6 @@ internal object DbManager {
         true
     }
 
-    fun removeAllPushDeliveries(): Unit = loggingRunCatching {
-        mindboxDb.pushDeliveriesDao().deleteAll()
-    }
-
     private fun filterEvents(events: List<Event>): List<Event> {
         val time = System.currentTimeMillis()
         val filteredEvents = events.filterNot { it.isTooOld(time) }

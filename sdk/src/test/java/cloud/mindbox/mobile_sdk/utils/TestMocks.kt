@@ -31,3 +31,9 @@ internal fun setMindboxScope(scope: CoroutineScope) {
         .apply { isAccessible = true }
         .set(Mindbox, scope)
 }
+
+internal fun setEventScope(scope: CoroutineScope) {
+    Mindbox::class.java.getDeclaredField("eventScope")
+        .apply { isAccessible = true }
+        .set(Mindbox, scope)
+}
