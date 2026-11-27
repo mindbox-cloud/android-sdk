@@ -616,6 +616,33 @@ class MindboxTest {
     }
 
     @Test
+    fun `push converted by a push service is handled with the provider of that service`() {
+        val providerMessage = Any()
+        val mindboxMessage = remoteMessage()
+        every { firstProvider.convertToRemoteMessage(any()) } returns null
+        every { secondProvider.convertToRemoteMessage(providerMessage) } returns mindboxMessage
+        coEvery { PushNotificationManager.handleRemoteMessage(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns true
+
+        assertTrue(handleMessage(providerMessage))
+
+        coVerify(exactly = 1) {
+            PushNotificationManager.handleRemoteMessage(context, mindboxMessage, "HMS", any(), any(), any(), any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `push passed as a ready Mindbox message is handled without a provider`() {
+        val mindboxMessage = remoteMessage()
+        coEvery { PushNotificationManager.handleRemoteMessage(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns true
+
+        assertTrue(handleMessage(mindboxMessage))
+
+        coVerify(exactly = 1) {
+            PushNotificationManager.handleRemoteMessage(context, mindboxMessage, null, any(), any(), any(), any(), any(), any())
+        }
+    }
+
+    @Test
     fun `handled push without an https delivered url queues no confirmation`() = runTest {
         stubPushReceipt()
 
@@ -648,21 +675,32 @@ class MindboxTest {
         } just runs
     }
 
+    private fun remoteMessage(deliveredUrl: String? = null) = MindboxRemoteMessage(
+        uniqueKey = "push-key",
+        title = "Title",
+        description = "Description",
+        pushActions = emptyList(),
+        pushLink = null,
+        imageUrl = null,
+        payload = null,
+        deliveredUrl = deliveredUrl,
+    )
+
+    private fun handleMessage(message: Any): Boolean = Mindbox.handleRemoteMessage(
+        context = context,
+        message = message,
+        channelId = "channel",
+        channelName = "Channel",
+        pushSmallIcon = 0,
+        defaultActivity = Activity::class.java,
+    )
+
     private suspend fun handlePush(
         deliveredUrl: String?,
         provider: String? = null,
     ): Boolean = PushNotificationManager.handleRemoteMessage(
         context = context,
-        remoteMessage = MindboxRemoteMessage(
-            uniqueKey = "push-key",
-            title = "Title",
-            description = "Description",
-            pushActions = emptyList(),
-            pushLink = null,
-            imageUrl = null,
-            payload = null,
-            deliveredUrl = deliveredUrl,
-        ),
+        remoteMessage = remoteMessage(deliveredUrl),
         provider = provider,
         channelId = "channel",
         channelName = "Channel",
