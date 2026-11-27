@@ -76,8 +76,13 @@ internal class PushDeliveryWorkerDelegate {
             return if (dropTooOld(delivery)) AsyncEventSendResult.DISCARDED else AsyncEventSendResult.RETRY_LATER
         }
         val result = pushDeliveredManager.send(configuration, delivery)
-        val isKept = result.isRemovedFromQueue && !DbManager.removePushDelivery(delivery.id)
-        return if (isKept) AsyncEventSendResult.RETRY_LATER else result
+        return when {
+            result.isRemovedFromQueue ->
+                if (DbManager.removePushDelivery(delivery.id)) result else AsyncEventSendResult.RETRY_LATER
+            result == AsyncEventSendResult.RETRY_LATER ->
+                result.also { DbManager.updatePushDelivery(delivery.copy(attempts = delivery.attempts + 1)) }
+            else -> result
+        }
     }
 
     private suspend fun prepare(context: Context): Configuration? {

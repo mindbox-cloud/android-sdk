@@ -113,7 +113,9 @@ class PushDeliveryWorkerDelegateTest {
         mockkObject(DbManager)
         every { DbManager.getConfigurations() } answers { configuration }
         every { DbManager.getPushDelivery(any()) } answers { rows[firstArg()] }
-        every { DbManager.getQueuedPushDeliveries() } answers { rows.values.filter { it.isInQueue }.sortedBy { it.id } }
+        every { DbManager.getQueuedPushDeliveries() } answers {
+            rows.values.filter { it.isInQueue }.sortedWith(compareBy({ it.attempts }, { it.id }))
+        }
         every { DbManager.removePushDelivery(any()) } answers {
             if (isStorageBroken) false else true.also { rows.remove(firstArg<Long>()) }
         }
@@ -714,6 +716,28 @@ class PushDeliveryWorkerDelegateTest {
         assertEquals((1L..20L).toList(), sentDeliveries.map { it.id })
         assertEquals((1L..25L).toList(), rows.keys.toList())
         assertEquals(listOf(Triple(7_500L, 0, 1)), nextQueueRuns)
+    }
+
+    @Test
+    fun `rows that keep failing in the queue go after the other rows in the next run`() {
+        (1L..25L).forEach { row(id = it, isInQueue = true) }
+        failures(40)
+
+        runQueue()
+        runQueue(failures = 1)
+
+        assertEquals((21L..25L) + (1L..15L), sentDeliveries.drop(20).map { it.id })
+        assertEquals(List(15) { 2 } + List(10) { 1 }, rows.values.map { it.attempts })
+    }
+
+    @Test
+    fun `row that got 429 in the queue keeps its attempt count`() {
+        row(isInQueue = true, attempts = 3)
+        answers(AsyncEventSendResult.THROTTLED)
+
+        runQueue()
+
+        assertEquals(3, rows.getValue(ID).attempts)
     }
 
     @Test

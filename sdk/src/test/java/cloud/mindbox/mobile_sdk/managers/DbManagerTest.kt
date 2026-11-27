@@ -69,7 +69,43 @@ class DbManagerTest {
     }
 
     @Test
-    fun `push delivery rows are stored, updated and removed through the manager`() {
+    fun `push delivery rows are stored, updated and removed through the manager`() = withDatabase { database ->
+        val id = checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/d", receivedAt = 5L, provider = "FCM")))
+        val other = checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/2", receivedAt = 6L)))
+
+        val updated = PushDelivery(
+            id = id,
+            url = "https://mbx.ru/d",
+            receivedAt = 5L,
+            attempts = 2,
+            provider = "FCM",
+            isInQueue = true,
+        )
+        assertEquals(1, DbManager.updatePushDelivery(updated))
+        assertEquals(updated, DbManager.getPushDelivery(id))
+        assertEquals(listOf(id), DbManager.getQueuedPushDeliveries().map { it.id })
+        assertEquals(listOf(id, other), database.pushDeliveryIds())
+        assertEquals(listOf(other), DbManager.getPushDeliveryIdsOutOfQueue())
+
+        assertTrue(DbManager.removePushDelivery(id))
+        assertNull(DbManager.getPushDelivery(id))
+        assertEquals(0, DbManager.updatePushDelivery(updated.copy(attempts = 3)))
+        assertTrue(DbManager.getQueuedPushDeliveries().isEmpty())
+
+        DbManager.removeAllPushDeliveries()
+        assertTrue(database.pushDeliveryIds().isEmpty())
+    }
+
+    @Test
+    fun `queued push deliveries come with fewer attempts first, then oldest first`() = withDatabase {
+        val ids = listOf(4, 1, 1, 0).map { attempts ->
+            checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/d", receivedAt = 5L, attempts = attempts, isInQueue = true)))
+        }
+
+        assertEquals(listOf(ids[3], ids[1], ids[2], ids[0]), DbManager.getQueuedPushDeliveries().map { it.id })
+    }
+
+    private fun withDatabase(block: (MindboxDatabase) -> Unit) {
         unmockkObject(DbManager)
         val database = Room
             .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), MindboxDatabase::class.java)
@@ -79,30 +115,7 @@ class DbManagerTest {
         val previous = field.get(DbManager)
         field.set(DbManager, database)
         try {
-            val id = checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/d", receivedAt = 5L, provider = "FCM")))
-            val other = checkNotNull(DbManager.addPushDelivery(PushDelivery(url = "https://mbx.ru/2", receivedAt = 6L)))
-
-            val updated = PushDelivery(
-                id = id,
-                url = "https://mbx.ru/d",
-                receivedAt = 5L,
-                attempts = 2,
-                provider = "FCM",
-                isInQueue = true,
-            )
-            assertEquals(1, DbManager.updatePushDelivery(updated))
-            assertEquals(updated, DbManager.getPushDelivery(id))
-            assertEquals(listOf(id), DbManager.getQueuedPushDeliveries().map { it.id })
-            assertEquals(listOf(id, other), database.pushDeliveryIds())
-            assertEquals(listOf(other), DbManager.getPushDeliveryIdsOutOfQueue())
-
-            assertTrue(DbManager.removePushDelivery(id))
-            assertNull(DbManager.getPushDelivery(id))
-            assertEquals(0, DbManager.updatePushDelivery(updated.copy(attempts = 3)))
-            assertTrue(DbManager.getQueuedPushDeliveries().isEmpty())
-
-            DbManager.removeAllPushDeliveries()
-            assertTrue(database.pushDeliveryIds().isEmpty())
+            block(database)
         } finally {
             field.set(DbManager, previous)
             database.close()

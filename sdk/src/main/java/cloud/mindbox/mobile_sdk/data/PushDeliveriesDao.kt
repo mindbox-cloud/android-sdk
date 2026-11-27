@@ -19,7 +19,7 @@ internal interface PushDeliveriesDao {
     @Query("SELECT id FROM $PUSH_DELIVERIES_TABLE_NAME WHERE isInQueue = 0")
     fun getIdsOutOfQueue(): List<Long>
 
-    @Query("SELECT * FROM $PUSH_DELIVERIES_TABLE_NAME WHERE isInQueue = 1 ORDER BY id")
+    @Query("SELECT * FROM $PUSH_DELIVERIES_TABLE_NAME WHERE isInQueue = 1 ORDER BY attempts, id")
     fun getQueued(): List<PushDelivery>
 
     @Update
