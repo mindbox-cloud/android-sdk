@@ -74,7 +74,6 @@ public object Mindbox : MindboxLog {
 
     private const val OPERATION_NAME_REGEX = "^[A-Za-z0-9-\\.]{1,249}\$"
     private const val DELIVER_TOKEN_DELAY = 1L
-    private const val INIT_PUSH_SERVICES_TIMEOUT = 5000L
 
     public val coroutineExceptionHandler: CoroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         MindboxLoggerImpl.e(Mindbox, "Mindbox caught unhandled error", throwable)
@@ -96,19 +95,19 @@ public object Mindbox : MindboxLog {
     private val trackingIdsResolver by mindboxInject { trackingIdsResolver }
     private val deviceUuidResolver by mindboxInject { deviceUuidResolver }
 
-    internal var pushServiceHandlers: List<PushServiceHandler> = listOf()
+    internal var pushServiceRegistry: PushServiceRegistry = PushServiceRegistry { mindboxScope }
+        @VisibleForTesting set
 
-    private val passedPushConverters = SingleInitDelegate<PushConverter>()
-    private var pushConverters: List<PushConverter> by passedPushConverters
+    internal val pushServiceHandlers: List<PushServiceHandler>
+        get() = pushServiceRegistry.initializedHandlers
 
     internal val configuredTrackingIdTypes: Set<String>?
-        get() = trackingIdTypesOf(configured = passedPushConverters, live = pushServiceHandlers)
+        get() = pushServiceRegistry.trackingIdTypes
 
     private val inAppMessageManager: InAppMessageManager by mindboxInject { inAppMessageManager }
 
     private val inAppMutex = Mutex()
     private val mutexUpdateAppInfo: Mutex = Mutex()
-    private val pushServiceMutex = Mutex()
 
     private val firstInitCall: AtomicBoolean = AtomicBoolean(true)
 
@@ -414,16 +413,18 @@ public object Mindbox : MindboxLog {
                 return@loggingRunCatching
             }
 
-            val notificationProvider = pushServiceHandlers.firstOrNull { handler ->
-                pushService.tag == handler.notificationProvider
-            }
-
-            if (notificationProvider == null) {
+            if (!pushServiceRegistry.isRegistered(context, pushService.tag)) {
                 mindboxLogW("Unknown token provider ${pushService.tag}. Skipping token update.")
                 return@loggingRunCatching
             }
+            if (!pushServiceRegistry.isSettled && pushService.tag !in MindboxPreferences.pushTokens) {
+                mindboxLogI("Push services are not known yet. ${pushService.tag} token is fetched on the next init")
+                return@loggingRunCatching
+            }
+            pushServiceRegistry.markAvailable(pushService.tag)
 
             mindboxScope.launch {
+                pushServiceRegistry.initializeProvider(context, pushService.tag)
                 updateAppInfo(context, PushToken(pushService.tag, token))
             }
         }
@@ -531,20 +532,26 @@ public object Mindbox : MindboxLog {
      *
      * This method must be called synchronously in onCreate on an application class
      *
-     * If you must call it the other way, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
+     * Without [pushServices] or with an empty list, the push services of the provider modules added to
+     * the app (`mindbox-firebase`, `mindbox-huawei`, `mindbox-rustore`) are used, in the order FCM, HCM,
+     * RuStore. To use no push services, leave the provider modules out of the app. A non-empty list
+     * decides which push services are used and in what order: services of provider modules missing
+     * from it are not used. Lists passed here and to [initPushServices] are merged.
      *
      * @param application used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
-     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * @param pushServices optional list, containing [MindboxPushService]s, i.e.
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
+     * `null`, the default, means the list is not given.
      */
     @MainThread
+    @JvmOverloads
     public fun init(
         application: Application,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
+        pushServices: List<MindboxPushService>? = null,
     ) {
         logI("Initialization with application started")
         initialize(application, configuration, pushServices)
@@ -556,20 +563,28 @@ public object Mindbox : MindboxLog {
      * This method should be called in
      * [Activity.onCreate] and should be used if you're unable to call [Mindbox.init] in [Application.onCreate] on an application class
      *
-     * If you use this method, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
+     * Without [pushServices] or with an empty list, the push services of the provider modules added to
+     * the app (`mindbox-firebase`, `mindbox-huawei`, `mindbox-rustore`) are used, in the order FCM, HCM,
+     * RuStore. To use no push services, leave the provider modules out of the app. The SDK finds them by the manifest meta-data of their modules, so pushes are shown even when the
+     * app is started by a push and this method is not called. In such a process the services are not
+     * started and their tokens are not updated until this method or [Mindbox.initPushServices] is called.
+     * A non-empty list decides which push services are used and in what order. To keep that choice when the app is started by a push, pass the same list to
+     * [Mindbox.initPushServices] in [Application.onCreate].
      *
      * @param activity used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
-     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * @param pushServices optional list, containing [MindboxPushService]s, i.e.
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
+     * `null`, the default, means the list is not given.
      */
     @MainThread
+    @JvmOverloads
     public fun init(
         activity: Activity,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
+        pushServices: List<MindboxPushService>? = null,
     ) {
         logI("Initialization with activity started")
         initialize(activity, configuration, pushServices)
@@ -578,9 +593,10 @@ public object Mindbox : MindboxLog {
     private fun initialize(
         context: Context,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
+        pushServices: List<MindboxPushService>?,
     ): Unit = loggingRunCatching {
         verifyThreadExecution(methodName = "init")
+        pushServices?.let(pushServiceRegistry::registerExplicit)
         val currentProcessName = context.getCurrentProcessName()
         if (!context.isMainProcess(currentProcessName)) {
             logW("Skip Mindbox init not in main process! Current process $currentProcessName")
@@ -592,11 +608,10 @@ public object Mindbox : MindboxLog {
         // Prewarm stage 1: head start for webview in-apps from the cached config
         // (mirrors the iOS SDK's init-time prewarm; a real show always preempts it).
         MindboxDI.appModule.inAppWebViewPrewarmManager.prewarmOnInit()
-        pushConverters = selectPushServiceHandler(pushServices)
         logI(
             "init in $currentProcessName. firstInitCall: ${firstInitCall.get()}, " +
                 "configuration: $configuration, pushServices: " +
-                pushServices.joinToString(", ") { it.javaClass.simpleName } +
+                (pushServices?.joinToString(", ") { it.javaClass.simpleName } ?: "not given") +
                 ", SdkVersion:${getSdkVersion()}, CommonSdkVersion:${MindboxCommon.VERSION_NAME}",
         )
 
@@ -606,7 +621,7 @@ public object Mindbox : MindboxLog {
             userVisitManager.saveUserVisit()
         }
 
-        launchInitJob(context, configuration, pushServices)
+        launchInitJob(context, configuration)
         setupLifecycleManager(context)
         attachLifecycleCallbacks()
     }
@@ -614,7 +629,6 @@ public object Mindbox : MindboxLog {
     private fun launchInitJob(
         context: Context,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
     ) {
         initScope.launch {
             InitializeLock.await(InitializeLock.State.MIGRATION)
@@ -630,11 +644,11 @@ public object Mindbox : MindboxLog {
             }
 
             if (checkResult == ConfigUpdate.UPDATED) {
-                setPushServiceHandler(context, pushServices)
+                initializePushServices(context)
                 firstInitialization(context.applicationContext, validatedConfiguration)
             } else {
                 mindboxScope.launch {
-                    setPushServiceHandler(context, pushServices)
+                    initializePushServices(context)
                 }
                 MindboxEventManager.sendEventsIfExist(context.applicationContext)
             }
@@ -742,7 +756,8 @@ public object Mindbox : MindboxLog {
      *
      * We recommend calling it synchronously in onCreate on an application class
      *
-     * If you must call it the other way, invoke [Mindbox.setPushServiceHandler] in [Application.onCreate] or else pushes won't be shown when application is inactive
+     * If you must call it the other way, pass the same [pushServices] to [Mindbox.initPushServices]
+     * in [Application.onCreate], so that the choice is known when the app is started by a push
      *
      * @param context used to initialize the main tools
      * @param configuration contains the data that is needed to connect to the Mindbox
@@ -750,6 +765,7 @@ public object Mindbox : MindboxLog {
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
+     * `null` means the list is not given.
      * @Deprecated Use either [Mindbox.init] with application parameter or [Mindbox.init] with activity parameter
      */
     @Deprecated(
@@ -758,7 +774,7 @@ public object Mindbox : MindboxLog {
     public fun init(
         context: Context,
         configuration: MindboxConfiguration,
-        pushServices: List<MindboxPushService>,
+        pushServices: List<MindboxPushService>?,
     ) {
         logW("Use either Mindbox.init with application parameter or Mindbox.init with activity parameter")
         initialize(context = context, configuration = configuration, pushServices = pushServices)
@@ -834,65 +850,39 @@ public object Mindbox : MindboxLog {
     /**
      * Method to initialise push services
      *
-     * You must call this method in onCreate in your Application class if you call [Mindbox.init] not there
+     * Call this method in onCreate in your Application class if you call [Mindbox.init] not there.
+     * It starts the push services and updates their tokens in a process that was started by a push
+     * and where [Mindbox.init] is not called.
+     *
+     * Without [pushServices] or with an empty list, the push services of the provider modules added to
+     * the app (`mindbox-firebase`, `mindbox-huawei`, `mindbox-rustore`) are used, in the order FCM, HCM,
+     * RuStore, unless a non-empty list is passed to [Mindbox.init]. A non-empty list decides which push
+     * services are used and in what order. Lists passed here and to [Mindbox.init] are merged, so
+     * calling this method more than once is safe. To use no push services, leave the provider modules
+     * out of the app.
      *
      * @param context used to initialize the main tools
-     * @param pushServices list, containing [MindboxPushService]s, i.e.
+     * @param pushServices optional list, containing [MindboxPushService]s, i.e.
      * ```
      *     listOf(MindboxFirebase, MindboxHuawei, MindboxRuStore)
      * ```
+     * `null`, the default, means the list is not given.
      */
-    @MainThread
+    @JvmOverloads
     public fun initPushServices(
         context: Context,
-        pushServices: List<MindboxPushService>,
+        pushServices: List<MindboxPushService>? = null,
     ) {
-        verifyThreadExecution(methodName = "initPushServices")
         initComponents(context)
-        pushConverters = selectPushServiceHandler(pushServices)
+        pushServices?.let(pushServiceRegistry::registerExplicit)
         mindboxScope.launch {
             InitializeLock.await(InitializeLock.State.MIGRATION)
-            setPushServiceHandler(context, pushServices)
+            initializePushServices(context)
         }
     }
 
-    private suspend fun setPushServiceHandler(
-        context: Context,
-        pushServices: List<MindboxPushService>,
-    ): Unit = loggingRunCatchingSuspending {
-        if (pushServices.isEmpty()) {
-            mindboxLogW("initPushServices: Push services list is empty")
-            return@loggingRunCatchingSuspending
-        }
-
-        if (pushServiceHandlers.isNotEmpty()) {
-            mindboxLogI("initPushServices: Push services already initialized")
-            return@loggingRunCatchingSuspending
-        }
-
-        pushServiceMutex.withLock {
-            if (pushServiceHandlers.isNotEmpty()) {
-                mindboxLogI("initPushServices: Push services already initialized")
-                return@withLock
-            }
-
-            mindboxLogI("initPushServices: " + pushServices.joinToString { it.tag })
-            Stopwatch.start(Stopwatch.INIT_PUSH_SERVICES)
-
-            pushServiceHandlers = selectPushServiceHandler(pushServices)
-                .filter { it.isServiceAvailable(context) }
-
-            pushServiceHandlers.map { handler ->
-                mindboxScope.async {
-                    runCatching {
-                        handler.initService(context)
-                    }.getOrNull {
-                        mindboxLogE("initPushServices: ${handler.notificationProvider} failed to initialize", it)
-                    }
-                }
-            }.awaitAllWithTimeout(INIT_PUSH_SERVICES_TIMEOUT)
-
-            mindboxLogI("initPushServices completed in " + Stopwatch.stop(Stopwatch.INIT_PUSH_SERVICES))
+    private suspend fun initializePushServices(context: Context): Unit = loggingRunCatchingSuspending {
+        if (pushServiceRegistry.initialize(context)) {
             mindboxScope.launch {
                 if (!MindboxPreferences.isFirstInitialize) {
                     updateAppInfo(context)
@@ -905,12 +895,6 @@ public object Mindbox : MindboxLog {
         CoroutineScope(
             dispatcher + SupervisorJob() + coroutineExceptionHandler
         )
-
-    private fun selectPushServiceHandler(
-        pushServices: List<MindboxPushService>,
-    ): List<PushServiceHandler> =
-        pushServices
-            .map { it.getServiceHandler(MindboxLoggerImpl, LoggingExceptionHandler) }
 
     /**
      * Send track visit event after link or push was clicked for [Activity] with launchMode equals
@@ -1140,6 +1124,7 @@ public object Mindbox : MindboxLog {
             logI("Cannot handle null message")
             return@loggingRunCatching false
         }
+        val pushConverters = pushServiceRegistry.resolveHandlers(context)
         if (pushConverters.isEmpty()) {
             logW("No push converters found")
         }
@@ -1148,7 +1133,7 @@ public object Mindbox : MindboxLog {
             is MindboxRemoteMessage -> message
             else -> pushConverters.firstNotNullOfOrNull { handler ->
                 handler.convertToRemoteMessage(message)
-                    ?.also { provider = (handler as? PushServiceHandler)?.notificationProvider }
+                    ?.also { provider = handler.notificationProvider }
             }
         }
         if (convertedMessage == null) {

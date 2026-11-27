@@ -39,6 +39,7 @@ internal fun String?.toTokensMap(): PrefPushTokenMap =
 
 internal suspend fun getPushTokens(context: Context, previousToken: PushTokenMap): PushTokenMap =
     withContext(Mindbox.mindboxScope.coroutineContext) {
+        Mindbox.pushServiceRegistry.initializePending(context)
         val handlers = Mindbox.pushServiceHandlers
         if (handlers.isEmpty()) {
             return@withContext emptyMap()

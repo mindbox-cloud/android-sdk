@@ -6,6 +6,7 @@ import android.content.Context
 import cloud.mindbox.mobile_sdk.di.MindboxDI
 import cloud.mindbox.mobile_sdk.inapp.domain.interfaces.repositories.MobileConfigRepository
 import cloud.mindbox.mobile_sdk.inapp.presentation.InAppMessageManager
+import cloud.mindbox.mobile_sdk.logger.MindboxLogger
 import cloud.mindbox.mobile_sdk.managers.DbManager
 import cloud.mindbox.mobile_sdk.managers.DeliveryPauseManager
 import cloud.mindbox.mobile_sdk.managers.DeviceUuidResolver
@@ -20,19 +21,24 @@ import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.TokenData
 import cloud.mindbox.mobile_sdk.models.UpdateData
 import cloud.mindbox.mobile_sdk.pushes.DeliveredUrl
+import cloud.mindbox.mobile_sdk.pushes.MindboxPushService
 import cloud.mindbox.mobile_sdk.pushes.MindboxRemoteMessage
 import cloud.mindbox.mobile_sdk.pushes.PrefPushToken
 import cloud.mindbox.mobile_sdk.pushes.PushNotificationManager
 import cloud.mindbox.mobile_sdk.pushes.PushServiceHandler
+import cloud.mindbox.mobile_sdk.pushes.PushServiceRegistry
 import cloud.mindbox.mobile_sdk.pushes.PushToken
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.services.PushDeliveryWorkManager
+import cloud.mindbox.mobile_sdk.utils.ExceptionHandler
 import cloud.mindbox.mobile_sdk.utils.mockLogger
 import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import io.mockk.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -57,11 +63,15 @@ class MindboxTest {
     private val firstProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "FCM"
         coEvery { registerToken(any(), any()) } returns "tokenFCM"
+        every { isServiceAvailable(any()) } returns true
+        coEvery { initService(any()) } just runs
     }
 
     private val secondProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "HMS"
         coEvery { registerToken(any(), any()) } returns "tokenHMS"
+        every { isServiceAvailable(any()) } returns true
+        coEvery { initService(any()) } just runs
     }
 
     private val trackingIdsResolver = mockk<TrackingIdsResolver>()
@@ -72,6 +82,8 @@ class MindboxTest {
     private val thirdProvider = mockk<PushServiceHandler> {
         every { notificationProvider } returns "RuStore"
         coEvery { registerToken(any(), any()) } returns "tokenRuStore"
+        every { isServiceAvailable(any()) } returns true
+        coEvery { initService(any()) } just runs
     }
 
     private lateinit var originalScope: CoroutineScope
@@ -105,13 +117,24 @@ class MindboxTest {
         every { MindboxPreferences.firstInitializationTime = any() } just runs
         every { MindboxPreferences.infoUpdatedVersion } returns 1
 
-        Mindbox.pushServiceHandlers = listOf(firstProvider, secondProvider, thirdProvider)
+        Mindbox.pushServiceRegistry = PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
+            .apply {
+                registerExplicit(listOf(firstProvider, secondProvider, thirdProvider).map(::pushService))
+                runBlocking { initialize(context) }
+            }
     }
 
     @After
     fun tearDown() {
         setMindboxScope(originalScope)
+        Mindbox.pushServiceRegistry = PushServiceRegistry { Mindbox.mindboxScope }
         unmockkAll()
+    }
+
+    private fun pushService(handler: PushServiceHandler): MindboxPushService = object : MindboxPushService {
+        override val tag: String = handler.notificationProvider
+
+        override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler) = handler
     }
 
     @Test
@@ -368,6 +391,52 @@ class MindboxTest {
                 )
             )
         }
+    }
+
+    private fun registryWithoutInit(vararg handlers: PushServiceHandler): PushServiceRegistry {
+        clearMocks(firstProvider, secondProvider, thirdProvider, answers = false)
+        mockkObject(Mindbox)
+        every { Mindbox.initComponents(any()) } just runs
+        every { MindboxPreferences.isFirstInitialize } returns false
+        return PushServiceRegistry { CoroutineScope(SupervisorJob() + Dispatchers.Unconfined) }
+            .apply { registerExplicit(handlers.map(::pushService)) }
+    }
+
+    @Test
+    fun `updatePushToken without init starts only its provider and sends the token the provider returns`() {
+        coEvery { firstProvider.registerToken(context, any()) } returns "FETCHED_TOKEN"
+        Mindbox.pushServiceRegistry = registryWithoutInit(firstProvider, secondProvider, thirdProvider)
+
+        Mindbox.updatePushToken(context, "CALLBACK_TOKEN", pushService(firstProvider))
+
+        coVerify(exactly = 1) { firstProvider.initService(any()) }
+        coVerify(exactly = 0) { secondProvider.initService(any()) }
+        coVerify(exactly = 0) { thirdProvider.initService(any()) }
+        verify(exactly = 1) {
+            MindboxEventManager.appInfoUpdate(
+                context,
+                UpdateData(
+                    isNotificationsEnabled = true,
+                    instanceId = "instanceId",
+                    version = 1,
+                    tokens = listOf(
+                        TokenData(token = "FETCHED_TOKEN", notificationProvider = "FCM"),
+                        TokenData(token = "tokenHMS", notificationProvider = "HMS"),
+                        TokenData(token = "tokenRuStore", notificationProvider = "RuStore"),
+                    ),
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `updatePushToken without init ignores a provider left out of the list`() {
+        Mindbox.pushServiceRegistry = registryWithoutInit(secondProvider, thirdProvider)
+
+        Mindbox.updatePushToken(context, "CALLBACK_TOKEN", pushService(firstProvider))
+
+        coVerify(exactly = 0) { firstProvider.initService(any()) }
+        verify(exactly = 0) { MindboxEventManager.appInfoUpdate(any(), any()) }
     }
 
     @Test
