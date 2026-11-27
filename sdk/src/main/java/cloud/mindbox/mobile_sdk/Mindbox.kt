@@ -32,6 +32,7 @@ import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageFailureHandler
 import cloud.mindbox.mobile_sdk.pushes.handler.image.MindboxImageLoader
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.services.PushDeliveryWorkManager
 import cloud.mindbox.mobile_sdk.utils.*
 import cloud.mindbox.mobile_sdk.utils.MindboxUtils.Stopwatch
 import com.jakewharton.threetenabp.AndroidThreeTen
@@ -451,16 +452,25 @@ public object Mindbox : MindboxLog {
      * @param uniqKey - unique identifier of push notification
      */
     public fun onPushReceived(context: Context, uniqKey: String): Unit =
-        onPushReceived(context = context, uniqKey = uniqKey, deliveredUrl = null)
+        onPushReceived(context = context, uniqKey = uniqKey, deliveredUrl = null, provider = null)
 
     internal fun onPushReceived(
         context: Context,
         uniqKey: String,
         deliveredUrl: DeliveredUrl?,
+        provider: String?,
     ): Unit = LoggingExceptionHandler.runCatching {
         initComponents(context)
+        val receivedAt = timeProvider.currentTimestamp()
         mindboxLogD("onPushReceived. uniqKey: $uniqKey, hasDeliveredUrl: ${deliveredUrl != null}")
-        deliveredUrl?.let { MindboxEventManager.pushDelivered(context, it) }
+        deliveredUrl?.let { url ->
+            MindboxEventManager.pushDelivered(
+                context = context,
+                deliveredUrl = url,
+                provider = provider,
+                receivedAt = receivedAt,
+            )
+        }
 
         if (!MindboxPreferences.isFirstInitialize) {
             mindboxScope.launch {
@@ -642,6 +652,7 @@ public object Mindbox : MindboxLog {
                 }
                 MindboxEventManager.sendEventsIfExist(context.applicationContext)
             }
+            PushDeliveryWorkManager.enqueueAll(context.applicationContext)
             MindboxPreferences.uuidDebugEnabled = configuration.uuidDebugEnabled
         }.initState(InitializeLock.State.SAVE_MINDBOX_CONFIG)
             .invokeOnCompletion { throwable ->
@@ -1117,10 +1128,12 @@ public object Mindbox : MindboxLog {
         if (pushConverters.isEmpty()) {
             logW("No push converters found")
         }
+        var provider: String? = null
         val convertedMessage = when (message) {
             is MindboxRemoteMessage -> message
             else -> pushConverters.firstNotNullOfOrNull { handler ->
                 handler.convertToRemoteMessage(message)
+                    ?.also { provider = handler.notificationProvider }
             }
         }
         if (convertedMessage == null) {
@@ -1134,6 +1147,7 @@ public object Mindbox : MindboxLog {
             PushNotificationManager.handleRemoteMessage(
                 context = context,
                 remoteMessage = convertedMessage,
+                provider = provider,
                 channelId = channelId,
                 channelName = channelName,
                 pushSmallIcon = pushSmallIcon,
@@ -1409,6 +1423,8 @@ public object Mindbox : MindboxLog {
         mindboxScope.cancel()
         DbManager.removeAllEventsFromQueue()
         BackgroundWorkManager.cancelAllWork(context)
+        DbManager.removeAllPushDeliveries()
+        PushDeliveryWorkManager.cancelAllWork(context)
         MindboxDI.appModule.deliveryPauseManager.reset()
         MindboxPreferences.resetAppInfoUpdated()
         mindboxScope = createMindboxScope()

@@ -68,6 +68,7 @@ internal object PushNotificationManager {
     internal suspend fun handleRemoteMessage(
         context: Context,
         remoteMessage: MindboxRemoteMessage,
+        provider: String?,
         channelId: String,
         channelName: String,
         @DrawableRes pushSmallIcon: Int,
@@ -79,6 +80,7 @@ internal object PushNotificationManager {
             context = context.applicationContext,
             uniqKey = remoteMessage.uniqueKey,
             deliveredUrl = DeliveredUrl.of(remoteMessage.deliveredUrl),
+            provider = provider,
         )
 
         tryNotifyRemoteMessage(

@@ -9,7 +9,6 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.AsyncEventSendResult
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
-import cloud.mindbox.mobile_sdk.models.EventType
 import cloud.mindbox.mobile_sdk.models.Milliseconds
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
@@ -182,22 +181,13 @@ internal class WorkerDelegate {
                 countDownLatch.countDown()
             }
         }
-        if (event.eventType is EventType.PushDelivered) {
-            MindboxDI.appModule.pushDeliveredManager.send(
-                configuration = configuration,
-                event = event,
-                shouldCountOffset = shouldCountOffset,
-                onResult = onResult,
-            )
-        } else {
-            MindboxDI.appModule.gatewayManager.sendAsyncEvent(
-                configuration = configuration,
-                deviceUuid = deviceUuid,
-                event = event,
-                shouldCountOffset = shouldCountOffset,
-                onResult = onResult,
-            )
-        }
+        MindboxDI.appModule.gatewayManager.sendAsyncEvent(
+            configuration = configuration,
+            deviceUuid = deviceUuid,
+            event = event,
+            shouldCountOffset = shouldCountOffset,
+            onResult = onResult,
+        )
 
         try {
             countDownLatch.await()

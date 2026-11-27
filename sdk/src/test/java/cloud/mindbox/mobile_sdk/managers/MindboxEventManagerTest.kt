@@ -8,16 +8,19 @@ import cloud.mindbox.mobile_sdk.models.AsyncEventSendResult
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.EventType
-import cloud.mindbox.mobile_sdk.models.InAppEventType
 import cloud.mindbox.mobile_sdk.models.InitData
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PushDelivery
+import cloud.mindbox.mobile_sdk.models.Timestamp
 import cloud.mindbox.mobile_sdk.pushes.DeliveredUrl
 import cloud.mindbox.mobile_sdk.repository.MindboxPreferences
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
+import cloud.mindbox.mobile_sdk.services.PushDeliveryWorkManager
 import cloud.mindbox.mobile_sdk.utils.SystemTimeProvider
 import cloud.mindbox.mobile_sdk.utils.mockLogger
 import cloud.mindbox.mobile_sdk.utils.setMindboxScope
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -25,6 +28,7 @@ import io.mockk.mockkObject
 import io.mockk.runs
 import io.mockk.unmockkAll
 import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -41,6 +45,10 @@ import java.util.concurrent.TimeUnit
 
 class MindboxEventManagerTest {
 
+    private companion object {
+        const val WAIT_MS = 10_000L
+    }
+
     private val context: Context = mockk(relaxed = true)
     private val gatewayManager: GatewayManager = mockk()
     private val pushDeliveredManager: PushDeliveredManager = mockk()
@@ -49,6 +57,7 @@ class MindboxEventManagerTest {
     private val scope = CoroutineScope(Dispatchers.Unconfined)
     private val sentEvents = CopyOnWriteArrayList<Event>()
     private val queuedEvents = CopyOnWriteArrayList<Event>()
+    private val storedDeliveries = CopyOnWriteArrayList<PushDelivery>()
     private val firstInitializeWrites = CountDownLatch(2)
 
     @Volatile
@@ -111,6 +120,9 @@ class MindboxEventManagerTest {
         }
         mockkObject(BackgroundWorkManager)
         every { BackgroundWorkManager.startOneTimeService(any()) } just runs
+        every { MindboxPreferences.hostAppName } returns "test-app"
+        mockkObject(PushDeliveryWorkManager)
+        every { PushDeliveryWorkManager.enqueue(any(), any()) } just runs
         every { gatewayManager.sendAsyncEvent(any(), any(), any(), any(), any()) } answers {
             sentEvents.add(thirdArg())
             lastArg<(AsyncEventSendResult) -> Unit>().invoke(AsyncEventSendResult.THROTTLED)
@@ -138,82 +150,98 @@ class MindboxEventManagerTest {
     }
 
     @Test
-    fun `pushDelivered queues the confirmation with its url and sends it right away even before the first initialization`() {
-        val sent = recordPushDeliveredSends()
+    fun `pushDelivered stores the confirmation with its url, receipt time and provider and starts its task`() {
+        every { DbManager.addPushDelivery(any()) } answers {
+            storedDeliveries.add(firstArg())
+            5L
+        }
 
-        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d/key/hash?sig=1"))
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d/key/hash?sig=1"), provider = "FCM", receivedAt = Timestamp(42L))
 
-        assertTrue(sent.await(10, TimeUnit.SECONDS))
-        val queued = queuedEvents.single()
-        assertEquals(EventType.PushDelivered, queued.eventType)
-        assertEquals("https://mbx.ru/d/key/hash?sig=1", queued.additionalFields?.get(EventType.PushDelivered.FIELD_URL))
-        assertEquals(listOf(queued), sentEvents)
-        verify(exactly = 0) { gatewayManager.sendAsyncEvent(any(), any(), any(), any(), any()) }
-    }
-
-    @Test
-    fun `pushDelivered is not passed to in-apps`() {
-        isFirstInitialize = false
-        val sent = recordPushDeliveredSends()
-
-        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d/key/hash?sig=1"))
-
-        assertTrue(sent.await(10, TimeUnit.SECONDS))
-        assertTrue(
-            MindboxEventManager.eventFlow.replayCache.none { event ->
-                event is InAppEventType.OrdinalEvent && event.eventType == EventType.PushDelivered
-            }
+        verify(timeout = WAIT_MS, exactly = 1) { PushDeliveryWorkManager.enqueue(context, 5L) }
+        assertEquals(
+            listOf(PushDelivery(url = "https://mbx.ru/d/key/hash?sig=1", receivedAt = 42L, provider = "FCM")),
+            storedDeliveries,
         )
     }
 
     @Test
-    fun `pushDelivered is sent when the process has no Mindbox init`() {
-        coEvery { InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG) } coAnswers { awaitCancellation() }
-        coEvery { InitializeLock.await(InitializeLock.State.APP_STARTED) } coAnswers { awaitCancellation() }
-        val sent = recordPushDeliveredSends()
+    fun `pushDelivered neither sends the confirmation itself nor puts it into the operations queue`() {
+        every { DbManager.addPushDelivery(any()) } returns 5L
 
-        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d/key/hash?sig=1"))
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
 
-        assertTrue(sent.await(10, TimeUnit.SECONDS))
-        assertEquals(EventType.PushDelivered, queuedEvents.single().eventType)
+        verify(timeout = WAIT_MS, exactly = 1) { PushDeliveryWorkManager.enqueue(context, 5L) }
+        coVerify(exactly = 0) { pushDeliveredManager.send(any(), any()) }
+        verify(exactly = 0) { gatewayManager.sendAsyncEvent(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { DbManager.addEventToQueue(any(), any()) }
+        verify(exactly = 0) { BackgroundWorkManager.startOneTimeService(any()) }
+        assertTrue(MindboxEventManager.eventFlow.replayCache.isEmpty())
     }
 
     @Test
-    fun `pushDelivered waiting for an answer does not hold back operations`() {
-        isFirstInitialize = false
-        val confirmationSent = CountDownLatch(1)
-        var answerConfirmation: ((AsyncEventSendResult) -> Unit)? = null
-        every { pushDeliveredManager.send(any(), any(), any(), any()) } answers {
-            answerConfirmation = lastArg()
-            confirmationSent.countDown()
-        }
-        val operationSent = CountDownLatch(1)
-        every { gatewayManager.sendAsyncEvent(any(), any(), any(), any(), any()) } answers {
-            sentEvents.add(thirdArg())
-            lastArg<(AsyncEventSendResult) -> Unit>().invoke(AsyncEventSendResult.DELIVERED)
-            operationSent.countDown()
-        }
-        try {
-            MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d/key/hash?sig=1"))
-            assertTrue(confirmationSent.await(10, TimeUnit.SECONDS))
+    fun `pushDelivered stores the confirmation only after the SDK migrations finish`() {
+        val migrated = CompletableDeferred<Unit>()
+        coEvery { InitializeLock.await(InitializeLock.State.MIGRATION) } coAnswers { migrated.await() }
+        every { DbManager.addPushDelivery(any()) } returns 5L
 
-            MindboxEventManager.asyncOperation(context, "Test.Operation", "{}")
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
 
-            assertTrue(operationSent.await(10, TimeUnit.SECONDS))
-            assertEquals(EventType.AsyncOperation("Test.Operation").operation, sentEvents.single().eventType.operation)
-        } finally {
-            answerConfirmation?.invoke(AsyncEventSendResult.RETRY_LATER)
-        }
+        coVerify(timeout = WAIT_MS) { InitializeLock.await(InitializeLock.State.MIGRATION) }
+        verify(exactly = 0) { DbManager.addPushDelivery(any()) }
+        migrated.complete(Unit)
+        verify(timeout = WAIT_MS, exactly = 1) { PushDeliveryWorkManager.enqueue(context, 5L) }
     }
 
-    private fun recordPushDeliveredSends(): CountDownLatch {
-        val sent = CountDownLatch(1)
-        every { pushDeliveredManager.send(any(), any(), any(), any()) } answers {
-            sentEvents.add(secondArg())
-            lastArg<(AsyncEventSendResult) -> Unit>().invoke(AsyncEventSendResult.THROTTLED)
-            sent.countDown()
+    @Test
+    fun `pushDelivered is stored when the process has no Mindbox init and no saved configuration`() {
+        coEvery { InitializeLock.await(InitializeLock.State.SAVE_MINDBOX_CONFIG) } coAnswers { awaitCancellation() }
+        coEvery { InitializeLock.await(InitializeLock.State.APP_STARTED) } coAnswers { awaitCancellation() }
+        every { DbManager.getConfigurations() } returns null
+        every { DbManager.addPushDelivery(any()) } returns 5L
+
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
+
+        verify(timeout = WAIT_MS, exactly = 1) { PushDeliveryWorkManager.enqueue(context, 5L) }
+    }
+
+    @Test
+    fun `two pushes in a row get two rows and two tasks`() {
+        every { DbManager.addPushDelivery(any()) } answers {
+            storedDeliveries.add(firstArg())
+            if (firstArg<PushDelivery>().url.endsWith("/1")) 5L else 6L
         }
-        return sent
+
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/1"), provider = null, receivedAt = Timestamp(42L))
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/2"), provider = null, receivedAt = Timestamp(43L))
+
+        verify(timeout = WAIT_MS, exactly = 1) { PushDeliveryWorkManager.enqueue(context, 5L) }
+        verify(timeout = WAIT_MS, exactly = 1) { PushDeliveryWorkManager.enqueue(context, 6L) }
+        assertEquals(setOf("https://mbx.ru/1", "https://mbx.ru/2"), storedDeliveries.map { it.url }.toSet())
+    }
+
+    @Test
+    fun `confirmation that was not stored gets no task`() {
+        every { DbManager.addPushDelivery(any()) } returns null
+
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
+
+        verify(timeout = WAIT_MS, exactly = 1) { DbManager.addPushDelivery(any()) }
+        verify(exactly = 0) { PushDeliveryWorkManager.enqueue(any(), any()) }
+    }
+
+    @Test
+    fun `confirmation stored while the SDK is being re-initialised is removed and gets no task`() {
+        every { DbManager.addPushDelivery(any()) } answers {
+            scope.cancel()
+            5L
+        }
+        every { DbManager.removePushDelivery(any()) } returns true
+
+        MindboxEventManager.pushDelivered(context, url("https://mbx.ru/d"), provider = null, receivedAt = Timestamp(42L))
+
+        verify(timeout = WAIT_MS, exactly = 1) { DbManager.removePushDelivery(5L) }
+        verify(exactly = 0) { PushDeliveryWorkManager.enqueue(any(), any()) }
     }
 
     private fun url(raw: String) = checkNotNull(DeliveredUrl.of(raw))

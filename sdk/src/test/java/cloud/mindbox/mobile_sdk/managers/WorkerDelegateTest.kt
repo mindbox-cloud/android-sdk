@@ -35,7 +35,6 @@ class WorkerDelegateTest {
 
     private val context: Context = mockk(relaxed = true)
     private val gatewayManager: GatewayManager = mockk()
-    private val pushDeliveredManager: PushDeliveredManager = mockk()
     private val originalMindboxScope = Mindbox.mindboxScope
     private val scope = CoroutineScope(Dispatchers.Unconfined)
     private val queue = mutableListOf<Event>()
@@ -68,7 +67,6 @@ class WorkerDelegateTest {
         mockkObject(MindboxDI)
         every { MindboxDI.appModule } returns mockk {
             every { gatewayManager } returns this@WorkerDelegateTest.gatewayManager
-            every { pushDeliveredManager } returns this@WorkerDelegateTest.pushDeliveredManager
             every { deliveryPauseManager } returns this@WorkerDelegateTest.deliveryPauseManager
         }
         mockkObject(MindboxPreferences)
@@ -91,11 +89,6 @@ class WorkerDelegateTest {
             onSend(event)
             val result = resultsByTransactionId[event.transactionId] ?: resultsByEventType.getValue(event.eventType)
             lastArg<(AsyncEventSendResult) -> Unit>().invoke(result)
-        }
-        every { pushDeliveredManager.send(any(), any(), any(), any()) } answers {
-            val event = secondArg<Event>()
-            sentTransactionIds.add(event.transactionId)
-            lastArg<(AsyncEventSendResult) -> Unit>().invoke(resultsByEventType.getValue(event.eventType))
         }
     }
 
@@ -712,38 +705,6 @@ class WorkerDelegateTest {
         assertEquals(listOf(install.transactionId), sentTransactionIds)
         assertTrue(queue.isEmpty())
         assertTrue("result was $result", result is ListenableWorker.Result.Success)
-    }
-
-    @Test
-    fun `worker sends push delivered events through their own manager and operations through the gateway`() {
-        resultsByEventType[EventType.PushDelivered] = AsyncEventSendResult.DELIVERED
-        resultsByEventType[operation("Accepted")] = AsyncEventSendResult.DELIVERED
-        val delivered = Event(eventType = EventType.PushDelivered)
-        val accepted = event("Accepted")
-        queue.addAll(listOf(delivered, accepted))
-
-        WorkerDelegate().sendEventsWithResult(context, this)
-
-        assertEquals(listOf(delivered.transactionId, accepted.transactionId), sentTransactionIds)
-        assertTrue(queue.isEmpty())
-        verify(exactly = 1) { pushDeliveredManager.send(configuration, delivered, true, any()) }
-        verify(exactly = 0) { pushDeliveredManager.send(any(), accepted, any(), any()) }
-        verify(exactly = 1) { gatewayManager.sendAsyncEvent(any(), any(), accepted, true, any()) }
-        verify(exactly = 0) { gatewayManager.sendAsyncEvent(any(), any(), delivered, any(), any()) }
-    }
-
-    @Test
-    fun `immediate push delivered send goes through its own manager and keeps the event when it is not accepted`() {
-        resultsByEventType[EventType.PushDelivered] = AsyncEventSendResult.RETRY_LATER
-        val delivered = Event(eventType = EventType.PushDelivered)
-        queue.add(delivered)
-
-        sendImmediately(delivered)
-
-        assertEquals(listOf(delivered), queue)
-        verify(exactly = 1) { pushDeliveredManager.send(configuration, delivered, false, any()) }
-        verify(exactly = 0) { gatewayManager.sendAsyncEvent(any(), any(), any(), any(), any()) }
-        verify(exactly = 1) { BackgroundWorkManager.startOneTimeService(context) }
     }
 
     private val operationTypes = mutableMapOf<String, EventType.AsyncOperation>()

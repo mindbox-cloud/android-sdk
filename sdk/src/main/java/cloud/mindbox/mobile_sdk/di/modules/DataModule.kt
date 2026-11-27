@@ -363,6 +363,8 @@ internal fun DataModule(
     override val pushDeliveredManager: PushDeliveredManager by lazy {
         PushDeliveredManager(mindboxServiceGenerator, timeProvider)
     }
+    override val pushDeliveryPauseManager: PushDeliveryPauseManager by lazy { PushDeliveryPauseManager() }
+    override val pushDeliveryQueueManager: PushDeliveryQueueManager by lazy { PushDeliveryQueueManager() }
 
     override val gson: Gson by lazy {
         GsonBuilder()

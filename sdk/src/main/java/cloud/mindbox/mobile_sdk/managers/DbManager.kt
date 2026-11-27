@@ -7,11 +7,13 @@ import cloud.mindbox.mobile_sdk.logger.mindboxLogI
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.Event
 import cloud.mindbox.mobile_sdk.models.Milliseconds
+import cloud.mindbox.mobile_sdk.models.PushDelivery
 import cloud.mindbox.mobile_sdk.models.toTimestamp
 import cloud.mindbox.mobile_sdk.models.withMaskedTrackingIds
 import cloud.mindbox.mobile_sdk.repository.MindboxDatabase
 import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.utils.LoggingExceptionHandler
+import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +25,7 @@ internal object DbManager {
 
     const val EVENTS_TABLE_NAME = "mindbox_events_table"
     const val CONFIGURATION_TABLE_NAME = "mindbox_configuration_table"
+    const val PUSH_DELIVERIES_TABLE_NAME = "mindbox_push_deliveries_table"
 
     private const val MAX_EVENT_LIST_SIZE = 10000
     private const val HALF_YEAR_IN_MILLISECONDS: Long = 15552000000L
@@ -139,6 +142,35 @@ internal object DbManager {
             // invalid data in case of exception
             MindboxLoggerImpl.e(this, "Error reading from database", exception)
         }
+    }
+
+    fun addPushDelivery(delivery: PushDelivery): Long? = loggingRunCatching(defaultValue = null) {
+        mindboxDb.pushDeliveriesDao().insert(delivery)
+    }
+
+    fun getPushDelivery(id: Long): PushDelivery? = loggingRunCatching(defaultValue = null) {
+        mindboxDb.pushDeliveriesDao().get(id)
+    }
+
+    fun getPushDeliveryIdsOutOfQueue(): List<Long> = loggingRunCatching(defaultValue = emptyList()) {
+        mindboxDb.pushDeliveriesDao().getIdsOutOfQueue()
+    }
+
+    fun getQueuedPushDeliveries(): List<PushDelivery> = loggingRunCatching(defaultValue = emptyList()) {
+        mindboxDb.pushDeliveriesDao().getQueued()
+    }
+
+    fun updatePushDelivery(delivery: PushDelivery): Int? = loggingRunCatching(defaultValue = null) {
+        mindboxDb.pushDeliveriesDao().update(delivery)
+    }
+
+    fun removePushDelivery(id: Long): Boolean = loggingRunCatching(defaultValue = false) {
+        mindboxDb.pushDeliveriesDao().delete(id)
+        true
+    }
+
+    fun removeAllPushDeliveries(): Unit = loggingRunCatching {
+        mindboxDb.pushDeliveriesDao().deleteAll()
     }
 
     private fun filterEvents(events: List<Event>): List<Event> {

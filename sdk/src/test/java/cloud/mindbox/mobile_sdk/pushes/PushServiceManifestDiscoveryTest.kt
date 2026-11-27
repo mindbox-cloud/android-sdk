@@ -288,7 +288,7 @@ class PushServiceManifestDiscoveryTest {
         Mindbox.pushServiceRegistry = registry
         mockkObject(PushNotificationManager)
         coEvery {
-            PushNotificationManager.handleRemoteMessage(any(), any(), any(), any(), any(), any(), any(), any())
+            PushNotificationManager.handleRemoteMessage(any(), any(), any(), any(), any(), any(), any(), any(), any())
         } returns true
 
         val isHandled = Mindbox.handleRemoteMessage(
