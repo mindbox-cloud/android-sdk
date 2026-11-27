@@ -14,16 +14,18 @@ public fun MindboxRuStore(projectId: String): MindboxRuStore = MindboxRuStore.ap
 
 /***
  * Use factory function MindboxRuStore(projectId) to set up RuStore projectId.
+ * Without it, the project id is read from the `ru.rustore.sdk.pushclient.project_id` meta-data.
  */
 public object MindboxRuStore : MindboxPushService, MindboxPushConverter<RemoteMessage>() {
 
+    @Volatile
     internal var projectId: String = ""
         internal set(value) = run { field = value }
 
     override val tag: String = "RuStore"
 
     override fun getServiceHandler(logger: MindboxLogger, exceptionHandler: ExceptionHandler): PushServiceHandler {
-        return RuStoreServiceHandler(logger, exceptionHandler, projectId)
+        return RuStoreServiceHandler(logger, exceptionHandler) { projectId }
     }
 
     override fun toString(): String = tag
