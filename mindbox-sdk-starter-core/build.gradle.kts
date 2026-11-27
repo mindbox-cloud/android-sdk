@@ -17,10 +17,17 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
     // Implementation dependencies
     implementation(libs.androidx.core.ktx)
     implementation(project(path = ":sdk"))
+
+    // Test dependencies
+    testImplementation(libs.bundles.test)
 }
