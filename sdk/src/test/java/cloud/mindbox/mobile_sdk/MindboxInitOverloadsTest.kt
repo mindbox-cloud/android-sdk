@@ -22,6 +22,7 @@ class MindboxInitOverloadsTest {
         Mindbox.init(application = application, configuration = configuration, pushServices = pushServices)
         Mindbox.init(activity, configuration)
         Mindbox.init(activity, configuration, pushServices)
+        Mindbox.init(activity, configuration, listOf())
         Mindbox.init(activity = activity, configuration, listOf())
         Mindbox.init(context, configuration, pushServices)
         Mindbox.init(context.applicationContext, configuration, listOf())
