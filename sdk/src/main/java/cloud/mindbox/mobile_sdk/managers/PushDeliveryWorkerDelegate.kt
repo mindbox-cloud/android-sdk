@@ -37,6 +37,7 @@ internal class PushDeliveryWorkerDelegate {
     private val timeProvider by lazy { MindboxDI.appModule.timeProvider }
     private val pushDeliveredManager by lazy { MindboxDI.appModule.pushDeliveredManager }
     private val pauseManager by lazy { MindboxDI.appModule.pushDeliveryPauseManager }
+    private val queueManager by lazy { MindboxDI.appModule.pushDeliveryQueueManager }
 
     suspend fun send(context: Context, deliveryId: Long) {
         val configuration = prepare(context)
@@ -55,7 +56,9 @@ internal class PushDeliveryWorkerDelegate {
     }
 
     suspend fun sendQueue(context: Context, throttles: Int, failures: Int) {
-        val configuration = prepare(context) ?: run {
+        val configuration = prepare(context)
+        queueManager.startRun()
+        if (configuration == null) {
             mindboxLogW("Push deliveries will be sent later, because configuration was not initialized")
             return
         }
@@ -67,8 +70,13 @@ internal class PushDeliveryWorkerDelegate {
             }
         when {
             results.any { !it.isRemovedFromQueue } -> retryQueue(context, throttles, failures + 1)
-            DbManager.getQueuedPushDeliveries().isNotEmpty() -> enqueueNextQueue(context, Milliseconds(0L), throttles = 0, failures = 0)
+            hasQueuedAtRunEnd() -> enqueueNextQueue(context, Milliseconds(0L), throttles = 0, failures = 0)
         }
+    }
+
+    private suspend fun hasQueuedAtRunEnd(): Boolean {
+        currentCoroutineContext().ensureActive()
+        return queueManager.hasQueuedAtRunEnd()
     }
 
     private suspend fun sendQueued(configuration: Configuration, delivery: PushDelivery): AsyncEventSendResult {
@@ -100,17 +108,32 @@ internal class PushDeliveryWorkerDelegate {
 
     private fun handToQueue(context: Context, last: Attempt) {
         val id = last.delivery.id
-        if (DbManager.updatePushDelivery(last.delivery.copy(isInQueue = true)) != 1) {
-            mindboxLogI("Push delivery #$id is no longer stored, it is not handed to the queue")
-            return
+        val isHandedOver = queueManager.handOver(last.delivery) { isRunEnding ->
+            if (last.result == AsyncEventSendResult.THROTTLED) {
+                val pause = pauseManager.nextThrottlePause(throttles = 1)
+                mindboxLogI("[GD] push delivery #$id decision: handed to the queue after HTTP 429, the queue pauses for ${pause.interval} ms")
+                enqueueQueue(context, pause, throttles = 1, isRunEnding)
+            } else {
+                mindboxLogI("[GD] push delivery #$id decision: handed to the queue")
+                enqueueQueue(context, QUEUE_DELAY, throttles = 0, isRunEnding)
+            }
         }
-        if (last.result == AsyncEventSendResult.THROTTLED) {
-            val pause = pauseManager.nextThrottlePause(throttles = 1)
-            mindboxLogI("[GD] push delivery #$id decision: handed to the queue after HTTP 429, the queue pauses for ${pause.interval} ms")
-            PushDeliveryWorkManager.enqueueQueue(context, pause, throttles = 1)
+        if (!isHandedOver) {
+            mindboxLogI("Push delivery #$id is no longer stored, it is not handed to the queue")
+        }
+    }
+
+    private fun enqueueQueue(
+        context: Context,
+        delay: Milliseconds,
+        throttles: Int,
+        isRunEnding: Boolean,
+    ) {
+        if (isRunEnding) {
+            mindboxLogI("[GD] push deliveries decision: the queue run is ending, the next run follows it")
+            PushDeliveryWorkManager.enqueueNextQueue(context, delay, throttles, failures = 0)
         } else {
-            mindboxLogI("[GD] push delivery #$id decision: handed to the queue")
-            PushDeliveryWorkManager.enqueueQueue(context, QUEUE_DELAY)
+            PushDeliveryWorkManager.enqueueQueue(context, delay, throttles)
         }
     }
 

@@ -134,6 +134,7 @@ internal interface DataModule : MindboxModule {
     val deliveryPauseManager: DeliveryPauseManager
     val pushDeliveredManager: PushDeliveredManager
     val pushDeliveryPauseManager: PushDeliveryPauseManager
+    val pushDeliveryQueueManager: PushDeliveryQueueManager
     val slidingExpirationParametersValidator: TimeSpanPositiveValidator
     val mobileConfigSettingsManager: MobileConfigSettingsManager
     val integerPositiveValidator: IntegerPositiveValidator

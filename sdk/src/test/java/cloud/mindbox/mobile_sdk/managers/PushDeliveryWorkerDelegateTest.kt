@@ -5,6 +5,7 @@ import android.os.Build
 import cloud.mindbox.mobile_sdk.InitializeLock
 import cloud.mindbox.mobile_sdk.Mindbox
 import cloud.mindbox.mobile_sdk.di.MindboxDI
+import cloud.mindbox.mobile_sdk.di.modules.AppModule
 import cloud.mindbox.mobile_sdk.models.AsyncEventSendResult
 import cloud.mindbox.mobile_sdk.models.Configuration
 import cloud.mindbox.mobile_sdk.models.PushDelivery
@@ -64,6 +65,7 @@ class PushDeliveryWorkerDelegateTest {
             override fun nextBits(bitCount: Int): Int = 0
         }
     )
+    private val queueManager = PushDeliveryQueueManager()
     private val rows = linkedMapOf<Long, PushDelivery>()
     private val results = ArrayDeque<AsyncEventSendResult>()
     private val attemptOffsets = mutableListOf<Long>()
@@ -73,6 +75,7 @@ class PushDeliveryWorkerDelegateTest {
     private var elapsedAtStart = 0L
     private var attemptDuration = 0L
     private var isStorageBroken = false
+    private var areComponentsInitialized = false
     private val originalSdk = Build.VERSION.SDK_INT
     private var configuration: Configuration? = Configuration(
         configurationId = 1L,
@@ -98,17 +101,22 @@ class PushDeliveryWorkerDelegateTest {
         setSdk(Build.VERSION_CODES.S)
         mockLogger()
         mockkObject(Mindbox)
-        every { Mindbox.initComponents(any()) } just runs
+        every { Mindbox.initComponents(any()) } answers { areComponentsInitialized = true }
         mockkObject(InitializeLock)
         coEvery { InitializeLock.await(any()) } just runs
         val timeProvider: SystemTimeProvider = mockk {
             every { currentTimestamp() } answers { Timestamp(now) }
         }
-        mockkObject(MindboxDI)
-        every { MindboxDI.appModule } returns mockk {
+        val appModule: AppModule = mockk {
             every { this@mockk.timeProvider } returns timeProvider
             every { pushDeliveredManager } returns this@PushDeliveryWorkerDelegateTest.pushDeliveredManager
             every { pushDeliveryPauseManager } returns pauseManager
+            every { pushDeliveryQueueManager } returns queueManager
+        }
+        mockkObject(MindboxDI)
+        every { MindboxDI.appModule } answers {
+            if (!areComponentsInitialized) throw UninitializedPropertyAccessException("appModule")
+            appModule
         }
         mockkObject(DbManager)
         every { DbManager.getConfigurations() } answers { configuration }
@@ -173,9 +181,9 @@ class PushDeliveryWorkerDelegateTest {
 
     private fun newScope() = TestScope(StandardTestDispatcher(scheduler))
 
-    private fun run(startedAfter: Long = 0L) = newScope().runTest {
+    private fun run(startedAfter: Long = 0L, id: Long = ID) = newScope().runTest {
         elapsedAtStart = startedAfter - scheduler.currentTime
-        PushDeliveryWorkerDelegate().send(context, ID)
+        PushDeliveryWorkerDelegate().send(context, id)
     }
 
     private fun runQueue(throttles: Int = 0, failures: Int = 0) = newScope().runTest {
@@ -738,6 +746,122 @@ class PushDeliveryWorkerDelegateTest {
         runQueue()
 
         assertEquals(3, rows.getValue(ID).attempts)
+    }
+
+    @Test
+    fun `row handed to the queue after the run found nothing left gets the next run after the ending one`() {
+        row(id = 1L, isInQueue = true)
+        answers(AsyncEventSendResult.DELIVERED)
+        runQueue()
+        row()
+        failures(3)
+
+        run()
+
+        assertTrue(queueRuns.isEmpty())
+        assertEquals(listOf(Triple(10_000L, 0, 0)), nextQueueRuns)
+    }
+
+    @Test
+    fun `row handed to the queue after 429 right after the run found nothing left follows that run after the 429 pause`() {
+        row(id = 1L, isInQueue = true)
+        answers(AsyncEventSendResult.DELIVERED)
+        runQueue()
+        row()
+        answers(AsyncEventSendResult.RETRY_LATER, AsyncEventSendResult.THROTTLED, AsyncEventSendResult.THROTTLED)
+
+        run()
+
+        assertTrue(queueRuns.isEmpty())
+        assertEquals(listOf(Triple(150_000L, 1, 0)), nextQueueRuns)
+    }
+
+    @Test
+    fun `row handed over after a run that left rows for the next run waits for that next run`() {
+        (1L..21L).forEach { row(id = it, isInQueue = true) }
+        answers(*Array(20) { AsyncEventSendResult.DELIVERED })
+        runQueue()
+        row()
+        failures(3)
+
+        run()
+
+        assertEquals(listOf(Triple(0L, 0, 0)), nextQueueRuns)
+        assertEquals(listOf(10_000L to 0), queueRuns)
+    }
+
+    @Test
+    fun `row handed over after the queue run was stopped on its last answer waits for the restarted run`() {
+        row(id = 1L, isInQueue = true)
+        coEvery { pushDeliveredManager.send(any(), any()) } coAnswers {
+            currentCoroutineContext().cancel()
+            AsyncEventSendResult.DELIVERED
+        }
+        newScope().runTest {
+            val job = launch { PushDeliveryWorkerDelegate().sendQueue(context, throttles = 0, failures = 0) }
+            runCurrent()
+            assertTrue(job.isCancelled)
+        }
+        coEvery { pushDeliveredManager.send(any(), any()) } coAnswers { results.removeFirst() }
+        row()
+        failures(3)
+
+        run()
+
+        assertTrue(nextQueueRuns.isEmpty())
+        assertEquals(listOf(10_000L to 0), queueRuns)
+    }
+
+    @Test
+    fun `row is handed to the queue and its queue run is asked for under the lock that ends a run`() {
+        val isLockHeld = mutableListOf<Boolean>()
+        every { PushDeliveryWorkManager.enqueueQueue(any(), any(), any()) } answers { isLockHeld += Thread.holdsLock(queueManager) }
+        every { PushDeliveryWorkManager.enqueueNextQueue(any(), any(), any(), any()) } answers { isLockHeld += Thread.holdsLock(queueManager) }
+        row(id = 1L, isInQueue = true)
+        answers(AsyncEventSendResult.DELIVERED)
+        runQueue()
+        row(id = 2L)
+        row(id = 3L)
+        failures(6)
+
+        run(id = 2L)
+        run(id = 3L)
+
+        assertEquals(listOf(true, true), isLockHeld)
+    }
+
+    @Test
+    fun `only the first row handed over after the run ended gets a run of its own, the next one joins it`() {
+        row(id = 1L, isInQueue = true)
+        answers(AsyncEventSendResult.DELIVERED)
+        runQueue()
+        row(id = 2L)
+        row(id = 3L)
+        failures(6)
+
+        run(id = 2L)
+        run(id = 3L)
+
+        assertEquals(listOf(Triple(10_000L, 0, 0)), nextQueueRuns)
+        assertEquals(listOf(10_000L to 0), queueRuns)
+    }
+
+    @Test
+    fun `row handed over after a failed queue run waits for the retry that run scheduled`() {
+        row(id = 1L, isInQueue = true)
+        answers(AsyncEventSendResult.DELIVERED)
+        runQueue()
+        row(id = 2L, isInQueue = true)
+        failures(1)
+        runQueue()
+        nextQueueRuns.clear()
+        row()
+        failures(3)
+
+        run()
+
+        assertTrue(nextQueueRuns.isEmpty())
+        assertEquals(listOf(10_000L to 0), queueRuns)
     }
 
     @Test
