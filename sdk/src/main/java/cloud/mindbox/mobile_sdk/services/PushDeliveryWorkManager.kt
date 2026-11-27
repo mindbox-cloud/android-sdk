@@ -52,10 +52,6 @@ internal object PushDeliveryWorkManager {
         if (DbManager.getQueuedPushDeliveries().isNotEmpty()) enqueueQueue(context)
     }
 
-    fun cancelAllWork(context: Context): Unit = loggingRunCatching {
-        WorkManager.getInstance(context).cancelAllWorkByTag(WORKER_TAG)
-    }
-
     private fun enqueueQueue(
         context: Context,
         delay: Milliseconds,

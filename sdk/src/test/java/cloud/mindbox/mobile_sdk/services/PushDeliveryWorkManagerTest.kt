@@ -169,17 +169,4 @@ class PushDeliveryWorkManagerTest {
 
         assertTrue(requests.isEmpty())
     }
-
-    @Test
-    fun `row tasks and the queue share one tag and are cancelled by it`() {
-        PushDeliveryWorkManager.enqueue(context, 7L)
-        PushDeliveryWorkManager.enqueueQueue(context)
-        val tag = requests.map { it.tags }.reduce { common, tags -> common intersect tags }
-            .single { it != MindboxPushDeliveryWorker::class.java.name }
-
-        PushDeliveryWorkManager.cancelAllWork(context)
-
-        verify(exactly = 1) { workManager.cancelAllWorkByTag(tag) }
-        assertTrue(names.all { it.startsWith(tag) })
-    }
 }

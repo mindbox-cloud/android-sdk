@@ -16,11 +16,9 @@ import cloud.mindbox.mobile_sdk.services.BackgroundWorkManager
 import cloud.mindbox.mobile_sdk.services.PushDeliveryWorkManager
 import cloud.mindbox.mobile_sdk.utils.loggingRunCatching
 import com.google.gson.Gson
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
@@ -128,13 +126,9 @@ internal object MindboxEventManager {
             receivedAt = receivedAt.ms,
             provider = provider,
         )
-        Mindbox.mindboxScope.launch(Dispatchers.IO) {
+        Mindbox.eventScope.launch {
             InitializeLock.await(InitializeLock.State.MIGRATION)
             val deliveryId = DbManager.addPushDelivery(delivery) ?: return@launch
-            if (!isActive) {
-                DbManager.removePushDelivery(deliveryId)
-                return@launch
-            }
             this@MindboxEventManager.mindboxLogI("Push delivery #$deliveryId was added to queue, provider: $provider")
             PushDeliveryWorkManager.enqueue(context, deliveryId)
         }

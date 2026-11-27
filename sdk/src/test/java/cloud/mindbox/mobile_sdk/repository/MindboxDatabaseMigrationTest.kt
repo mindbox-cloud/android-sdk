@@ -117,7 +117,7 @@ class MindboxDatabaseMigrationTest {
     }
 
     @Test
-    fun `rows keep their own counters and are removed one by one or all at once`() {
+    fun `rows keep their own counters and are removed one by one`() {
         createVersion4Database()
         val first = onWorkerThread { db -> db.pushDeliveriesDao().insert(PushDelivery(url = "https://mbx.ru/1", receivedAt = 1L)) }
         val second = onWorkerThread { db -> db.pushDeliveriesDao().insert(PushDelivery(url = "https://mbx.ru/2", receivedAt = 2L)) }
@@ -131,9 +131,6 @@ class MindboxDatabaseMigrationTest {
         assertNull(onWorkerThread { db -> db.pushDeliveriesDao().get(first) })
         assertEquals(0, onWorkerThread { db -> db.pushDeliveriesDao().update(updated.copy(attempts = 5)) })
         assertEquals(listOf(second), onWorkerThread { db -> db.pushDeliveryIds() })
-
-        onWorkerThread { db -> db.pushDeliveriesDao().deleteAll() }
-        assertTrue(onWorkerThread { db -> db.pushDeliveryIds() }.isEmpty())
     }
 
     @Test

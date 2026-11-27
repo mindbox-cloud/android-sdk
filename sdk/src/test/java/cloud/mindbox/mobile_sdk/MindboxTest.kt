@@ -740,13 +740,11 @@ class MindboxTest {
         every { appModule.mobileConfigRepositoryIfCreated } returns repository
         every { appModule.inAppMessageManager } returns inAppManager
         every { MindboxPreferences.resetAppInfoUpdated() } just runs
-        mockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
+        mockkObject(DbManager, BackgroundWorkManager)
         val originalScope = Mindbox.mindboxScope
         try {
             every { DbManager.removeAllEventsFromQueue() } just runs
             every { BackgroundWorkManager.cancelAllWork(any()) } just runs
-            every { DbManager.removeAllPushDeliveries() } just runs
-            every { PushDeliveryWorkManager.cancelAllWork(any()) } just runs
             setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
 
             Mindbox.softReinitialization(context)
@@ -758,7 +756,7 @@ class MindboxTest {
             }
         } finally {
             setMindboxScope(originalScope)
-            unmockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
+            unmockkObject(DbManager, BackgroundWorkManager)
         }
     }
 
@@ -769,13 +767,11 @@ class MindboxTest {
         val appModule = MindboxDI.appModule
         every { appModule.deliveryPauseManager } returns deliveryPauseManager
         every { MindboxPreferences.resetAppInfoUpdated() } just runs
-        mockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
+        mockkObject(DbManager, BackgroundWorkManager)
         val originalScope = Mindbox.mindboxScope
         try {
             every { DbManager.removeAllEventsFromQueue() } just runs
             every { BackgroundWorkManager.cancelAllWork(any()) } just runs
-            every { DbManager.removeAllPushDeliveries() } just runs
-            every { PushDeliveryWorkManager.cancelAllWork(any()) } just runs
             setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
 
             Mindbox.softReinitialization(context)
@@ -783,26 +779,25 @@ class MindboxTest {
             assertNull(deliveryPauseManager.remainingPause(EventType.TrackVisit))
         } finally {
             setMindboxScope(originalScope)
-            unmockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
+            unmockkObject(DbManager, BackgroundWorkManager)
         }
     }
 
     @Test
-    fun `a soft re-init clears push delivery confirmations and cancels their tasks`() {
+    fun `a soft re-init clears only the operations queue and keeps push delivery confirmations with their tasks`() {
         every { MindboxPreferences.resetAppInfoUpdated() } just runs
         mockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
         val originalScope = Mindbox.mindboxScope
         try {
             every { DbManager.removeAllEventsFromQueue() } just runs
             every { BackgroundWorkManager.cancelAllWork(any()) } just runs
-            every { DbManager.removeAllPushDeliveries() } just runs
-            every { PushDeliveryWorkManager.cancelAllWork(any()) } just runs
             setMindboxScope(CoroutineScope(Dispatchers.Unconfined))
 
             Mindbox.softReinitialization(context)
 
-            verify(exactly = 1) { DbManager.removeAllPushDeliveries() }
-            verify(exactly = 1) { PushDeliveryWorkManager.cancelAllWork(context) }
+            verify(exactly = 1) { DbManager.removeAllEventsFromQueue() }
+            confirmVerified(DbManager)
+            verify { PushDeliveryWorkManager wasNot Called }
         } finally {
             setMindboxScope(originalScope)
             unmockkObject(DbManager, BackgroundWorkManager, PushDeliveryWorkManager)
