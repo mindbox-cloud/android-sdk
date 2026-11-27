@@ -643,13 +643,28 @@ class PushDeliveryWorkerDelegateTest {
     }
 
     @Test
-    fun `failed run doubles the retry pause and keeps the 429 count`() {
+    fun `failed run doubles the retry pause and starts the 429 pauses over`() {
         row(isInQueue = true)
         failures(1)
 
         runQueue(throttles = 2, failures = 2)
 
-        assertEquals(listOf(Triple(30_000L, 2, 3)), nextQueueRuns)
+        assertEquals(listOf(Triple(30_000L, 0, 3)), nextQueueRuns)
+    }
+
+    @Test
+    fun `429 after a failed run that followed 429 waits the first 429 pause again`() {
+        row(isInQueue = true)
+        answers(AsyncEventSendResult.THROTTLED, AsyncEventSendResult.RETRY_LATER, AsyncEventSendResult.THROTTLED)
+
+        runQueue()
+        runQueue(throttles = nextQueueRuns[0].second, failures = nextQueueRuns[0].third)
+        runQueue(throttles = nextQueueRuns[1].second, failures = nextQueueRuns[1].third)
+
+        assertEquals(
+            listOf(Triple(150_000L, 1, 0), Triple(7_500L, 0, 1), Triple(150_000L, 1, 0)),
+            nextQueueRuns,
+        )
     }
 
     @Test
@@ -666,12 +681,23 @@ class PushDeliveryWorkerDelegateTest {
     }
 
     @Test
-    fun `failed row followed by 429 in one run waits the 429 pause and starts the retry pauses over`() {
+    fun `failed row followed by 429 in one run waits the first 429 pause and starts the retry pauses over`() {
         row(id = 1L, isInQueue = true)
         row(id = 2L, isInQueue = true)
         answers(AsyncEventSendResult.RETRY_LATER, AsyncEventSendResult.THROTTLED)
 
         runQueue(throttles = 1, failures = 2)
+
+        assertEquals(listOf(Triple(150_000L, 1, 0)), nextQueueRuns)
+    }
+
+    @Test
+    fun `accepted row followed by 429 in one run makes the next 429 pause longer`() {
+        row(id = 1L, isInQueue = true)
+        row(id = 2L, isInQueue = true)
+        answers(AsyncEventSendResult.DELIVERED, AsyncEventSendResult.THROTTLED)
+
+        runQueue(throttles = 1)
 
         assertEquals(listOf(Triple(300_000L, 2, 0)), nextQueueRuns)
     }

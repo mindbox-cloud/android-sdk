@@ -62,14 +62,17 @@ internal class PushDeliveryWorkerDelegate {
             mindboxLogW("Push deliveries will be sent later, because configuration was not initialized")
             return
         }
-        val results = DbManager.getQueuedPushDeliveries()
-            .take(MAX_PER_RUN)
-            .map { delivery ->
-                sendQueued(configuration, delivery).takeIf { it != AsyncEventSendResult.THROTTLED }
-                    ?: return pauseQueue(context, throttles + 1)
+        val results = mutableListOf<AsyncEventSendResult>()
+        for (delivery in DbManager.getQueuedPushDeliveries().take(MAX_PER_RUN)) {
+            val result = sendQueued(configuration, delivery)
+            if (result == AsyncEventSendResult.THROTTLED) {
+                val previousThrottles = if (results.any { !it.isRemovedFromQueue }) 0 else throttles
+                return pauseQueue(context, previousThrottles + 1)
             }
+            results += result
+        }
         when {
-            results.any { !it.isRemovedFromQueue } -> retryQueue(context, throttles, failures + 1)
+            results.any { !it.isRemovedFromQueue } -> retryQueue(context, failures + 1)
             hasQueuedAtRunEnd() -> enqueueNextQueue(context, Milliseconds(0L), throttles = 0, failures = 0)
         }
     }
@@ -143,10 +146,10 @@ internal class PushDeliveryWorkerDelegate {
         enqueueNextQueue(context, pause, throttles, failures = 0)
     }
 
-    private suspend fun retryQueue(context: Context, throttles: Int, failures: Int) {
+    private suspend fun retryQueue(context: Context, failures: Int) {
         val pause = pauseManager.nextRetryPause(failures)
         mindboxLogI("[GD] push deliveries decision: not all were accepted, the queue retries in ${pause.interval} ms")
-        enqueueNextQueue(context, pause, throttles, failures)
+        enqueueNextQueue(context, pause, throttles = 0, failures)
     }
 
     private suspend fun enqueueNextQueue(
