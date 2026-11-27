@@ -52,16 +52,20 @@ public object MindboxCoreStarter {
         Mindbox.updatePushToken(context, token, provider)
     }
 
-    private fun getLauncherActivity(application: Application): Class<out Activity>? =
-        application.packageManager
-            .getLaunchIntentForPackage(application.packageName)
+    private fun getLauncherActivity(application: Application): Class<out Activity>? {
+        val packageManager = application.packageManager
+        return packageManager.getLaunchIntentForPackage(application.packageName)
             ?.component
-            ?.className
+            ?.let { launcher ->
+                runCatching { packageManager.getActivityInfo(launcher, 0).targetActivity }.getOrNull()
+                    ?: launcher.className
+            }
             ?.let { className ->
                 // The app's launcher Activity comes from the merged manifest, which AGP keeps by name.
                 @Suppress("UnjustifiedReflection")
                 Class.forName(className).asSubclass(Activity::class.java)
             }
+    }
 
     private fun Context.getDefaultChannelId(): String = getString(R.string.mindbox_default_channel_id)
 
